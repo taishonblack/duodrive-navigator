@@ -12,15 +12,72 @@ import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shi
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+const glossaryCategories = [
+  { id: "all", label: "All Terms" },
+  { id: "pricing", label: "Pricing & Costs" },
+  { id: "financing", label: "Financing" },
+  { id: "fees", label: "Fees & Add-Ons" },
+  { id: "vehicle", label: "Vehicle Info" },
+  { id: "insurance", label: "Insurance" },
+  { id: "negotiation", label: "Negotiation" },
+];
+
 const glossaryTerms = [
-  { term: "APR", definition: "Annual Percentage Rate - the yearly interest rate charged on borrowed money." },
-  { term: "Doc Fee", definition: "Documentation fee charged by dealers for processing paperwork." },
-  { term: "GAP Insurance", definition: "Coverage that pays the difference between your car's value and loan balance if totaled." },
-  { term: "MSRP", definition: "Manufacturer's Suggested Retail Price - the sticker price set by the manufacturer." },
-  { term: "Residual Value", definition: "The predicted value of a vehicle at the end of a lease term." },
-  { term: "Trade-In Value", definition: "What a dealer offers for your current vehicle toward a new purchase." },
-  { term: "VIN", definition: "Vehicle Identification Number - a unique 17-character code for every vehicle." },
-  { term: "Dealer Add-Ons", definition: "Extra products or services dealers add to increase profit (often overpriced)." },
+  // Pricing & Costs
+  { term: "MSRP", definition: "Manufacturer's Suggested Retail Price - the sticker price set by the manufacturer. This is the starting point for negotiations, not what you should pay.", category: "pricing", tip: "Always negotiate below MSRP on non-luxury vehicles." },
+  { term: "Invoice Price", definition: "The price the dealer pays the manufacturer for the vehicle. Dealers often receive additional incentives below this price.", category: "pricing", tip: "A fair deal is typically $500-$1,500 above invoice." },
+  { term: "Out-the-Door Price", definition: "The total amount you'll pay including all taxes, fees, and add-ons. This is the only number that matters.", category: "pricing", tip: "Always negotiate based on OTD price, not monthly payment." },
+  { term: "Market Adjustment", definition: "An additional markup dealers add above MSRP during high demand. Completely negotiable and often avoidable.", category: "pricing", tip: "Walk away from market adjustments - shop other dealers." },
+  { term: "Destination Charge", definition: "The fee to transport the vehicle from the factory to the dealership. This is legitimate and typically non-negotiable ($900-$1,800).", category: "pricing", tip: "This fee is the same at every dealer for the same vehicle." },
+  { term: "Trade-In Value", definition: "What a dealer offers for your current vehicle toward a new purchase. Often undervalued by dealers.", category: "pricing", tip: "Get quotes from Carmax, Carvana, and KBB before visiting dealers." },
+  { term: "Negative Equity", definition: "When you owe more on your current car than it's worth. This amount gets rolled into your new loan.", category: "pricing", tip: "Avoid rolling negative equity - it's a debt trap." },
+  
+  // Financing
+  { term: "APR", definition: "Annual Percentage Rate - the yearly interest rate charged on borrowed money, including fees. Lower is better.", category: "financing", tip: "Get pre-approved from your bank/credit union before visiting dealers." },
+  { term: "Loan Term", definition: "The length of time you have to repay the loan, typically 36-84 months. Longer terms mean more interest paid.", category: "financing", tip: "Keep terms at 60 months or less to avoid being underwater." },
+  { term: "Down Payment", definition: "The upfront cash you put toward the purchase. Reduces your loan amount and monthly payment.", category: "financing", tip: "Aim for at least 20% down to avoid negative equity." },
+  { term: "Principal", definition: "The actual amount borrowed, not including interest. This is what you're paying down each month.", category: "financing", tip: "Extra payments toward principal save you money on interest." },
+  { term: "Pre-Approval", definition: "Getting approved for financing before shopping. Gives you negotiating power and a rate to beat.", category: "financing", tip: "Always get pre-approved - it's your strongest negotiating tool." },
+  { term: "Subprime Loan", definition: "High-interest loans for buyers with poor credit (below 620). Rates can exceed 15-20%.", category: "financing", tip: "Work on improving credit before buying if possible." },
+  { term: "Buy Rate", definition: "The actual interest rate you qualify for. Dealers often mark this up for profit.", category: "financing", tip: "Ask what the buy rate is vs. the rate they're offering." },
+  { term: "Dealer Reserve", definition: "Extra profit dealers make by marking up your interest rate. Can add thousands to your loan.", category: "financing", tip: "Compare dealer financing to your pre-approved rate." },
+  { term: "Residual Value", definition: "The predicted value of a vehicle at the end of a lease term. Higher residual means lower lease payments.", category: "financing", tip: "Research residual values before leasing - they vary by brand." },
+  
+  // Fees & Add-Ons
+  { term: "Doc Fee", definition: "Documentation fee charged by dealers for processing paperwork. Varies by state ($0-$1,000+).", category: "fees", tip: "Know your state's cap - some states limit doc fees." },
+  { term: "Dealer Fee", definition: "A catch-all fee dealers charge for overhead. Often negotiable despite what they claim.", category: "fees", tip: "Ask for an itemized breakdown and negotiate." },
+  { term: "Dealer Add-Ons", definition: "Extra products like window tint, paint protection, or nitrogen tires. Usually overpriced by 300-500%.", category: "fees", tip: "Decline all add-ons - buy aftermarket if you want them." },
+  { term: "VIN Etching", definition: "Etching the VIN into windows as theft protection. Costs dealers $30 but charged at $300-$500.", category: "fees", tip: "Always decline - you can DIY for under $25." },
+  { term: "Paint Protection", definition: "Ceramic coating or film to protect paint. Dealer cost is ~$200, charged at $1,000+.", category: "fees", tip: "Get this done independently for 1/3 the price." },
+  { term: "Fabric Protection", definition: "Spray-on fabric guard for seats. Essentially Scotchgard charged at $200-$400.", category: "fees", tip: "Buy a $15 can of Scotchgard and do it yourself." },
+  { term: "Nitrogen Tires", definition: "Filling tires with nitrogen instead of air. Provides minimal benefit for $100-$300.", category: "fees", tip: "Regular air is fine - Costco offers free nitrogen." },
+  { term: "Extended Warranty", definition: "Additional coverage beyond the factory warranty. Highly marked up at dealers.", category: "fees", tip: "Buy from third parties for 50% less if you want coverage." },
+  
+  // Vehicle Info
+  { term: "VIN", definition: "Vehicle Identification Number - a unique 17-character code identifying every vehicle. Used for history reports.", category: "vehicle", tip: "Always run a VIN check before buying any used vehicle." },
+  { term: "Trim Level", definition: "Different versions of the same model with varying features (e.g., LX, EX, Touring). Higher trims cost more.", category: "vehicle", tip: "Mid-level trims often offer the best value." },
+  { term: "CPO", definition: "Certified Pre-Owned - used vehicles that meet manufacturer standards with extended warranty.", category: "vehicle", tip: "CPO provides peace of mind but verify the inspection report." },
+  { term: "Clean Title", definition: "A vehicle with no major damage, flood, or salvage history on record.", category: "vehicle", tip: "Never buy without a clean title unless you're an expert." },
+  { term: "Salvage Title", definition: "A vehicle that was totaled by insurance and repaired. Significantly reduces value.", category: "vehicle", tip: "Avoid salvage titles - financing and insurance are difficult." },
+  { term: "Carfax", definition: "A vehicle history report showing accidents, ownership, and service records.", category: "vehicle", tip: "Always get a Carfax AND a pre-purchase inspection." },
+  { term: "Depreciation", definition: "The decrease in a vehicle's value over time. New cars lose 20-30% in year one.", category: "vehicle", tip: "Buy 2-3 year old cars to avoid the steepest depreciation." },
+  { term: "Powertrain", definition: "The engine, transmission, and drivetrain components. Powertrain warranties cover these.", category: "vehicle", tip: "Powertrain issues are the most expensive to repair." },
+  
+  // Insurance
+  { term: "GAP Insurance", definition: "Guaranteed Asset Protection - pays the difference between your car's value and loan balance if totaled.", category: "insurance", tip: "Essential if you have less than 20% down payment." },
+  { term: "Comprehensive Coverage", definition: "Insurance covering non-collision damage like theft, weather, and vandalism.", category: "insurance", tip: "Required for financed vehicles." },
+  { term: "Collision Coverage", definition: "Insurance covering damage from accidents, regardless of fault.", category: "insurance", tip: "Required for financed vehicles." },
+  { term: "Liability Coverage", definition: "Insurance covering damage you cause to others. The legal minimum requirement.", category: "insurance", tip: "Higher limits protect your assets - don't go minimum." },
+  { term: "Deductible", definition: "The amount you pay out of pocket before insurance kicks in. Higher deductible = lower premium.", category: "insurance", tip: "Choose a deductible you can comfortably afford to pay." },
+  
+  // Negotiation
+  { term: "Four Square", definition: "A dealer tactic using a four-box worksheet to confuse buyers and hide profit. A major red flag.", category: "negotiation", tip: "Refuse to negotiate using the four square - focus on OTD price." },
+  { term: "Payment Packing", definition: "Hiding fees in your monthly payment without disclosure. Illegal but common.", category: "negotiation", tip: "Always verify line items match your agreed OTD price." },
+  { term: "Bump", definition: "When a manager claims your deal wasn't approved and asks for more money. Often a bluff.", category: "negotiation", tip: "Be prepared to walk away - your deal was likely approved." },
+  { term: "Lowball Offer", definition: "An intentionally low offer to start negotiations. Part of the game.", category: "negotiation", tip: "Start 10-15% below your target to leave room for negotiation." },
+  { term: "Walk Away", definition: "Leaving the dealership without buying. Your most powerful negotiating tool.", category: "negotiation", tip: "Be willing to walk - dealers often call back with better offers." },
+  { term: "F&I Office", definition: "Finance and Insurance office where you sign paperwork. Where most profit is made on add-ons.", category: "negotiation", tip: "Be prepared to say no repeatedly in F&I." },
+  { term: "Dealer Holdback", definition: "A percentage of MSRP manufacturers pay dealers after sale. Hidden profit margin.", category: "negotiation", tip: "Dealers can profit even selling at invoice due to holdback." },
 ];
 
 interface ScoreResult {
@@ -45,6 +102,7 @@ interface ChatMessage {
 export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("deal");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -80,11 +138,13 @@ export default function DealRoom() {
     maintenance: "",
   });
 
-  const filteredTerms = glossaryTerms.filter(
-    (item) =>
+  const filteredTerms = glossaryTerms.filter((item) => {
+    const matchesSearch = 
       item.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.definition.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      item.definition.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const handleInputChange = (field: string, value: string) => {
     setDealData((prev) => ({ ...prev, [field]: value }));
@@ -804,24 +864,90 @@ export default function DealRoom() {
 
           {/* GLOSSARY TAB */}
           <TabsContent value="glossary" className="animate-fade-in">
-            <div className="max-w-3xl mx-auto">
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search terms..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Learn the Lingo</h2>
+                <p className="text-muted-foreground">Master car-buying terminology to negotiate like a pro</p>
               </div>
-              <div className="space-y-4">
+
+              {/* Search and Filter */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search terms, definitions, or tips..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {glossaryCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Category Pills */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {glossaryCategories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === cat.id
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Results Count */}
+              <p className="text-sm text-muted-foreground mb-4">
+                Showing {filteredTerms.length} of {glossaryTerms.length} terms
+              </p>
+
+              {/* Terms Grid */}
+              <div className="grid md:grid-cols-2 gap-4">
                 {filteredTerms.map((item) => (
-                  <div key={item.term} className="p-4 rounded-xl bg-card border border-border shadow-card">
-                    <h3 className="font-semibold text-foreground">{item.term}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{item.definition}</p>
+                  <div 
+                    key={item.term} 
+                    className="p-5 rounded-2xl bg-card border border-border shadow-card hover:shadow-elevated transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-bold text-foreground text-lg">{item.term}</h3>
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground capitalize whitespace-nowrap">
+                        {glossaryCategories.find(c => c.id === item.category)?.label || item.category}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">{item.definition}</p>
+                    {item.tip && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                        <span className="text-primary font-bold text-xs mt-0.5">TIP</span>
+                        <p className="text-xs text-foreground">{item.tip}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+
+              {filteredTerms.length === 0 && (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No terms found matching your search.</p>
+                  <Button variant="ghost" className="mt-2" onClick={() => { setSearchTerm(""); setSelectedCategory("all"); }}>
+                    Clear filters
+                  </Button>
+                </div>
+              )}
             </div>
           </TabsContent>
 

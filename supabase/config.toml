@@ -1,0 +1,4 @@
+project_id = "uegqvlvwmshgpffxhuaa"
+
+[functions.duodrive-score]
+verify_jwt = false

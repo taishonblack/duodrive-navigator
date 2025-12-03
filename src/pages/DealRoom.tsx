@@ -255,14 +255,16 @@ export default function DealRoom() {
 
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-  const filteredTerms = glossaryTerms.filter((item) => {
-    const matchesSearch = 
-      item.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.definition.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    const matchesLetter = !selectedLetter || item.term.toUpperCase().startsWith(selectedLetter);
-    return matchesSearch && matchesCategory && matchesLetter;
-  });
+  const filteredTerms = glossaryTerms
+    .filter((item) => {
+      const matchesSearch = 
+        item.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.definition.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
+      const matchesLetter = !selectedLetter || item.term.toUpperCase().startsWith(selectedLetter);
+      return matchesSearch && matchesCategory && matchesLetter;
+    })
+    .sort((a, b) => a.term.localeCompare(b.term));
 
   const handleInputChange = (field: string, value: string) => {
     setDealData((prev) => ({ ...prev, [field]: value }));

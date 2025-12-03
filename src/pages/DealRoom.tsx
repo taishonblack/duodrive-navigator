@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const glossaryTerms = [
   { term: "APR", definition: "Annual Percentage Rate - the yearly interest rate charged on borrowed money." },
@@ -20,17 +22,27 @@ const glossaryTerms = [
   { term: "Dealer Add-Ons", definition: "Extra products or services dealers add to increase profit (often overpriced)." },
 ];
 
-const pillarsData = [
-  { icon: TrendingDown, title: "Depreciation", score: 82 },
-  { icon: Wrench, title: "Reliability", score: 75 },
-  { icon: Shield, title: "Safety", score: 88 },
-  { icon: DollarSign, title: "Deal Health", score: 65 },
-  { icon: Heart, title: "Affordability", score: 71 },
-];
+interface ScoreResult {
+  overall: number;
+  pillars: {
+    depreciation: { score: number; details: string };
+    reliability: { score: number; details: string };
+    safety: { score: number; details: string };
+    dealHealth: { score: number; details: string };
+    affordability: { score: number; details: string };
+  };
+  recommendation: string;
+  monthlyPayment: number;
+  totalCost: number;
+}
 
 export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("deal");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
+  const { toast } = useToast();
+  
   const [dealData, setDealData] = useState({
     year: "",
     make: "",
@@ -66,6 +78,70 @@ export default function DealRoom() {
 
   const handleInputChange = (field: string, value: string) => {
     setDealData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const parseNumber = (value: string): number => {
+    return parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+  };
+
+  const evaluateDeal = async () => {
+    // Validate required fields
+    if (!dealData.year || !dealData.make || !dealData.askingPrice || !dealData.monthlyIncome) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in Year, Make, Asking Price, and Monthly Income at minimum.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const payload = {
+        year: parseInt(dealData.year) || new Date().getFullYear(),
+        make: dealData.make,
+        model: dealData.model || "Unknown",
+        mileage: parseNumber(dealData.mileage),
+        askingPrice: parseNumber(dealData.askingPrice),
+        negotiatedPrice: parseNumber(dealData.negotiatedPrice) || undefined,
+        downPayment: parseNumber(dealData.downPayment),
+        tradeIn: parseNumber(dealData.tradeIn),
+        apr: parseNumber(dealData.apr) || 7.0,
+        term: parseInt(dealData.term) || 60,
+        docFee: parseNumber(dealData.docFee),
+        dealerFee: parseNumber(dealData.dealerFee),
+        addOns: parseNumber(dealData.addOns),
+        taxes: parseNumber(dealData.taxes),
+        registration: parseNumber(dealData.registration),
+        monthlyIncome: parseNumber(dealData.monthlyIncome),
+        creditScore: dealData.creditScore || "fair",
+        insurance: parseNumber(dealData.insurance) || 150,
+        fuelCost: parseNumber(dealData.fuelCost) || 200,
+        maintenance: parseNumber(dealData.maintenance) || 50,
+      };
+
+      const { data, error } = await supabase.functions.invoke('duodrive-score', {
+        body: payload,
+      });
+
+      if (error) throw error;
+      
+      setScoreResult(data);
+      setActiveTab("overview");
+      toast({
+        title: "Score Calculated!",
+        description: `Your DuoDrive Score is ${data.overall}`,
+      });
+    } catch (error) {
+      console.error('Error calculating score:', error);
+      toast({
+        title: "Error",
+        description: "Failed to calculate score. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -269,8 +345,15 @@ export default function DealRoom() {
             </div>
 
             <div className="mt-8 flex justify-end">
-              <Button onClick={() => setActiveTab("overview")} size="lg">
-                Evaluate My Deal
+              <Button onClick={evaluateDeal} size="lg" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Calculating...
+                  </>
+                ) : (
+                  "Evaluate My Deal"
+                )}
               </Button>
             </div>
           </TabsContent>
@@ -395,69 +478,101 @@ export default function DealRoom() {
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="animate-fade-in">
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Main Score */}
-              <div className="lg:col-span-1 p-8 rounded-2xl bg-card border border-border shadow-elevated flex flex-col items-center justify-center">
-                <h2 className="text-xl font-semibold text-foreground mb-6">Your DuoDrive Score</h2>
-                <ScoreRing score={76} size="xl" />
-                <p className="mt-6 text-center text-sm text-muted-foreground">
-                  Based on the data you provided
+            {!scoreResult ? (
+              <div className="text-center py-16">
+                <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">No Score Yet</h2>
+                <p className="text-muted-foreground mb-6">
+                  Fill in your deal details and click "Evaluate My Deal" to see your score.
                 </p>
+                <Button onClick={() => setActiveTab("deal")}>Enter Deal Details</Button>
               </div>
+            ) : (
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* Main Score */}
+                <div className="lg:col-span-1 p-8 rounded-2xl bg-card border border-border shadow-elevated flex flex-col items-center justify-center">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">Your DuoDrive Score</h2>
+                  <ScoreRing score={scoreResult.overall} size="xl" />
+                  <p className="mt-6 text-center text-sm text-muted-foreground">
+                    Based on the data you provided
+                  </p>
+                </div>
 
-              {/* Pillars Grid */}
-              <div className="lg:col-span-2">
-                <h2 className="text-xl font-semibold text-foreground mb-6">Score Breakdown</h2>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pillarsData.map((pillar) => (
+                {/* Pillars Grid */}
+                <div className="lg:col-span-2">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">Score Breakdown</h2>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <PillarCard
-                      key={pillar.title}
-                      icon={pillar.icon}
-                      title={pillar.title}
-                      description=""
-                      score={pillar.score}
+                      icon={TrendingDown}
+                      title="Depreciation"
+                      description={scoreResult.pillars.depreciation.details}
+                      score={scoreResult.pillars.depreciation.score}
                     />
-                  ))}
+                    <PillarCard
+                      icon={Wrench}
+                      title="Reliability"
+                      description={scoreResult.pillars.reliability.details}
+                      score={scoreResult.pillars.reliability.score}
+                    />
+                    <PillarCard
+                      icon={Shield}
+                      title="Safety"
+                      description={scoreResult.pillars.safety.details}
+                      score={scoreResult.pillars.safety.score}
+                    />
+                    <PillarCard
+                      icon={DollarSign}
+                      title="Deal Health"
+                      description={scoreResult.pillars.dealHealth.details}
+                      score={scoreResult.pillars.dealHealth.score}
+                    />
+                    <PillarCard
+                      icon={Heart}
+                      title="Affordability"
+                      description={scoreResult.pillars.affordability.details}
+                      score={scoreResult.pillars.affordability.score}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Deal Summary */}
-              <div className="lg:col-span-2 p-6 rounded-2xl bg-card border border-border shadow-card">
-                <h2 className="text-xl font-semibold text-foreground mb-4">Deal Summary</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 rounded-xl bg-muted">
-                    <p className="text-2xl font-bold text-foreground">$487</p>
-                    <p className="text-sm text-muted-foreground">Monthly Payment</p>
-                  </div>
-                  <div className="text-center p-4 rounded-xl bg-muted">
-                    <p className="text-2xl font-bold text-foreground">6.5%</p>
-                    <p className="text-sm text-muted-foreground">APR</p>
-                  </div>
-                  <div className="text-center p-4 rounded-xl bg-muted">
-                    <p className="text-2xl font-bold text-foreground">$32K</p>
-                    <p className="text-sm text-muted-foreground">Total Price</p>
-                  </div>
-                  <div className="text-center p-4 rounded-xl bg-muted">
-                    <p className="text-2xl font-bold text-foreground">60</p>
-                    <p className="text-sm text-muted-foreground">Months</p>
+                {/* Deal Summary */}
+                <div className="lg:col-span-2 p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Deal Summary</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">${scoreResult.monthlyPayment.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">Monthly Payment</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">{dealData.apr || "7.0"}%</p>
+                      <p className="text-sm text-muted-foreground">APR</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">${(scoreResult.totalCost / 1000).toFixed(0)}K</p>
+                      <p className="text-sm text-muted-foreground">Total Cost</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">{dealData.term}</p>
+                      <p className="text-sm text-muted-foreground">Months</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* AI Recommendation */}
-              <div className="lg:col-span-1 p-6 rounded-2xl bg-accent border border-primary/20 shadow-card">
-                <div className="flex items-center gap-3 mb-4">
-                  <Bot className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">AI Recommendation</h2>
+                {/* AI Recommendation */}
+                <div className="lg:col-span-1 p-6 rounded-2xl bg-accent border border-primary/20 shadow-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Bot className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold text-foreground">AI Recommendation</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {scoreResult.recommendation}
+                  </p>
+                  <Button variant="outline" className="w-full mt-4">
+                    Talk to a Coach
+                  </Button>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  This deal scores well overall. Consider negotiating the dealer fee down and shop around for a better APR if your credit allows. The car's reliability and safety ratings are excellent.
-                </p>
-                <Button variant="outline" className="w-full mt-4">
-                  Talk to a Coach
-                </Button>
               </div>
-            </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

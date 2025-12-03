@@ -217,6 +217,7 @@ export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("deal");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -252,12 +253,15 @@ export default function DealRoom() {
     maintenance: "",
   });
 
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
   const filteredTerms = glossaryTerms.filter((item) => {
     const matchesSearch = 
       item.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.definition.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesLetter = !selectedLetter || item.term.toUpperCase().startsWith(selectedLetter);
+    return matchesSearch && matchesCategory && matchesLetter;
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -1024,6 +1028,39 @@ export default function DealRoom() {
                 ))}
               </div>
 
+              {/* A-Z Letter Filter */}
+              <div className="flex flex-wrap gap-1 mb-6 p-3 rounded-xl bg-muted/50 border border-border">
+                <button
+                  onClick={() => setSelectedLetter(null)}
+                  className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
+                    selectedLetter === null
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-background text-muted-foreground hover:bg-background/80 hover:text-foreground"
+                  }`}
+                >
+                  All
+                </button>
+                {alphabet.map((letter) => {
+                  const hasTerms = glossaryTerms.some(t => t.term.toUpperCase().startsWith(letter));
+                  return (
+                    <button
+                      key={letter}
+                      onClick={() => setSelectedLetter(letter)}
+                      disabled={!hasTerms}
+                      className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
+                        selectedLetter === letter
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : hasTerms
+                            ? "bg-background text-muted-foreground hover:bg-background/80 hover:text-foreground"
+                            : "bg-background/50 text-muted-foreground/30 cursor-not-allowed"
+                      }`}
+                    >
+                      {letter}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Results Count */}
               <p className="text-sm text-muted-foreground mb-4">
                 Showing {filteredTerms.length} of {glossaryTerms.length} terms
@@ -1057,7 +1094,7 @@ export default function DealRoom() {
                 <div className="text-center py-12">
                   <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No terms found matching your search.</p>
-                  <Button variant="ghost" className="mt-2" onClick={() => { setSearchTerm(""); setSelectedCategory("all"); }}>
+                  <Button variant="ghost" className="mt-2" onClick={() => { setSearchTerm(""); setSelectedCategory("all"); setSelectedLetter(null); }}>
                     Clear filters
                   </Button>
                 </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2 } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -49,6 +49,7 @@ export default function DealRoom() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const { toast } = useToast();
   
   const [dealData, setDealData] = useState({
@@ -86,6 +87,114 @@ export default function DealRoom() {
 
   const handleInputChange = (field: string, value: string) => {
     setDealData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a JPG, PNG, WebP, or PDF file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExtracting(true);
+    toast({
+      title: "Extracting...",
+      description: "AI is reading your quote. This may take a moment.",
+    });
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-quote`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          imageBase64: base64,
+          mimeType: file.type,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to extract quote data");
+      }
+
+      const { data: extracted } = await response.json();
+      
+      if (!extracted) {
+        throw new Error("No data extracted from the quote");
+      }
+
+      // Update form with extracted data
+      setDealData((prev) => ({
+        ...prev,
+        year: extracted.year || prev.year,
+        make: extracted.make || prev.make,
+        model: extracted.model || prev.model,
+        trim: extracted.trim || prev.trim,
+        mileage: extracted.mileage || prev.mileage,
+        vin: extracted.vin || prev.vin,
+        askingPrice: extracted.askingPrice || prev.askingPrice,
+        negotiatedPrice: extracted.negotiatedPrice || prev.negotiatedPrice,
+        downPayment: extracted.downPayment || prev.downPayment,
+        tradeIn: extracted.tradeIn || prev.tradeIn,
+        apr: extracted.apr || prev.apr,
+        term: extracted.term || prev.term,
+        docFee: extracted.docFee || prev.docFee,
+        dealerFee: extracted.dealerFee || prev.dealerFee,
+        addOns: extracted.addOns || prev.addOns,
+        taxes: extracted.taxes || prev.taxes,
+        registration: extracted.registration || prev.registration,
+      }));
+
+      const fieldsExtracted = Object.values(extracted).filter(v => v !== null).length;
+      toast({
+        title: "Quote Extracted!",
+        description: `Found ${fieldsExtracted} fields. Please review and fill in any missing details.`,
+      });
+    } catch (error) {
+      console.error("Extraction error:", error);
+      toast({
+        title: "Extraction Failed",
+        description: error instanceof Error ? error.message : "Could not read the quote. Try a clearer image.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExtracting(false);
+      // Reset input so same file can be uploaded again
+      event.target.value = '';
+    }
   };
 
   const parseNumber = (value: string): number => {
@@ -436,15 +545,38 @@ export default function DealRoom() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Upload a dealer's quote (PDF or image) and our AI will extract the numbers for you.
                 </p>
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground">
-                    Drag and drop your file here, or click to browse
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Supports PDF, PNG, JPG up to 10MB
-                  </p>
-                </div>
+                <label className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer block ${
+                  isExtracting ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                }`}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={handleFileUpload}
+                    disabled={isExtracting}
+                    className="hidden"
+                  />
+                  {isExtracting ? (
+                    <>
+                      <Loader2 className="h-10 w-10 text-primary mx-auto mb-4 animate-spin" />
+                      <p className="text-sm text-foreground font-medium">
+                        Extracting deal details...
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        AI is reading your quote
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Supports JPG, PNG, WebP, PDF up to 10MB
+                      </p>
+                    </>
+                  )}
+                </label>
               </div>
             </div>
 

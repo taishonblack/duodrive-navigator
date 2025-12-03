@@ -36,11 +36,19 @@ interface ScoreResult {
   totalCost: number;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("deal");
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const { toast } = useToast();
   
   const [dealData, setDealData] = useState({
@@ -141,6 +149,102 @@ export default function DealRoom() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMessage: ChatMessage = { role: 'user', content: chatInput };
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput("");
+    setIsChatLoading(true);
+
+    let assistantContent = "";
+
+    try {
+      const dealContext = {
+        year: dealData.year,
+        make: dealData.make,
+        model: dealData.model,
+        askingPrice: dealData.askingPrice,
+        apr: dealData.apr,
+        term: dealData.term,
+        monthlyIncome: dealData.monthlyIncome,
+        scoreResult: scoreResult || undefined,
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [...chatMessages, userMessage],
+          dealContext,
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to get response");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // Add empty assistant message
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setChatMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+                return updated;
+              });
+            }
+          } catch {
+            // Incomplete JSON, continue
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
+        variant: "destructive",
+      });
+      // Remove the empty assistant message if error
+      if (!assistantContent) {
+        setChatMessages(prev => prev.slice(0, -1));
+      }
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -429,27 +533,66 @@ export default function DealRoom() {
                   <p className="text-sm text-muted-foreground">Your car buying assistant</p>
                 </div>
               </div>
-              <div className="space-y-4 mb-6">
-                <div className="p-4 rounded-xl bg-muted">
-                  <p className="text-sm text-foreground">
-                    Hi! I'm your DuoDrive AI Copilot. I can help you:
-                  </p>
-                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                    <li>• Understand any part of your deal</li>
-                    <li>• Explain fees and what they mean</li>
-                    <li>• Spot potential red flags</li>
-                    <li>• Suggest negotiation strategies</li>
-                    <li>• Extract numbers from uploaded quotes</li>
-                  </ul>
-                </div>
+              
+              {/* Chat Messages */}
+              <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+                {chatMessages.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-muted">
+                    <p className="text-sm text-foreground">
+                      Hi! I'm your DuoDrive AI Copilot. I can help you:
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      <li>• Understand any part of your deal</li>
+                      <li>• Explain fees and what they mean</li>
+                      <li>• Spot potential red flags</li>
+                      <li>• Suggest negotiation strategies</li>
+                      <li>• Answer questions about your DuoDrive Score</li>
+                    </ul>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`p-4 rounded-xl ${
+                        msg.role === 'user' 
+                          ? 'bg-primary/10 ml-8' 
+                          : 'bg-muted mr-8'
+                      }`}
+                    >
+                      <p className="text-xs font-medium text-muted-foreground mb-1">
+                        {msg.role === 'user' ? 'You' : 'AI Copilot'}
+                      </p>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && chatMessages[chatMessages.length - 1]?.content === '' && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Thinking...</span>
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-2">
-                <Input placeholder="Ask me anything about your deal..." className="flex-1" />
-                <Button>Send</Button>
+                <Input 
+                  placeholder="Ask me anything about your deal..." 
+                  className="flex-1" 
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                  disabled={isChatLoading}
+                />
+                <Button onClick={sendChatMessage} disabled={isChatLoading || !chatInput.trim()}>
+                  {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-4 text-center">
-                Connect to Lovable Cloud to enable full AI analysis
-              </p>
+              
+              {scoreResult && (
+                <p className="text-xs text-muted-foreground mt-4 text-center">
+                  AI has access to your DuoDrive Score ({scoreResult.overall}) and deal details
+                </p>
+              )}
             </div>
           </TabsContent>
 

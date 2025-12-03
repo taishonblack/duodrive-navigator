@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.ai-copilot]
 verify_jwt = false
+
+[functions.extract-quote]
+verify_jwt = false

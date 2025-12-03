@@ -14,7 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      deals: {
+        Row: {
+          add_ons: string | null
+          apr: string | null
+          asking_price: string | null
+          buyer_zip: string | null
+          created_at: string
+          credit_score: string | null
+          dealer_fee: string | null
+          dealer_zip: string | null
+          doc_fee: string | null
+          down_payment: string | null
+          fuel_cost: string | null
+          id: string
+          insurance: string | null
+          maintenance: string | null
+          make: string | null
+          mileage: string | null
+          model: string | null
+          monthly_income: string | null
+          name: string
+          negotiated_price: string | null
+          registration: string | null
+          score_result: Json | null
+          taxes: string | null
+          term: string | null
+          trade_in: string | null
+          trim: string | null
+          updated_at: string
+          user_id: string
+          vin: string | null
+          year: string | null
+        }
+        Insert: {
+          add_ons?: string | null
+          apr?: string | null
+          asking_price?: string | null
+          buyer_zip?: string | null
+          created_at?: string
+          credit_score?: string | null
+          dealer_fee?: string | null
+          dealer_zip?: string | null
+          doc_fee?: string | null
+          down_payment?: string | null
+          fuel_cost?: string | null
+          id?: string
+          insurance?: string | null
+          maintenance?: string | null
+          make?: string | null
+          mileage?: string | null
+          model?: string | null
+          monthly_income?: string | null
+          name?: string
+          negotiated_price?: string | null
+          registration?: string | null
+          score_result?: Json | null
+          taxes?: string | null
+          term?: string | null
+          trade_in?: string | null
+          trim?: string | null
+          updated_at?: string
+          user_id: string
+          vin?: string | null
+          year?: string | null
+        }
+        Update: {
+          add_ons?: string | null
+          apr?: string | null
+          asking_price?: string | null
+          buyer_zip?: string | null
+          created_at?: string
+          credit_score?: string | null
+          dealer_fee?: string | null
+          dealer_zip?: string | null
+          doc_fee?: string | null
+          down_payment?: string | null
+          fuel_cost?: string | null
+          id?: string
+          insurance?: string | null
+          maintenance?: string | null
+          make?: string | null
+          mileage?: string | null
+          model?: string | null
+          monthly_income?: string | null
+          name?: string
+          negotiated_price?: string | null
+          registration?: string | null
+          score_result?: Json | null
+          taxes?: string | null
+          term?: string | null
+          trade_in?: string | null
+          trim?: string | null
+          updated_at?: string
+          user_id?: string
+          vin?: string | null
+          year?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

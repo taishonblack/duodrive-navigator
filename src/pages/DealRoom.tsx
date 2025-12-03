@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
+import { SavedDeals } from "@/components/SavedDeals";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -357,14 +358,87 @@ export default function DealRoom() {
     }
   };
 
+  const handleLoadDeal = (deal: any) => {
+    setDealData({
+      year: deal.year || "",
+      make: deal.make || "",
+      model: deal.model || "",
+      trim: deal.trim || "",
+      mileage: deal.mileage || "",
+      vin: deal.vin || "",
+      dealerZip: deal.dealer_zip || "",
+      askingPrice: deal.asking_price || "",
+      negotiatedPrice: deal.negotiated_price || "",
+      downPayment: deal.down_payment || "",
+      tradeIn: deal.trade_in || "",
+      apr: deal.apr || "",
+      term: deal.term || "60",
+      docFee: deal.doc_fee || "",
+      dealerFee: deal.dealer_fee || "",
+      addOns: deal.add_ons || "",
+      taxes: deal.taxes || "",
+      registration: deal.registration || "",
+      buyerZip: deal.buyer_zip || "",
+      monthlyIncome: deal.monthly_income || "",
+      creditScore: deal.credit_score || "",
+      insurance: deal.insurance || "",
+      fuelCost: deal.fuel_cost || "",
+      maintenance: deal.maintenance || "",
+    });
+    setScoreResult(deal.score_result || null);
+    setChatMessages([]);
+    setActiveTab("deal");
+  };
+
+  const handleNewDeal = () => {
+    setDealData({
+      year: "",
+      make: "",
+      model: "",
+      trim: "",
+      mileage: "",
+      vin: "",
+      dealerZip: "",
+      askingPrice: "",
+      negotiatedPrice: "",
+      downPayment: "",
+      tradeIn: "",
+      apr: "",
+      term: "60",
+      docFee: "",
+      dealerFee: "",
+      addOns: "",
+      taxes: "",
+      registration: "",
+      buyerZip: "",
+      monthlyIncome: "",
+      creditScore: "",
+      insurance: "",
+      fuelCost: "",
+      maintenance: "",
+    });
+    setScoreResult(null);
+    setChatMessages([]);
+    setActiveTab("deal");
+    toast({ title: "New Deal", description: "Started a fresh deal" });
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">Deal Room</h1>
-          <p className="mt-2 text-muted-foreground">
-            Enter your deal details and let DuoDrive analyze it for you.
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Deal Room</h1>
+            <p className="mt-2 text-muted-foreground">
+              Enter your deal details and let DuoDrive analyze it for you.
+            </p>
+          </div>
+          <SavedDeals
+            dealData={dealData}
+            scoreResult={scoreResult}
+            onLoadDeal={handleLoadDeal}
+            onNewDeal={handleNewDeal}
+          />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

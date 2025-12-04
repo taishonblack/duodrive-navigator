@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const DEAL_CACHE_KEY = "duodrive_deal_cache";
 
 const glossaryCategories = [
   { id: "all", label: "All Terms" },
@@ -233,32 +236,52 @@ export default function DealRoom() {
       ? "ring-2 ring-green-500 ring-offset-1 bg-green-50 dark:bg-green-950/30 transition-all duration-300" 
       : "";
   
-  const [dealData, setDealData] = useState({
-    year: "",
-    make: "",
-    model: "",
-    trim: "",
-    mileage: "",
-    vin: "",
-    dealerZip: "",
-    askingPrice: "",
-    negotiatedPrice: "",
-    downPayment: "",
-    tradeIn: "",
-    apr: "",
-    term: "60",
-    docFee: "",
-    dealerFee: "",
-    addOns: "",
-    taxes: "",
-    registration: "",
-    buyerZip: "",
-    monthlyIncome: "",
-    creditScore: "",
-    insurance: "",
-    fuelCost: "",
-    maintenance: "",
+  const [dealData, setDealData] = useState(() => {
+    // Load from localStorage on initial render
+    try {
+      const cached = localStorage.getItem(DEAL_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.error("Failed to load cached deal:", e);
+    }
+    return {
+      year: "",
+      make: "",
+      model: "",
+      trim: "",
+      mileage: "",
+      vin: "",
+      dealerZip: "",
+      askingPrice: "",
+      negotiatedPrice: "",
+      downPayment: "",
+      tradeIn: "",
+      apr: "",
+      term: "60",
+      docFee: "",
+      dealerFee: "",
+      addOns: "",
+      taxes: "",
+      registration: "",
+      buyerZip: "",
+      monthlyIncome: "",
+      creditScore: "",
+      insurance: "",
+      fuelCost: "",
+      maintenance: "",
+    };
   });
+
+  // Save dealData to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(DEAL_CACHE_KEY, JSON.stringify(dealData));
+    } catch (e) {
+      console.error("Failed to cache deal:", e);
+    }
+  }, [dealData]);
 
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -602,7 +625,7 @@ export default function DealRoom() {
   };
 
   const handleNewDeal = () => {
-    setDealData({
+    const emptyDeal = {
       year: "",
       make: "",
       model: "",
@@ -627,12 +650,20 @@ export default function DealRoom() {
       insurance: "",
       fuelCost: "",
       maintenance: "",
-    });
+    };
+    setDealData(emptyDeal);
     setScoreResult(null);
     setChatMessages([]);
+    setExtractedFields(new Set());
     setActiveTab("deal");
+    localStorage.removeItem(DEAL_CACHE_KEY);
     toast({ title: "New Deal", description: "Started a fresh deal" });
   };
+
+  // Check if there's any data in the form
+  const hasFormData = Object.entries(dealData).some(([key, value]) => 
+    key !== "term" && value !== ""
+  );
 
   return (
     <Layout>
@@ -644,12 +675,36 @@ export default function DealRoom() {
               Enter your deal details and let DuoDrive analyze it for you.
             </p>
           </div>
-          <SavedDeals
-            dealData={dealData}
-            scoreResult={scoreResult}
-            onLoadDeal={handleLoadDeal}
-            onNewDeal={handleNewDeal}
-          />
+          <div className="flex items-center gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!hasFormData}>
+                  <FilePlus2 className="h-4 w-4 mr-2" />
+                  New Deal
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will clear all current deal data. If you haven't saved this deal, your data will be lost.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewDeal}>
+                    Start New Deal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <SavedDeals
+              dealData={dealData}
+              scoreResult={scoreResult}
+              onLoadDeal={handleLoadDeal}
+              onNewDeal={handleNewDeal}
+            />
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

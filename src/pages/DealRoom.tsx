@@ -224,7 +224,14 @@ export default function DealRoom() {
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  
+  // Helper to get input class with extracted highlight
+  const getInputClass = (field: string) => 
+    extractedFields.has(field) 
+      ? "ring-2 ring-green-500 ring-offset-1 bg-green-50 dark:bg-green-950/30 transition-all duration-300" 
+      : "";
   
   const [dealData, setDealData] = useState({
     year: "",
@@ -268,6 +275,14 @@ export default function DealRoom() {
 
   const handleInputChange = (field: string, value: string) => {
     setDealData((prev) => ({ ...prev, [field]: value }));
+    // Clear extracted highlight when user manually edits
+    if (extractedFields.has(field)) {
+      setExtractedFields((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(field);
+        return newSet;
+      });
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,6 +352,22 @@ export default function DealRoom() {
         throw new Error("No data extracted from the quote");
       }
 
+      // Track which fields were extracted
+      const newExtractedFields = new Set<string>();
+      const extractableFields = [
+        'year', 'make', 'model', 'trim', 'mileage', 'vin',
+        'askingPrice', 'negotiatedPrice', 'downPayment', 'tradeIn', 'apr', 'term',
+        'docFee', 'dealerFee', 'addOns', 'taxes', 'registration'
+      ];
+      
+      extractableFields.forEach(field => {
+        if (extracted[field]) {
+          newExtractedFields.add(field);
+        }
+      });
+      
+      setExtractedFields(newExtractedFields);
+
       // Update form with extracted data
       setDealData((prev) => ({
         ...prev,
@@ -359,10 +390,10 @@ export default function DealRoom() {
         registration: extracted.registration || prev.registration,
       }));
 
-      const fieldsExtracted = Object.values(extracted).filter(v => v !== null).length;
+      const fieldsExtracted = newExtractedFields.size;
       toast({
         title: "Quote Extracted!",
-        description: `Found ${fieldsExtracted} fields. Please review and fill in any missing details.`,
+        description: `Found ${fieldsExtracted} fields highlighted in green. Please review and fill in any missing details.`,
       });
     } catch (error) {
       console.error("Extraction error:", error);
@@ -654,27 +685,27 @@ export default function DealRoom() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="year">Year</Label>
-                    <Input id="year" placeholder="2024" value={dealData.year} onChange={(e) => handleInputChange("year", e.target.value)} />
+                    <Input id="year" placeholder="2024" value={dealData.year} onChange={(e) => handleInputChange("year", e.target.value)} className={getInputClass("year")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="make">Make</Label>
-                    <Input id="make" placeholder="Honda" value={dealData.make} onChange={(e) => handleInputChange("make", e.target.value)} />
+                    <Input id="make" placeholder="Honda" value={dealData.make} onChange={(e) => handleInputChange("make", e.target.value)} className={getInputClass("make")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="model">Model</Label>
-                    <Input id="model" placeholder="Accord" value={dealData.model} onChange={(e) => handleInputChange("model", e.target.value)} />
+                    <Input id="model" placeholder="Accord" value={dealData.model} onChange={(e) => handleInputChange("model", e.target.value)} className={getInputClass("model")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="trim">Trim</Label>
-                    <Input id="trim" placeholder="EX-L" value={dealData.trim} onChange={(e) => handleInputChange("trim", e.target.value)} />
+                    <Input id="trim" placeholder="EX-L" value={dealData.trim} onChange={(e) => handleInputChange("trim", e.target.value)} className={getInputClass("trim")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="mileage">Mileage</Label>
-                    <Input id="mileage" placeholder="15,000" value={dealData.mileage} onChange={(e) => handleInputChange("mileage", e.target.value)} />
+                    <Input id="mileage" placeholder="15,000" value={dealData.mileage} onChange={(e) => handleInputChange("mileage", e.target.value)} className={getInputClass("mileage")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vin">VIN</Label>
-                    <Input id="vin" placeholder="Optional" value={dealData.vin} onChange={(e) => handleInputChange("vin", e.target.value)} />
+                    <Input id="vin" placeholder="Optional" value={dealData.vin} onChange={(e) => handleInputChange("vin", e.target.value)} className={getInputClass("vin")} />
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="dealerZip">Dealer ZIP</Label>
@@ -689,28 +720,28 @@ export default function DealRoom() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="askingPrice">Asking Price</Label>
-                    <Input id="askingPrice" placeholder="$32,000" value={dealData.askingPrice} onChange={(e) => handleInputChange("askingPrice", e.target.value)} />
+                    <Input id="askingPrice" placeholder="$32,000" value={dealData.askingPrice} onChange={(e) => handleInputChange("askingPrice", e.target.value)} className={getInputClass("askingPrice")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="negotiatedPrice">Negotiated Price</Label>
-                    <Input id="negotiatedPrice" placeholder="Optional" value={dealData.negotiatedPrice} onChange={(e) => handleInputChange("negotiatedPrice", e.target.value)} />
+                    <Input id="negotiatedPrice" placeholder="Optional" value={dealData.negotiatedPrice} onChange={(e) => handleInputChange("negotiatedPrice", e.target.value)} className={getInputClass("negotiatedPrice")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="downPayment">Down Payment</Label>
-                    <Input id="downPayment" placeholder="$5,000" value={dealData.downPayment} onChange={(e) => handleInputChange("downPayment", e.target.value)} />
+                    <Input id="downPayment" placeholder="$5,000" value={dealData.downPayment} onChange={(e) => handleInputChange("downPayment", e.target.value)} className={getInputClass("downPayment")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tradeIn">Trade-In Value</Label>
-                    <Input id="tradeIn" placeholder="$8,000" value={dealData.tradeIn} onChange={(e) => handleInputChange("tradeIn", e.target.value)} />
+                    <Input id="tradeIn" placeholder="$8,000" value={dealData.tradeIn} onChange={(e) => handleInputChange("tradeIn", e.target.value)} className={getInputClass("tradeIn")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="apr">APR (%)</Label>
-                    <Input id="apr" placeholder="6.5" value={dealData.apr} onChange={(e) => handleInputChange("apr", e.target.value)} />
+                    <Input id="apr" placeholder="6.5" value={dealData.apr} onChange={(e) => handleInputChange("apr", e.target.value)} className={getInputClass("apr")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="term">Term (months)</Label>
                     <Select value={dealData.term} onValueChange={(value) => handleInputChange("term", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className={getInputClass("term")}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -731,23 +762,23 @@ export default function DealRoom() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="docFee">Doc Fee</Label>
-                    <Input id="docFee" placeholder="$499" value={dealData.docFee} onChange={(e) => handleInputChange("docFee", e.target.value)} />
+                    <Input id="docFee" placeholder="$499" value={dealData.docFee} onChange={(e) => handleInputChange("docFee", e.target.value)} className={getInputClass("docFee")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="dealerFee">Dealer Fee</Label>
-                    <Input id="dealerFee" placeholder="$0" value={dealData.dealerFee} onChange={(e) => handleInputChange("dealerFee", e.target.value)} />
+                    <Input id="dealerFee" placeholder="$0" value={dealData.dealerFee} onChange={(e) => handleInputChange("dealerFee", e.target.value)} className={getInputClass("dealerFee")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="addOns">Add-Ons</Label>
-                    <Input id="addOns" placeholder="$0" value={dealData.addOns} onChange={(e) => handleInputChange("addOns", e.target.value)} />
+                    <Input id="addOns" placeholder="$0" value={dealData.addOns} onChange={(e) => handleInputChange("addOns", e.target.value)} className={getInputClass("addOns")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="taxes">Est. Taxes</Label>
-                    <Input id="taxes" placeholder="$2,400" value={dealData.taxes} onChange={(e) => handleInputChange("taxes", e.target.value)} />
+                    <Input id="taxes" placeholder="$2,400" value={dealData.taxes} onChange={(e) => handleInputChange("taxes", e.target.value)} className={getInputClass("taxes")} />
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="registration">Registration</Label>
-                    <Input id="registration" placeholder="$350" value={dealData.registration} onChange={(e) => handleInputChange("registration", e.target.value)} />
+                    <Input id="registration" placeholder="$350" value={dealData.registration} onChange={(e) => handleInputChange("registration", e.target.value)} className={getInputClass("registration")} />
                   </div>
                 </div>
               </div>

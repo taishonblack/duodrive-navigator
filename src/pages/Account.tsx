@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2 } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface MFAFactor {
@@ -30,10 +31,29 @@ export default function Account() {
   const [mfaFactors, setMfaFactors] = useState<MFAFactor[]>([]);
   const [isMfaLoading, setIsMfaLoading] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isReset = searchParams.get("reset") === "true";
+
+  const loadProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!error && data?.avatar_url) {
+        setAvatarUrl(data.avatar_url);
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    }
+  };
 
   const loadMfaFactors = async () => {
     setIsMfaLoading(true);
@@ -43,7 +63,6 @@ export default function Account() {
         console.error("Failed to load MFA factors:", error);
         return;
       }
-      // Filter to only show verified TOTP factors
       const verifiedFactors = data.totp.filter(f => f.status === "verified");
       setMfaFactors(verifiedFactors);
     } catch (error) {
@@ -71,11 +90,127 @@ export default function Account() {
         navigate("/auth");
       } else if (session?.user) {
         loadMfaFactors();
+        loadProfile(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate, isReset]);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an image file (JPG, PNG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // Add cache buster to URL
+      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: urlWithCacheBuster })
+        .eq("id", user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setAvatarUrl(urlWithCacheBuster);
+      toast({
+        title: "Avatar Updated",
+        description: "Your profile photo has been updated.",
+      });
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload avatar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // List files in user's folder
+      const { data: files } = await supabase.storage
+        .from("avatars")
+        .list(user.id);
+
+      // Delete all avatar files
+      if (files && files.length > 0) {
+        const filesToDelete = files.map(f => `${user.id}/${f.name}`);
+        await supabase.storage.from("avatars").remove(filesToDelete);
+      }
+
+      // Update profile
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", user.id);
+
+      setAvatarUrl(null);
+      toast({
+        title: "Avatar Removed",
+        description: "Your profile photo has been removed.",
+      });
+    } catch (error) {
+      console.error("Avatar removal error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove avatar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,6 +298,10 @@ export default function Account() {
     navigate("/");
   };
 
+  const getInitials = (email: string) => {
+    return email.charAt(0).toUpperCase();
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -193,9 +332,61 @@ export default function Account() {
                 <User className="h-5 w-5" />
                 Profile
               </CardTitle>
-              <CardDescription>Your account information</CardDescription>
+              <CardDescription>Your account information and photo</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              {/* Avatar Upload */}
+              <div className="flex items-center gap-6">
+                <div className="relative group">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={avatarUrl || undefined} alt="Profile photo" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-medium">
+                      {getInitials(user?.email || "U")}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingAvatar}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      {avatarUrl ? "Change Photo" : "Upload Photo"}
+                    </Button>
+                    {avatarUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveAvatar}
+                        disabled={isUploadingAvatar}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG or GIF. Max 2MB.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input value={user?.email || ""} disabled className="bg-muted" />

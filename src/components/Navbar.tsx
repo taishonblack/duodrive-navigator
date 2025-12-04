@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, X, Car, User, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,20 +19,72 @@ const navLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const loadProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!error && data?.avatar_url) {
+        setAvatarUrl(data.avatar_url);
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    }
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setAvatarUrl(null);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Listen for avatar changes via channel
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (payload.new && 'avatar_url' in payload.new) {
+            setAvatarUrl(payload.new.avatar_url as string | null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -84,6 +136,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
                     <Avatar className="h-9 w-9">
+                      <AvatarImage src={avatarUrl || undefined} alt="Profile" />
                       <AvatarFallback className="bg-primary/10 text-primary font-medium">
                         {getInitials(user.email || "U")}
                       </AvatarFallback>
@@ -93,6 +146,7 @@ export function Navbar() {
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={avatarUrl || undefined} alt="Profile" />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">
                         {getInitials(user.email || "U")}
                       </AvatarFallback>
@@ -182,6 +236,7 @@ export function Navbar() {
                   <div className="flex items-center justify-between px-4 py-3 bg-muted rounded-lg">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
+                        <AvatarImage src={avatarUrl || undefined} alt="Profile" />
                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
                           {getInitials(user.email || "U")}
                         </AvatarFallback>

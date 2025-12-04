@@ -20,7 +20,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Scale
 } from "lucide-react";
 import { format } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -300,12 +301,22 @@ export default function Dashboard() {
                 </CardTitle>
                 <CardDescription>Your recent deal evaluations</CardDescription>
               </div>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/deal-room">
-                  New Deal
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                {deals.length >= 2 && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/compare">
+                      <Scale className="h-4 w-4 mr-1" />
+                      Compare
+                    </Link>
+                  </Button>
+                )}
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/deal-room">
+                    New Deal
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {deals.length > 0 ? (

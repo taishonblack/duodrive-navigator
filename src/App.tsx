@@ -10,6 +10,8 @@ import WhyDuoDrive from "./pages/WhyDuoDrive";
 import Coaching from "./pages/Coaching";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
+import CoachAuth from "./pages/CoachAuth";
+import CoachDashboard from "./pages/CoachDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/coaching" element={<Coaching />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/coach" element={<CoachAuth />} />
+          <Route path="/coach/dashboard" element={<CoachDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

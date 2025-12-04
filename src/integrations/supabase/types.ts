@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      coaches: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          is_available: boolean
+          tier: Database["public"]["Enums"]["coaching_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          is_available?: boolean
+          tier?: Database["public"]["Enums"]["coaching_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_available?: boolean
+          tier?: Database["public"]["Enums"]["coaching_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      coaching_requests: {
+        Row: {
+          claimed_at: string | null
+          coach_id: string | null
+          completed_at: string | null
+          created_at: string
+          customer_id: string
+          deal_id: string | null
+          email: string
+          id: string
+          notes: string | null
+          phone_number: string
+          scheduled_date: string
+          scheduled_time: string
+          session_type: Database["public"]["Enums"]["session_type"]
+          status: Database["public"]["Enums"]["request_status"]
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          coach_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_id: string
+          deal_id?: string | null
+          email: string
+          id?: string
+          notes?: string | null
+          phone_number: string
+          scheduled_date: string
+          scheduled_time: string
+          session_type: Database["public"]["Enums"]["session_type"]
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          coach_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          deal_id?: string | null
+          email?: string
+          id?: string
+          notes?: string | null
+          phone_number?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          session_type?: Database["public"]["Enums"]["session_type"]
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_requests_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           add_ons: string | null
@@ -175,15 +274,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "customer" | "coach"
+      coaching_tier: "text" | "phone" | "concierge"
+      request_status:
+        | "pending"
+        | "claimed"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      session_type: "text" | "phone" | "video"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -310,6 +441,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["customer", "coach"],
+      coaching_tier: ["text", "phone", "concierge"],
+      request_status: [
+        "pending",
+        "claimed",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      session_type: ["text", "phone", "video"],
+    },
   },
 } as const

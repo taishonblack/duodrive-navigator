@@ -10,6 +10,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2 } from "lucide-react";
+import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -1309,9 +1310,11 @@ export default function DealRoom() {
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {scoreResult.recommendation}
                   </p>
-                  <Button variant="outline" className="w-full mt-4">
-                    Talk to a Coach
-                  </Button>
+                </div>
+
+                {/* Coach Scheduling */}
+                <div className="lg:col-span-3">
+                  <CoachSchedulingForm />
                 </div>
               </div>
             )}

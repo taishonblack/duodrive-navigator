@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import DuoDriveScore from "./pages/DuoDriveScore";
 import DealRoom from "./pages/DealRoom";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
@@ -26,6 +27,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/score" element={<DuoDriveScore />} />
           <Route path="/deal-room" element={<DealRoom />} />
           <Route path="/why-duodrive" element={<WhyDuoDrive />} />

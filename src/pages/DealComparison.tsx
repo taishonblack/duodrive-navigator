@@ -29,8 +29,10 @@ import {
   Fuel,
   ShieldCheck,
   Calculator,
-  Download
+  Download,
+  MessageSquare
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { User } from "@supabase/supabase-js";
 import jsPDF from "jspdf";
@@ -161,9 +163,36 @@ export default function DealComparison() {
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
   const [showSelector, setShowSelector] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [dealNotes, setDealNotes] = useState<Record<string, string>>({});
   const comparisonRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Load notes from localStorage on mount
+  useEffect(() => {
+    const savedNotes = localStorage.getItem("duodrive-comparison-notes");
+    if (savedNotes) {
+      try {
+        setDealNotes(JSON.parse(savedNotes));
+      } catch (e) {
+        console.error("Failed to parse saved notes");
+      }
+    }
+  }, []);
+
+  // Save notes to localStorage when they change
+  useEffect(() => {
+    if (Object.keys(dealNotes).length > 0) {
+      localStorage.setItem("duodrive-comparison-notes", JSON.stringify(dealNotes));
+    }
+  }, [dealNotes]);
+
+  const updateNote = (dealId: string, note: string) => {
+    setDealNotes(prev => ({
+      ...prev,
+      [dealId]: note
+    }));
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -734,6 +763,32 @@ export default function DealComparison() {
                           });
                         })()}
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Notes */}
+                <Card className="mb-4">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-primary" />
+                      Notes
+                    </CardTitle>
+                    <CardDescription>Add your thoughts and comments for each deal</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${comparedDeals.length}, 1fr)` }}>
+                      {comparedDeals.map(deal => (
+                        <div key={deal.id} className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground truncate">{deal.name}</p>
+                          <Textarea
+                            placeholder="Add notes about this deal..."
+                            value={dealNotes[deal.id] || ""}
+                            onChange={(e) => updateNote(deal.id, e.target.value)}
+                            className="min-h-[100px] resize-none text-sm"
+                          />
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>

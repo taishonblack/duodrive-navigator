@@ -30,7 +30,10 @@ import {
   ShieldCheck,
   Calculator,
   Download,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  Target,
+  PiggyBank
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
@@ -497,6 +500,102 @@ export default function DealComparison() {
 
             {/* PDF Export Content */}
             <div ref={comparisonRef} className="bg-background p-4 rounded-lg">
+              {/* Recommendation Summary */}
+              {comparedDeals.length >= 2 && (
+                <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Recommendation Summary
+                    </CardTitle>
+                    <CardDescription>Best deals based on your priorities</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Best Overall Score */}
+                      {(() => {
+                        const bestScoreDeal = comparedDeals.reduce((best, deal) => {
+                          const score = deal.score_result?.overallScore || 0;
+                          const bestScore = best?.score_result?.overallScore || 0;
+                          return score > bestScore ? deal : best;
+                        }, comparedDeals[0]);
+                        const score = bestScoreDeal?.score_result?.overallScore;
+                        
+                        return (
+                          <div className="p-4 rounded-xl bg-background border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <Trophy className="h-4 w-4 text-primary" />
+                              </div>
+                              <span className="text-sm font-medium text-muted-foreground">Best Overall</span>
+                            </div>
+                            <p className="font-semibold text-foreground truncate">{bestScoreDeal?.name || "—"}</p>
+                            <p className={`text-2xl font-bold mt-1 ${getScoreColor(score)}`}>
+                              {score || "—"} <span className="text-sm font-normal text-muted-foreground">score</span>
+                            </p>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Lowest Monthly Cost */}
+                      {(() => {
+                        const dealsWithCost = comparedDeals.map(deal => ({
+                          deal,
+                          cost: calculateTotalMonthlyCost(deal)
+                        })).filter(d => d.cost && d.cost.total > 0);
+                        
+                        const lowestCostDeal = dealsWithCost.length > 0 
+                          ? dealsWithCost.reduce((lowest, current) => 
+                              current.cost!.total < lowest.cost!.total ? current : lowest
+                            )
+                          : null;
+                        
+                        return (
+                          <div className="p-4 rounded-xl bg-background border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-2 rounded-lg bg-score-excellent/10">
+                                <PiggyBank className="h-4 w-4 text-score-excellent" />
+                              </div>
+                              <span className="text-sm font-medium text-muted-foreground">Lowest Cost</span>
+                            </div>
+                            <p className="font-semibold text-foreground truncate">{lowestCostDeal?.deal.name || "—"}</p>
+                            <p className="text-2xl font-bold mt-1 text-score-excellent">
+                              {lowestCostDeal?.cost ? formatPrice(lowestCostDeal.cost.total.toString()) : "—"} 
+                              <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                            </p>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Best Reliability */}
+                      {(() => {
+                        const bestReliabilityDeal = comparedDeals.reduce((best, deal) => {
+                          const score = deal.score_result?.pillarScores?.reliability || 0;
+                          const bestScore = best?.score_result?.pillarScores?.reliability || 0;
+                          return score > bestScore ? deal : best;
+                        }, comparedDeals[0]);
+                        const score = bestReliabilityDeal?.score_result?.pillarScores?.reliability;
+                        
+                        return (
+                          <div className="p-4 rounded-xl bg-background border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-2 rounded-lg bg-score-good/10">
+                                <Wrench className="h-4 w-4 text-score-good" />
+                              </div>
+                              <span className="text-sm font-medium text-muted-foreground">Most Reliable</span>
+                            </div>
+                            <p className="font-semibold text-foreground truncate">{bestReliabilityDeal?.name || "—"}</p>
+                            <p className={`text-2xl font-bold mt-1 ${getScoreColor(score)}`}>
+                              {score || "—"} <span className="text-sm font-normal text-muted-foreground">reliability</span>
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Comparison Table */}
               <ScrollArea className="w-full">
                 <div className="min-w-[600px]">

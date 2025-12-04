@@ -53,6 +53,8 @@ export default function Account() {
   const [isSavingNotif, setIsSavingNotif] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -379,7 +381,8 @@ export default function Account() {
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== "DELETE") return;
+    if (deleteConfirmText !== "DELETE" || !deletePassword) return;
+    setDeleteError("");
 
     setIsDeletingAccount(true);
     try {
@@ -393,10 +396,20 @@ export default function Account() {
         return;
       }
 
-      const response = await supabase.functions.invoke("delete-account");
+      const response = await supabase.functions.invoke("delete-account", {
+        body: { password: deletePassword },
+      });
 
       if (response.error) {
         throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        if (response.data.error === "Incorrect password") {
+          setDeleteError("Incorrect password. Please try again.");
+          return;
+        }
+        throw new Error(response.data.error);
       }
 
       toast({
@@ -415,6 +428,7 @@ export default function Account() {
     } finally {
       setIsDeletingAccount(false);
       setDeleteConfirmText("");
+      setDeletePassword("");
     }
   };
 
@@ -760,24 +774,51 @@ export default function Account() {
                         <li>Notification preferences</li>
                         <li>Profile photos and uploads</li>
                       </ul>
-                      <p className="pt-2 font-medium">
-                        Type <span className="font-mono bg-muted px-1.5 py-0.5 rounded">DELETE</span> to confirm:
-                      </p>
-                      <Input
-                        value={deleteConfirmText}
-                        onChange={(e) => setDeleteConfirmText(e.target.value)}
-                        placeholder="Type DELETE to confirm"
-                        className="mt-2"
-                      />
+                      <div className="pt-2 space-y-3">
+                        <div>
+                          <Label htmlFor="deletePassword" className="text-foreground font-medium">
+                            Enter your password to confirm:
+                          </Label>
+                          <Input
+                            id="deletePassword"
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => {
+                              setDeletePassword(e.target.value);
+                              setDeleteError("");
+                            }}
+                            placeholder="Your password"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-foreground font-medium">
+                            Type <span className="font-mono bg-muted px-1.5 py-0.5 rounded">DELETE</span> to confirm:
+                          </Label>
+                          <Input
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="Type DELETE to confirm"
+                            className="mt-2"
+                          />
+                        </div>
+                        {deleteError && (
+                          <p className="text-sm text-destructive">{deleteError}</p>
+                        )}
+                      </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>
+                    <AlertDialogCancel onClick={() => {
+                      setDeleteConfirmText("");
+                      setDeletePassword("");
+                      setDeleteError("");
+                    }}>
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeleteAccount}
-                      disabled={deleteConfirmText !== "DELETE" || isDeletingAccount}
+                      disabled={deleteConfirmText !== "DELETE" || !deletePassword || isDeletingAccount}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       {isDeletingAccount ? (

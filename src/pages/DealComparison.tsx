@@ -24,7 +24,11 @@ import {
   FileText,
   Plus,
   Trophy,
-  Scale
+  Scale,
+  Wallet,
+  Fuel,
+  ShieldCheck,
+  Calculator
 } from "lucide-react";
 import { format } from "date-fns";
 import { User } from "@supabase/supabase-js";
@@ -42,6 +46,10 @@ interface Deal {
   down_payment: string | null;
   apr: string | null;
   term: string | null;
+  insurance: string | null;
+  fuel_cost: string | null;
+  maintenance: string | null;
+  registration: string | null;
   score_result: {
     overallScore?: number;
     pillarScores?: {
@@ -62,6 +70,56 @@ const pillarConfig = [
   { key: "dealHealth", label: "Deal Health", icon: DollarSign },
   { key: "affordability", label: "Affordability", icon: Heart },
 ];
+
+// Calculate monthly car payment using standard amortization formula
+const calculateMonthlyPayment = (deal: Deal): number | null => {
+  const price = deal.negotiated_price || deal.asking_price;
+  if (!price) return null;
+  
+  const principal = parseFloat(price.replace(/[^0-9.]/g, "")) || 0;
+  const downPayment = deal.down_payment ? parseFloat(deal.down_payment.replace(/[^0-9.]/g, "")) || 0 : 0;
+  const apr = deal.apr ? parseFloat(deal.apr.replace(/[^0-9.]/g, "")) || 0 : 6; // Default 6% APR
+  const termMonths = deal.term ? parseInt(deal.term.replace(/[^0-9]/g, "")) || 60 : 60; // Default 60 months
+  
+  const loanAmount = principal - downPayment;
+  if (loanAmount <= 0) return 0;
+  
+  const monthlyRate = apr / 100 / 12;
+  
+  if (monthlyRate === 0) {
+    return loanAmount / termMonths;
+  }
+  
+  const payment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
+                  (Math.pow(1 + monthlyRate, termMonths) - 1);
+  
+  return Math.round(payment);
+};
+
+// Calculate total monthly cost of ownership
+const calculateTotalMonthlyCost = (deal: Deal): { payment: number; insurance: number; fuel: number; maintenance: number; registration: number; total: number } | null => {
+  const payment = calculateMonthlyPayment(deal);
+  if (payment === null) return null;
+  
+  const insurance = deal.insurance ? parseFloat(deal.insurance.replace(/[^0-9.]/g, "")) || 0 : 0;
+  const fuel = deal.fuel_cost ? parseFloat(deal.fuel_cost.replace(/[^0-9.]/g, "")) || 0 : 0;
+  const maintenance = deal.maintenance ? parseFloat(deal.maintenance.replace(/[^0-9.]/g, "")) || 0 : 0;
+  const registration = deal.registration ? parseFloat(deal.registration.replace(/[^0-9.]/g, "")) || 0 : 0;
+  
+  // Convert annual registration to monthly
+  const monthlyRegistration = registration / 12;
+  
+  const total = payment + insurance + fuel + maintenance + monthlyRegistration;
+  
+  return {
+    payment,
+    insurance,
+    fuel,
+    maintenance,
+    registration: monthlyRegistration,
+    total: Math.round(total)
+  };
+};
 
 const getScoreColor = (score: number | undefined) => {
   if (!score) return "text-muted-foreground";
@@ -127,7 +185,7 @@ export default function DealComparison() {
     try {
       const { data, error } = await supabase
         .from("deals")
-        .select("id, name, year, make, model, trim, mileage, asking_price, negotiated_price, down_payment, apr, term, score_result, created_at")
+        .select("id, name, year, make, model, trim, mileage, asking_price, negotiated_price, down_payment, apr, term, insurance, fuel_cost, maintenance, registration, score_result, created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
@@ -436,6 +494,120 @@ export default function DealComparison() {
                         </div>
                       );
                     })}
+                  </CardContent>
+                </Card>
+
+                {/* Monthly Cost Projections */}
+                <Card className="mb-4">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Calculator className="h-5 w-5 text-primary" />
+                      Monthly Cost Projections
+                    </CardTitle>
+                    <CardDescription>Estimated total cost of ownership per month</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Total Monthly Cost - Highlighted */}
+                    <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+                      <p className="text-sm font-medium text-primary mb-3 flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Total Monthly Cost
+                      </p>
+                      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${comparedDeals.length}, 1fr)` }}>
+                        {(() => {
+                          const costs = comparedDeals.map(d => calculateTotalMonthlyCost(d));
+                          const validCosts = costs.filter(c => c !== null && c.total > 0);
+                          const lowestTotal = validCosts.length > 0 
+                            ? Math.min(...validCosts.map(c => c!.total))
+                            : null;
+                          
+                          return comparedDeals.map((deal, idx) => {
+                            const cost = costs[idx];
+                            const isLowest = cost && lowestTotal && cost.total === lowestTotal;
+                            
+                            return (
+                              <div key={deal.id} className="text-center relative">
+                                {isLowest && (
+                                  <Badge className="absolute -top-2 -right-2 bg-score-excellent text-white text-xs">
+                                    Best
+                                  </Badge>
+                                )}
+                                <p className={`text-3xl font-bold ${isLowest ? "text-score-excellent" : "text-foreground"}`}>
+                                  {cost && cost.total > 0 ? formatPrice(cost.total.toString()) : "—"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">/month</p>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Cost Breakdown */}
+                    <div className="space-y-4">
+                      {[
+                        { label: "Car Payment", icon: Car, getVal: (c: ReturnType<typeof calculateTotalMonthlyCost>) => c?.payment },
+                        { label: "Insurance", icon: ShieldCheck, getVal: (c: ReturnType<typeof calculateTotalMonthlyCost>) => c?.insurance },
+                        { label: "Fuel", icon: Fuel, getVal: (c: ReturnType<typeof calculateTotalMonthlyCost>) => c?.fuel },
+                        { label: "Maintenance", icon: Wrench, getVal: (c: ReturnType<typeof calculateTotalMonthlyCost>) => c?.maintenance },
+                        { label: "Registration", icon: FileText, getVal: (c: ReturnType<typeof calculateTotalMonthlyCost>) => c?.registration },
+                      ].map(row => {
+                        const costs = comparedDeals.map(d => calculateTotalMonthlyCost(d));
+                        const values = costs.map(c => row.getVal(c) || 0);
+                        const validValues = values.filter(v => v > 0);
+                        const lowestVal = validValues.length > 0 ? Math.min(...validValues) : null;
+                        
+                        return (
+                          <div key={row.label} className="border-b border-border pb-3 last:border-0 last:pb-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <row.icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">{row.label}</span>
+                            </div>
+                            <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${comparedDeals.length}, 1fr)` }}>
+                              {comparedDeals.map((deal, idx) => {
+                                const value = values[idx];
+                                const isLowest = lowestVal !== null && value === lowestVal && value > 0;
+                                
+                                return (
+                                  <div key={deal.id} className={`text-center p-2 rounded-lg ${isLowest ? "bg-score-excellent/10 ring-1 ring-score-excellent/30" : ""}`}>
+                                    <span className={`text-sm font-medium ${isLowest ? "text-score-excellent" : "text-foreground"}`}>
+                                      {value > 0 ? formatPrice(Math.round(value).toString()) : "—"}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 5-Year Total Cost */}
+                    <div className="mt-6 pt-4 border-t border-border">
+                      <p className="text-sm font-medium text-foreground mb-3">5-Year Total Cost of Ownership</p>
+                      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${comparedDeals.length}, 1fr)` }}>
+                        {(() => {
+                          const costs = comparedDeals.map(d => calculateTotalMonthlyCost(d));
+                          const fiveYearCosts = costs.map(c => c ? c.total * 60 : null);
+                          const validCosts = fiveYearCosts.filter(c => c !== null && c > 0) as number[];
+                          const lowestFiveYear = validCosts.length > 0 ? Math.min(...validCosts) : null;
+                          
+                          return comparedDeals.map((deal, idx) => {
+                            const cost = fiveYearCosts[idx];
+                            const isLowest = cost && lowestFiveYear && cost === lowestFiveYear;
+                            
+                            return (
+                              <div key={deal.id} className={`text-center p-3 rounded-lg ${isLowest ? "bg-score-excellent/10 ring-1 ring-score-excellent/30" : "bg-muted/50"}`}>
+                                <p className={`text-lg font-bold ${isLowest ? "text-score-excellent" : "text-foreground"}`}>
+                                  {cost && cost > 0 ? formatPrice(cost.toString()) : "—"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">over 5 years</p>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 

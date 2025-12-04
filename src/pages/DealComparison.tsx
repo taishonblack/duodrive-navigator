@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,10 +28,13 @@ import {
   Wallet,
   Fuel,
   ShieldCheck,
-  Calculator
+  Calculator,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { User } from "@supabase/supabase-js";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface Deal {
   id: string;
@@ -157,6 +160,8 @@ export default function DealComparison() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
   const [showSelector, setShowSelector] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const comparisonRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -223,6 +228,110 @@ export default function DealComparison() {
     setSelectedDeals(prev => prev.filter(id => id !== dealId));
   };
 
+  const exportToPDF = async () => {
+    if (!comparisonRef.current || comparedDeals.length === 0) return;
+    
+    setIsExporting(true);
+    toast({
+      title: "Generating PDF",
+      description: "Please wait while we prepare your comparison...",
+    });
+
+    try {
+      const element = comparisonRef.current;
+      
+      // Temporarily expand scroll area for full capture
+      const scrollArea = element.querySelector('[data-radix-scroll-area-viewport]');
+      const originalOverflow = scrollArea ? (scrollArea as HTMLElement).style.overflow : '';
+      if (scrollArea) {
+        (scrollArea as HTMLElement).style.overflow = 'visible';
+      }
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200,
+      });
+      
+      // Restore scroll area
+      if (scrollArea) {
+        (scrollArea as HTMLElement).style.overflow = originalOverflow;
+      }
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      
+      // Add header
+      pdf.setFontSize(20);
+      pdf.setTextColor(33, 33, 33);
+      pdf.text('DuoDrive Deal Comparison', pdfWidth / 2, 15, { align: 'center' });
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Generated on ${format(new Date(), 'MMMM d, yyyy')}`, pdfWidth / 2, 22, { align: 'center' });
+      
+      // Calculate image dimensions to fit on page
+      const availableHeight = pdfHeight - 35; // Account for header
+      const scaledWidth = imgWidth * ratio * 0.9;
+      const scaledHeight = imgHeight * ratio * 0.9;
+      
+      // Add image - if too tall, scale to fit width and add multiple pages
+      const pageContentHeight = availableHeight;
+      const totalPages = Math.ceil(scaledHeight / pageContentHeight);
+      
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) {
+          pdf.addPage();
+        }
+        
+        // For single page or last page, just add the image scaled to fit
+        if (totalPages === 1) {
+          pdf.addImage(imgData, 'PNG', (pdfWidth - scaledWidth) / 2, 30, scaledWidth, scaledHeight);
+        } else {
+          // For multi-page, we need to scale differently
+          const fitRatio = pdfWidth / imgWidth * 0.9;
+          const fitWidth = imgWidth * fitRatio;
+          const fitHeight = imgHeight * fitRatio;
+          pdf.addImage(imgData, 'PNG', (pdfWidth - fitWidth) / 2, page === 0 ? 30 : 10, fitWidth, fitHeight);
+          break; // Just use single scaled image
+        }
+      }
+      
+      // Generate filename
+      const dealNames = comparedDeals.map(d => d.name).join(' vs ');
+      const filename = `DuoDrive-Comparison-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      
+      pdf.save(filename);
+      
+      toast({
+        title: "PDF Downloaded",
+        description: "Your deal comparison has been saved.",
+      });
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Could not generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const comparedDeals = deals.filter(d => selectedDeals.includes(d.id));
 
   // Find the best score for highlighting
@@ -261,10 +370,26 @@ export default function DealComparison() {
                 Select up to 4 deals to compare side-by-side
               </p>
             </div>
-            <Button onClick={() => setShowSelector(!showSelector)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {showSelector ? "Hide Selection" : "Select Deals"}
-            </Button>
+            <div className="flex gap-2">
+              {comparedDeals.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={exportToPDF}
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Export PDF
+                </Button>
+              )}
+              <Button onClick={() => setShowSelector(!showSelector)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {showSelector ? "Hide Selection" : "Select Deals"}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -324,8 +449,8 @@ export default function DealComparison() {
         {/* Comparison View */}
         {comparedDeals.length > 0 ? (
           <div className="space-y-6">
-            {/* Selected Deals Pills */}
-            <div className="flex flex-wrap gap-2">
+            {/* Selected Deals Pills - Outside PDF area */}
+            <div className="flex flex-wrap gap-2 print:hidden">
               {comparedDeals.map(deal => (
                 <Badge key={deal.id} variant="secondary" className="pl-3 pr-1 py-1.5 text-sm">
                   {deal.name}
@@ -341,9 +466,11 @@ export default function DealComparison() {
               ))}
             </div>
 
-            {/* Comparison Table */}
-            <ScrollArea className="w-full">
-              <div className="min-w-[600px]">
+            {/* PDF Export Content */}
+            <div ref={comparisonRef} className="bg-background p-4 rounded-lg">
+              {/* Comparison Table */}
+              <ScrollArea className="w-full">
+                <div className="min-w-[600px]">
                 {/* Overall Scores */}
                 <Card className="mb-4">
                   <CardHeader className="pb-3">
@@ -635,6 +762,7 @@ export default function DealComparison() {
               </div>
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
+            </div>
           </div>
         ) : (
           <Card className="border-dashed">

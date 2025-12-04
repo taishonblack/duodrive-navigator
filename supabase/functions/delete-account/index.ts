@@ -19,18 +19,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create client with user's token to get their ID
+    const { password } = await req.json();
+    if (!password) {
+      return new Response(JSON.stringify({ error: "Password is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Get user from token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
+    if (userError || !user || !user.email) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify password by attempting to sign in
+    const verifyClient = createClient(supabaseUrl, supabaseAnonKey);
+    const { error: signInError } = await verifyClient.auth.signInWithPassword({
+      email: user.email,
+      password: password,
+    });
+
+    if (signInError) {
+      console.log("Password verification failed:", signInError.message);
+      return new Response(JSON.stringify({ error: "Incorrect password" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -68,6 +91,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log("Account deleted successfully for user:", user.id);
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -11,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2 } from "lucide-react";
+import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2, Bell, Car, BarChart3, GraduationCap, Newspaper } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface MFAFactor {
@@ -20,6 +21,20 @@ interface MFAFactor {
   factor_type: string;
   status: string;
 }
+
+interface NotificationPreferences {
+  deal_reminders: boolean;
+  score_updates: boolean;
+  coaching_offers: boolean;
+  product_news: boolean;
+}
+
+const defaultPreferences: NotificationPreferences = {
+  deal_reminders: true,
+  score_updates: true,
+  coaching_offers: true,
+  product_news: false,
+};
 
 export default function Account() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -33,6 +48,9 @@ export default function Account() {
   const [showMfaSetup, setShowMfaSetup] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(defaultPreferences);
+  const [isNotifLoading, setIsNotifLoading] = useState(false);
+  const [isSavingNotif, setIsSavingNotif] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -52,6 +70,78 @@ export default function Account() {
       }
     } catch (error) {
       console.error("Error loading profile:", error);
+    }
+  };
+
+  const loadNotificationPreferences = async (userId: string) => {
+    setIsNotifLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("notification_preferences")
+        .select("deal_reminders, score_updates, coaching_offers, product_news")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error loading notification preferences:", error);
+        return;
+      }
+
+      if (data) {
+        setNotifPrefs({
+          deal_reminders: data.deal_reminders,
+          score_updates: data.score_updates,
+          coaching_offers: data.coaching_offers,
+          product_news: data.product_news,
+        });
+      } else {
+        // Create default preferences if they don't exist
+        const { error: insertError } = await supabase
+          .from("notification_preferences")
+          .insert({ user_id: userId });
+        
+        if (insertError) {
+          console.error("Error creating notification preferences:", insertError);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading notification preferences:", error);
+    } finally {
+      setIsNotifLoading(false);
+    }
+  };
+
+  const updateNotificationPreference = async (key: keyof NotificationPreferences, value: boolean) => {
+    if (!user) return;
+
+    const previousValue = notifPrefs[key];
+    setNotifPrefs(prev => ({ ...prev, [key]: value }));
+    setIsSavingNotif(true);
+
+    try {
+      const { error } = await supabase
+        .from("notification_preferences")
+        .update({ [key]: value })
+        .eq("user_id", user.id);
+
+      if (error) {
+        // Revert on error
+        setNotifPrefs(prev => ({ ...prev, [key]: previousValue }));
+        toast({
+          title: "Update Failed",
+          description: "Could not save your preference. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      setNotifPrefs(prev => ({ ...prev, [key]: previousValue }));
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingNotif(false);
     }
   };
 
@@ -91,6 +181,7 @@ export default function Account() {
       } else if (session?.user) {
         loadMfaFactors();
         loadProfile(session.user.id);
+        loadNotificationPreferences(session.user.id);
       }
     });
 
@@ -101,7 +192,6 @@ export default function Account() {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Invalid File",
@@ -111,7 +201,6 @@ export default function Account() {
       return;
     }
 
-    // Validate file size (2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: "File Too Large",
@@ -126,32 +215,24 @@ export default function Account() {
       const fileExt = file.name.split(".").pop();
       const filePath = `${user.id}/avatar.${fileExt}`;
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file, { upsert: true });
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
 
-      // Add cache buster to URL
       const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
 
-      // Update profile
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: urlWithCacheBuster })
         .eq("id", user.id);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       setAvatarUrl(urlWithCacheBuster);
       toast({
@@ -178,18 +259,15 @@ export default function Account() {
 
     setIsUploadingAvatar(true);
     try {
-      // List files in user's folder
       const { data: files } = await supabase.storage
         .from("avatars")
         .list(user.id);
 
-      // Delete all avatar files
       if (files && files.length > 0) {
         const filesToDelete = files.map(f => `${user.id}/${f.name}`);
         await supabase.storage.from("avatars").remove(filesToDelete);
       }
 
-      // Update profile
       await supabase
         .from("profiles")
         .update({ avatar_url: null })
@@ -314,6 +392,33 @@ export default function Account() {
 
   const hasMfaEnabled = mfaFactors.length > 0;
 
+  const notificationOptions = [
+    {
+      key: "deal_reminders" as const,
+      icon: Car,
+      title: "Deal Reminders",
+      description: "Get reminded about deals you've saved but haven't completed",
+    },
+    {
+      key: "score_updates" as const,
+      icon: BarChart3,
+      title: "Score Updates",
+      description: "Receive updates when market conditions affect your saved deals",
+    },
+    {
+      key: "coaching_offers" as const,
+      icon: GraduationCap,
+      title: "Coaching Offers",
+      description: "Special offers and tips from our car buying coaches",
+    },
+    {
+      key: "product_news" as const,
+      icon: Newspaper,
+      title: "Product News",
+      description: "New features and updates from DuoDrive",
+    },
+  ];
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -335,7 +440,6 @@ export default function Account() {
               <CardDescription>Your account information and photo</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Avatar Upload */}
               <div className="flex items-center gap-6">
                 <div className="relative group">
                   <Avatar className="h-20 w-20">
@@ -386,11 +490,57 @@ export default function Account() {
                 </div>
               </div>
 
-              {/* Email */}
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input value={user?.email || ""} disabled className="bg-muted" />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Notification Preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Email Notifications
+              </CardTitle>
+              <CardDescription>
+                Choose which emails you'd like to receive
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isNotifLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading preferences...
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notificationOptions.map((option) => (
+                    <div
+                      key={option.key}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <option.icon className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{option.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {option.description}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={notifPrefs[option.key]}
+                        onCheckedChange={(checked) => updateNotificationPreference(option.key, checked)}
+                        disabled={isSavingNotif}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

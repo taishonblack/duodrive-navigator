@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      coach_integrations: {
+        Row: {
+          coach_id: string
+          created_at: string
+          google_access_token: string | null
+          google_connected: boolean | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          google_access_token?: string | null
+          google_connected?: boolean | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          google_access_token?: string | null
+          google_connected?: boolean | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_integrations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: true
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coaches: {
         Row: {
           created_at: string
@@ -109,6 +150,87 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaching_sessions: {
+        Row: {
+          actual_duration_minutes: number | null
+          coach_id: string
+          created_at: string
+          customer_id: string
+          ended_at: string | null
+          extension_approved: boolean | null
+          extension_minutes: number | null
+          extension_price_cents: number | null
+          extension_requested: boolean | null
+          id: string
+          masked_phone_number: string | null
+          meet_link: string | null
+          request_id: string
+          scheduled_duration_minutes: number
+          session_type: Database["public"]["Enums"]["session_type"]
+          started_at: string | null
+          status: string
+          twilio_room_sid: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_duration_minutes?: number | null
+          coach_id: string
+          created_at?: string
+          customer_id: string
+          ended_at?: string | null
+          extension_approved?: boolean | null
+          extension_minutes?: number | null
+          extension_price_cents?: number | null
+          extension_requested?: boolean | null
+          id?: string
+          masked_phone_number?: string | null
+          meet_link?: string | null
+          request_id: string
+          scheduled_duration_minutes?: number
+          session_type: Database["public"]["Enums"]["session_type"]
+          started_at?: string | null
+          status?: string
+          twilio_room_sid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_duration_minutes?: number | null
+          coach_id?: string
+          created_at?: string
+          customer_id?: string
+          ended_at?: string | null
+          extension_approved?: boolean | null
+          extension_minutes?: number | null
+          extension_price_cents?: number | null
+          extension_requested?: boolean | null
+          id?: string
+          masked_phone_number?: string | null
+          meet_link?: string | null
+          request_id?: string
+          scheduled_duration_minutes?: number
+          session_type?: Database["public"]["Enums"]["session_type"]
+          started_at?: string | null
+          status?: string
+          twilio_room_sid?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_sessions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_requests"
             referencedColumns: ["id"]
           },
         ]

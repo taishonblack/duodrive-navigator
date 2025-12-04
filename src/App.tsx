@@ -12,6 +12,8 @@ import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import CoachAuth from "./pages/CoachAuth";
 import CoachDashboard from "./pages/CoachDashboard";
+import AdminAuth from "./pages/AdminAuth";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,8 @@ const App = () => (
           <Route path="/account" element={<Account />} />
           <Route path="/coach" element={<CoachAuth />} />
           <Route path="/coach/dashboard" element={<CoachDashboard />} />
+          <Route path="/admin" element={<AdminAuth />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

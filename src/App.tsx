@@ -9,6 +9,7 @@ import DealRoom from "./pages/DealRoom";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
 import Coaching from "./pages/Coaching";
 import Auth from "./pages/Auth";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/why-duodrive" element={<WhyDuoDrive />} />
           <Route path="/coaching" element={<Coaching />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/account" element={<Account />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

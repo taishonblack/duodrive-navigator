@@ -4,10 +4,13 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TwoFactorVerify } from "@/components/TwoFactorVerify";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Car } from "lucide-react";
 import { z } from "zod";
+import { AuthenticatorAssuranceLevels } from "@supabase/supabase-js";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -22,24 +25,53 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [showMfaVerify, setShowMfaVerify] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        navigate("/deal-room");
+        // Check if MFA verification is needed
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+          // User has MFA enabled but hasn't verified yet
+          setShowMfaVerify(true);
+        } else {
+          navigate("/deal-room");
+        }
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        navigate("/deal-room");
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+          setShowMfaVerify(true);
+        } else if (aal?.currentLevel === "aal2" || aal?.nextLevel === "aal1") {
+          navigate("/deal-room");
+        }
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const handleMfaVerified = () => {
+    setShowMfaVerify(false);
+    navigate("/deal-room");
+  };
+
+  const handleMfaCancel = async () => {
+    await supabase.auth.signOut();
+    setShowMfaVerify(false);
+    toast({
+      title: "Sign Out",
+      description: "You've been signed out.",
+    });
+  };
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -125,7 +157,7 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           if (error.message.includes("Invalid login")) {
             toast({
@@ -142,7 +174,16 @@ export default function Auth() {
           }
           return;
         }
-        toast({ title: "Welcome back!", description: "You have been logged in." });
+        
+        // Check if MFA is required
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+          setShowMfaVerify(true);
+        } else {
+          toast({ title: "Welcome back!", description: "You have been logged in." });
+          navigate("/deal-room");
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -353,6 +394,22 @@ export default function Auth() {
             </>
           )}
         </div>
+
+        {/* MFA Verification Dialog */}
+        <Dialog open={showMfaVerify} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle>Two-Factor Authentication</DialogTitle>
+              <DialogDescription>
+                Your account has 2FA enabled. Please verify to continue.
+              </DialogDescription>
+            </DialogHeader>
+            <TwoFactorVerify 
+              onVerified={handleMfaVerified}
+              onCancel={handleMfaCancel}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

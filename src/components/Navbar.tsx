@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, Car, User, Settings, LogOut } from "lucide-react";
+import { Menu, X, Car, User, Settings, LogOut, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
@@ -159,6 +159,12 @@ export function Navbar() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       Account Settings
@@ -211,18 +217,32 @@ export function Navbar() {
               ))}
               
               {user && (
-                <Link
-                  to="/account"
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    location.pathname === "/account"
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  Account Settings
-                </Link>
+                <>
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                      location.pathname === "/dashboard"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/account"
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                      location.pathname === "/account"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    Account Settings
+                  </Link>
+                </>
               )}
               
               <div className="pt-2 space-y-2">

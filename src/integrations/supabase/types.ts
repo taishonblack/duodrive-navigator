@@ -121,6 +121,39 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          coaching_offers: boolean
+          created_at: string
+          deal_reminders: boolean
+          id: string
+          product_news: boolean
+          score_updates: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coaching_offers?: boolean
+          created_at?: string
+          deal_reminders?: boolean
+          id?: string
+          product_news?: boolean
+          score_updates?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coaching_offers?: boolean
+          created_at?: string
+          deal_reminders?: boolean
+          id?: string
+          product_news?: boolean
+          score_updates?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

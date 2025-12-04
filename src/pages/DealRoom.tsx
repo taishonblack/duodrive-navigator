@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -797,40 +797,68 @@ export default function DealRoom() {
               <div className="lg:col-span-2 p-6 rounded-2xl bg-card border border-border shadow-card">
                 <h2 className="text-xl font-semibold text-foreground mb-4">Or Upload a Quote</h2>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Upload a dealer's quote (PDF or image) and our AI will extract the numbers for you.
+                  Take a photo of a sticker price or upload a dealer's quote — our AI will extract the numbers for you.
                 </p>
-                <label className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer block ${
-                  isExtracting ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                }`}>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    onChange={handleFileUpload}
-                    disabled={isExtracting}
-                    className="hidden"
-                  />
-                  {isExtracting ? (
-                    <>
-                      <Loader2 className="h-10 w-10 text-primary mx-auto mb-4 animate-spin" />
-                      <p className="text-sm text-foreground font-medium">
-                        Extracting deal details...
+                
+                {isExtracting ? (
+                  <div className="border-2 border-primary bg-primary/5 rounded-xl p-8 text-center">
+                    <Loader2 className="h-10 w-10 text-primary mx-auto mb-4 animate-spin" />
+                    <p className="text-sm text-foreground font-medium">
+                      Extracting deal details...
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      AI is reading your quote
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Camera Capture - triggers device camera directly */}
+                    <label className="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center justify-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <Camera className="h-8 w-8 text-primary mb-3" />
+                      <p className="text-sm font-medium text-foreground">Take Photo</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use your camera
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        AI is reading your quote
+                    </label>
+
+                    {/* Photo Library - opens gallery/photos */}
+                    <label className="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center justify-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <ImagePlus className="h-8 w-8 text-primary mb-3" />
+                      <p className="text-sm font-medium text-foreground">Choose Photo</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        From your gallery
                       </p>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-sm text-muted-foreground">
-                        Click to upload or drag and drop
+                    </label>
+
+                    {/* File Upload - for PDFs and other documents */}
+                    <label className="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center justify-center">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <Upload className="h-8 w-8 text-muted-foreground mb-3" />
+                      <p className="text-sm font-medium text-foreground">Upload File</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PDF or image
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Supports JPG, PNG, WebP, PDF up to 10MB
-                      </p>
-                    </>
-                  )}
-                </label>
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
 

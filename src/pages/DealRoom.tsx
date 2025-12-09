@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -1451,6 +1451,106 @@ export default function DealRoom() {
                       description={scoreResult.pillars.affordability.details}
                       score={scoreResult.pillars.affordability.score}
                     />
+                  </div>
+                </div>
+
+                {/* V3 Market & Budget Analysis */}
+                <div className="lg:col-span-3 p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Market & Budget Analysis</h2>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* True Market Price */}
+                    <div className={`p-4 rounded-xl border-2 ${
+                      scoreResult.dealPriceGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
+                      scoreResult.dealPriceGapPercent <= 5 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
+                      scoreResult.dealPriceGapPercent <= 10 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
+                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className={`h-5 w-5 ${
+                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.dealPriceGapPercent <= 5 ? 'text-yellow-600 dark:text-yellow-400' :
+                          scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`} />
+                        <span className="text-xs font-medium text-muted-foreground">TMP</span>
+                      </div>
+                      <p className="text-xl font-bold text-foreground">${scoreResult.trueMarketPrice.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mt-1">True Market Price</p>
+                    </div>
+
+                    {/* Deal Price Gap */}
+                    <div className={`p-4 rounded-xl border-2 ${
+                      scoreResult.dealPriceGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
+                      scoreResult.dealPriceGapPercent <= 5 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
+                      scoreResult.dealPriceGapPercent <= 10 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
+                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className={`h-5 w-5 ${
+                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.dealPriceGapPercent <= 5 ? 'text-yellow-600 dark:text-yellow-400' :
+                          scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`} />
+                        <span className="text-xs font-medium text-muted-foreground">DPG</span>
+                      </div>
+                      <p className={`text-xl font-bold ${
+                        scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                        scoreResult.dealPriceGapPercent <= 5 ? 'text-yellow-600 dark:text-yellow-400' :
+                        scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
+                        'text-red-600 dark:text-red-400'
+                      }`}>
+                        {scoreResult.dealPriceGap >= 0 ? '+' : ''}${scoreResult.dealPriceGap.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Deal Price Gap ({scoreResult.dealPriceGapPercent}%)</p>
+                    </div>
+
+                    {/* Customer Max Safe Price */}
+                    <div className={`p-4 rounded-xl border-2 ${
+                      scoreResult.customerFitGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
+                      scoreResult.customerFitGapPercent <= 10 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
+                      scoreResult.customerFitGapPercent <= 25 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
+                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Wallet className={`h-5 w-5 ${
+                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`} />
+                        <span className="text-xs font-medium text-muted-foreground">CMSP</span>
+                      </div>
+                      <p className="text-xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Max Safe Price</p>
+                    </div>
+
+                    {/* Customer Fit Gap */}
+                    <div className={`p-4 rounded-xl border-2 ${
+                      scoreResult.customerFitGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
+                      scoreResult.customerFitGapPercent <= 10 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
+                      scoreResult.customerFitGapPercent <= 25 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
+                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Heart className={`h-5 w-5 ${
+                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`} />
+                        <span className="text-xs font-medium text-muted-foreground">CFG</span>
+                      </div>
+                      <p className={`text-xl font-bold ${
+                        scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                        scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                        scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
+                        'text-red-600 dark:text-red-400'
+                      }`}>
+                        {scoreResult.customerFitGap >= 0 ? '+' : ''}${scoreResult.customerFitGap.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Budget Fit Gap ({scoreResult.customerFitGapPercent}%)</p>
+                    </div>
                   </div>
                 </div>
 

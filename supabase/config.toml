@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.create-google-meet]
 verify_jwt = false
+
+[functions.create-masked-phone]
+verify_jwt = true

@@ -13,7 +13,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-score-report]
-verify_jwt = false
+verify_jwt = true
 
 [functions.delete-account]
 verify_jwt = true
@@ -22,10 +22,10 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.create-google-meet]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-masked-phone]
 verify_jwt = true
 
 [functions.send-session-reminder]
-verify_jwt = false
+verify_jwt = true

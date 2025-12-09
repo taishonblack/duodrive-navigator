@@ -1,8 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { 
+  checkRateLimit, 
+  getClientIP, 
+  rateLimitExceededResponse 
+} from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Rate limit: 10 requests per minute per IP (more restrictive for OCR)
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 10,
+  windowMs: 60 * 1000,
+  keyPrefix: "extract-quote",
 };
 
 const extractionPrompt = `You are a car deal quote extraction assistant. Analyze this dealer quote image/document and extract ALL the following information. Return ONLY a JSON object with these exact keys (use null for any field you can't find):
@@ -43,6 +55,15 @@ serve(async (req) => {
   }
 
   try {
+    // Check rate limit
+    const clientIP = getClientIP(req);
+    const rateLimitResult = checkRateLimit(clientIP, RATE_LIMIT_CONFIG);
+    
+    if (!rateLimitResult.allowed) {
+      console.log(`Rate limit exceeded for IP: ${clientIP}`);
+      return rateLimitExceededResponse(rateLimitResult, corsHeaders);
+    }
+
     const { imageBase64, mimeType } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
@@ -52,6 +73,11 @@ serve(async (req) => {
 
     if (!imageBase64) {
       throw new Error("No image data provided");
+    }
+
+    // Basic validation of image data
+    if (typeof imageBase64 !== "string" || imageBase64.length > 10 * 1024 * 1024) {
+      throw new Error("Invalid or oversized image data");
     }
 
     console.log("Processing quote extraction, mime type:", mimeType);

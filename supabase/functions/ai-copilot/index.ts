@@ -1,8 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { 
+  checkRateLimit, 
+  getClientIP, 
+  rateLimitExceededResponse 
+} from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Rate limit: 30 requests per minute per IP
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 30,
+  windowMs: 60 * 1000,
+  keyPrefix: "ai-copilot",
 };
 
 interface Message {
@@ -155,6 +167,15 @@ serve(async (req) => {
   }
 
   try {
+    // Check rate limit
+    const clientIP = getClientIP(req);
+    const rateLimitResult = checkRateLimit(clientIP, RATE_LIMIT_CONFIG);
+    
+    if (!rateLimitResult.allowed) {
+      console.log(`Rate limit exceeded for IP: ${clientIP}`);
+      return rateLimitExceededResponse(rateLimitResult, corsHeaders);
+    }
+
     const { messages, dealContext }: RequestBody = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     

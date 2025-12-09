@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.estimate-market-value]
 verify_jwt = false
+
+[functions.send-score-report]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = true

@@ -9,13 +9,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreResult } from "@/lib/duodriveScore";
 import { Progress } from "@/components/ui/progress";
 import { generateScoreReport } from "@/lib/pdfExport";
+import { EmailShareDialog } from "@/components/EmailShareDialog";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 
@@ -1587,14 +1588,26 @@ export default function DealRoom() {
                   <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                     {scoreResult.recommendation}
                   </p>
-                  <Button 
-                    onClick={() => generateScoreReport(scoreResult, dealData)} 
-                    variant="outline" 
-                    className="w-full"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export PDF Report
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => generateScoreReport(scoreResult, dealData)} 
+                      variant="outline" 
+                      className="flex-1"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF
+                    </Button>
+                    <EmailShareDialog 
+                      scoreResult={scoreResult} 
+                      dealData={dealData}
+                      trigger={
+                        <Button variant="outline" className="flex-1">
+                          <Mail className="h-4 w-4 mr-2" />
+                          Email
+                        </Button>
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Coach Scheduling */}

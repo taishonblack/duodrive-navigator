@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
-  Loader2, CheckCircle, XCircle, LogOut, RefreshCw 
+  Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
 
 interface CoachingRequest {
   id: string;
@@ -340,6 +341,10 @@ export default function CoachDashboard() {
             <TabsTrigger value="my-requests">
               My Requests ({myRequests.length})
             </TabsTrigger>
+            <TabsTrigger value="settings">
+              <Settings className="h-4 w-4 mr-1" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="queue" className="space-y-4">
@@ -484,6 +489,13 @@ export default function CoachDashboard() {
                 );
               })
             )}
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4">
+            <div className="max-w-2xl">
+              <h3 className="text-lg font-semibold mb-4">Integrations</h3>
+              {coach && <GoogleCalendarConnect coachId={coach.id} />}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

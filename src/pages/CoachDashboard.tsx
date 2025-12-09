@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
-  Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings
+  Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
+import { SessionTimer } from "@/components/SessionTimer";
 
 interface CoachingRequest {
   id: string;
@@ -61,6 +62,7 @@ export default function CoachDashboard() {
   const [coach, setCoach] = useState<Coach | null>(null);
   const [pendingRequests, setPendingRequests] = useState<CoachingRequest[]>([]);
   const [myRequests, setMyRequests] = useState<CoachingRequest[]>([]);
+  const [activeSessions, setActiveSessions] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -144,6 +146,24 @@ export default function CoachDashboard() {
 
       if (mineError) throw mineError;
       setMyRequests(mine || []);
+
+      // Fetch active sessions for my requests
+      const requestIds = (mine || []).map((r: CoachingRequest) => r.id);
+      if (requestIds.length > 0) {
+        const { data: sessions, error: sessionsError } = await supabase
+          .from("coaching_sessions")
+          .select("*")
+          .in("request_id", requestIds)
+          .neq("status", "completed");
+
+        if (!sessionsError && sessions) {
+          const sessionMap: Record<string, any> = {};
+          sessions.forEach((s: any) => {
+            sessionMap[s.request_id] = s;
+          });
+          setActiveSessions(sessionMap);
+        }
+      }
     } catch (error: any) {
       console.error("Error fetching requests:", error);
       toast({
@@ -206,6 +226,44 @@ export default function CoachDashboard() {
         .eq("coach_id", coach.id);
 
       if (error) throw error;
+
+      // If starting session, create coaching_session record
+      if (newStatus === "in_progress") {
+        const request = myRequests.find(r => r.id === requestId);
+        if (request) {
+          const { data: { user } } = await supabase.auth.getUser();
+          const durationMap = { text: 10, phone: 30, video: 30 };
+          
+          // Check if session already exists
+          const { data: existingSession } = await supabase
+            .from("coaching_sessions")
+            .select("id")
+            .eq("request_id", requestId)
+            .maybeSingle();
+
+          if (!existingSession) {
+            const { data: requestData } = await supabase
+              .from("coaching_requests")
+              .select("customer_id")
+              .eq("id", requestId)
+              .single();
+
+            if (requestData) {
+              await supabase
+                .from("coaching_sessions")
+                .insert({
+                  request_id: requestId,
+                  coach_id: coach.id,
+                  customer_id: requestData.customer_id,
+                  session_type: request.session_type,
+                  scheduled_duration_minutes: durationMap[request.session_type],
+                  started_at: new Date().toISOString(),
+                  status: "active",
+                });
+            }
+          }
+        }
+      }
 
       toast({
         title: "Status updated",
@@ -449,6 +507,23 @@ export default function CoachDashboard() {
                             )}
                           </div>
                         </div>
+
+                        {/* Session Timer for active sessions */}
+                        {request.status === "in_progress" && activeSessions[request.id] && (
+                          <div className="w-full md:w-80">
+                            <SessionTimer
+                              sessionId={activeSessions[request.id].id}
+                              sessionType={request.session_type}
+                              scheduledDurationMinutes={activeSessions[request.id].scheduled_duration_minutes}
+                              startedAt={activeSessions[request.id].started_at}
+                              isCoach={true}
+                              onSessionEnd={() => {
+                                updateStatus(request.id, "completed");
+                              }}
+                            />
+                          </div>
+                        )}
+
                         {request.status !== "completed" && request.status !== "cancelled" && (
                           <div className="flex gap-2">
                             {request.status === "claimed" && (
@@ -457,22 +532,25 @@ export default function CoachDashboard() {
                                 onClick={() => updateStatus(request.id, "in_progress")}
                                 disabled={actionLoading === request.id}
                               >
+                                <Timer className="h-4 w-4 mr-2" />
                                 Start Session
                               </Button>
                             )}
-                            <Button
-                              onClick={() => updateStatus(request.id, "completed")}
-                              disabled={actionLoading === request.id}
-                            >
-                              {actionLoading === request.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Complete
-                                </>
-                              )}
-                            </Button>
+                            {request.status !== "in_progress" && (
+                              <Button
+                                onClick={() => updateStatus(request.id, "completed")}
+                                disabled={actionLoading === request.id}
+                              >
+                                {actionLoading === request.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Complete
+                                  </>
+                                )}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"

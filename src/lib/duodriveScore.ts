@@ -1,4 +1,4 @@
-// DuoDrive Score V3 - Comprehensive Car Deal Evaluation Engine
+// DuoDrive Score V4 - Robust, Conservative, Scam-Proof Scoring Engine
 
 export interface DealInput {
   // Car details
@@ -52,7 +52,7 @@ export interface ScoreResult {
   totalInterest: number;
   interestRatio: number;
   
-  // V3 Metrics
+  // V4 Metrics
   trueMarketPrice: number;
   dealPriceGap: number;
   dealPriceGapPercent: number;
@@ -62,6 +62,10 @@ export interface ScoreResult {
   paymentBurdenPercent: number;
   operatingCostBurden: number;
   totalMonthlyCost: number;
+  
+  // V4 Sanity flags
+  sanityFlags: string[];
+  autoFail: boolean;
 }
 
 interface PillarResult {
@@ -69,123 +73,165 @@ interface PillarResult {
   details: string;
 }
 
+// ============= V4 HELPER FUNCTIONS =============
+
 // Calculate monthly payment using standard amortization formula
 export function calculateMonthlyPayment(principal: number, apr: number, termMonths: number): number {
+  if (principal <= 0) return 0;
   if (apr === 0) return principal / termMonths;
   const monthlyRate = apr / 100 / 12;
   return (principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
          (Math.pow(1 + monthlyRate, termMonths) - 1);
 }
 
-// FORMULA 1: True Market Price (TMP)
-// Uses AI-estimated market value with adjustments for mileage and trim
-export function calculateTrueMarketPrice(
-  estimatedMarketValue: number,
-  year: number,
-  mileage: number,
-  trim?: string
-): number {
+// V4 FORMULA 1: Estimate True Market Price (TMP)
+// Uses age-based depreciation curve for mass-market vehicles with mileage adjustment
+export function estimateTMP(year: number, mileage: number, estimatedMarketValue?: number): number {
+  // If we have an AI-estimated value, use it as a baseline
+  if (estimatedMarketValue && estimatedMarketValue > 0) {
+    return estimatedMarketValue;
+  }
+  
   const currentYear = new Date().getFullYear();
   const age = currentYear - year;
-  
-  // Expected mileage: ~12,000 miles per year
-  const expectedMileage = age * 12000;
-  const mileageDiff = mileage - expectedMileage;
-  
-  // Mileage penalty: $0.10 per excess mile, bonus for low miles
-  const mileageAdjustment = -mileageDiff * 0.10;
-  
-  // Trim premium (rough estimates)
-  let trimPremium = 0;
-  if (trim) {
-    const trimLower = trim.toLowerCase();
-    if (trimLower.includes('limited') || trimLower.includes('platinum') || trimLower.includes('touring')) {
-      trimPremium = estimatedMarketValue * 0.08;
-    } else if (trimLower.includes('sport') || trimLower.includes('premium') || trimLower.includes('ex-l')) {
-      trimPremium = estimatedMarketValue * 0.05;
-    } else if (trimLower.includes('base') || trimLower.includes('s') || trimLower.includes('lx')) {
-      trimPremium = -estimatedMarketValue * 0.03;
-    }
-  }
-  
-  return Math.max(0, estimatedMarketValue + mileageAdjustment + trimPremium);
+
+  // Base value curve for mass-market SUVs/sedans
+  // New: ~30k, drops quickly after year 5
+  let baseValue = 0;
+
+  if (age <= 1) baseValue = 28000;
+  else if (age <= 2) baseValue = 26000;
+  else if (age <= 3) baseValue = 24000;
+  else if (age <= 5) baseValue = 20000;
+  else if (age <= 7) baseValue = 15000;
+  else if (age <= 10) baseValue = 10000;
+  else if (age <= 13) baseValue = 7000;
+  else baseValue = 4000;
+
+  // Mileage adjustment: ~$0.10 per mile over 60k baseline
+  const mileageAdj = (mileage - 60000) * 0.10;
+  const tmp = Math.max(baseValue - mileageAdj, 1000); // Floor for junk value
+
+  return tmp;
 }
 
-// FORMULA 2: Deal Price Gap (DPG)
-export function calculateDealPriceGap(dealerAskingPrice: number, trueMarketPrice: number): {
+// V4 FORMULA 2: Sanity Checks (absolute deal killers)
+export function applySanityChecks(askingPrice: number, TMP: number, year: number): {
+  autoFail: boolean;
+  autoFailScore: number;
+  errors: string[];
+} {
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - year;
+
+  const errors: string[] = [];
+  let autoFail = false;
+  const autoFailScore = 5;
+
+  // Unrealistic overpricing > 300% of TMP
+  if (askingPrice > TMP * 3) {
+    errors.push("Asking price exceeds 300% of expected market value.");
+    autoFail = true;
+  }
+
+  // Old car priced like a new luxury model
+  if (age > 12 && askingPrice > 30000) {
+    errors.push("Old vehicle priced at luxury levels - highly suspicious.");
+    autoFail = true;
+  }
+
+  // Very old car with unrealistic price
+  if (age > 10 && askingPrice > TMP * 2) {
+    errors.push("10+ year old vehicle priced at 2x market value.");
+    autoFail = true;
+  }
+
+  return { autoFail, autoFailScore, errors };
+}
+
+// V4 FORMULA 3: Deal Price Gap Score (DPG)
+export function computeDPG(askingPrice: number, TMP: number): {
   gap: number;
   gapPercent: number;
   score: number;
 } {
-  const gap = dealerAskingPrice - trueMarketPrice;
-  const gapPercent = trueMarketPrice > 0 ? (gap / trueMarketPrice) * 100 : 0;
-  
-  let score = 100;
-  if (gapPercent <= 0) {
-    score = 100; // At or below market - great deal
-  } else if (gapPercent <= 5) {
-    score = 90; // Slightly above - good deal
-  } else if (gapPercent <= 10) {
-    score = 70; // Fair deal
-  } else if (gapPercent <= 15) {
-    score = 55; // Needs negotiation
-  } else if (gapPercent <= 20) {
-    score = 40; // Overpriced
-  } else if (gapPercent <= 30) {
-    score = 20; // Very overpriced
-  } else {
-    score = 10; // Reject
-  }
-  
+  const gap = askingPrice - TMP;
+  const ratio = TMP > 0 ? askingPrice / TMP : 999;
+  const gapPercent = TMP > 0 ? ((askingPrice - TMP) / TMP) * 100 : 999;
+
+  let score: number;
+  if (ratio <= 0.9) score = 95;      // Underpriced - great deal
+  else if (ratio <= 1.1) score = 85; // Fair
+  else if (ratio <= 1.3) score = 70; // Mildly overpriced
+  else if (ratio <= 1.5) score = 50; // Overpriced
+  else if (ratio <= 2.0) score = 30; // Very overpriced
+  else if (ratio <= 3.0) score = 10; // Extremely overpriced
+  else score = 1;                     // Scam / absurd
+
   return { gap, gapPercent, score };
 }
 
-// FORMULA 3: Customer Max Safety Price (CMSP)
+// V4 FORMULA 4: Customer Max Safety Price (CMSP)
 // Based on 12% of take-home income rule
-export function calculateCustomerMaxSafePrice(
-  monthlyIncome: number,
-  apr: number,
-  termMonths: number
-): number {
+export function computeCMSP(monthlyIncome: number, termMonths: number = 60): number {
   const maxMonthlyPayment = monthlyIncome * 0.12;
-  const monthlyRate = apr / 100 / 12;
-  
-  if (apr === 0) {
-    return maxMonthlyPayment * termMonths;
-  }
-  
-  // Reverse the amortization formula to get max principal
-  const maxPrincipal = maxMonthlyPayment * 
-    (Math.pow(1 + monthlyRate, termMonths) - 1) / 
-    (monthlyRate * Math.pow(1 + monthlyRate, termMonths));
-  
-  return maxPrincipal;
+  return maxMonthlyPayment * termMonths; // 5-year equivalent
 }
 
-// FORMULA 4: Customer Fit Gap (CFG)
-export function calculateCustomerFitGap(dealerAskingPrice: number, customerMaxSafePrice: number): {
+// V4 FORMULA 5: Customer Fit Gap (CFG)
+export function computeCFG(askingPrice: number, CMSP: number): {
   gap: number;
   gapPercent: number;
   score: number;
 } {
-  const gap = dealerAskingPrice - customerMaxSafePrice;
-  const gapPercent = customerMaxSafePrice > 0 ? (gap / customerMaxSafePrice) * 100 : 0;
-  
-  let score = 100;
-  if (gapPercent <= 0) {
-    score = 100; // Within safe range - great fit
-  } else if (gapPercent <= 10) {
-    score = 70; // Borderline
-  } else if (gapPercent <= 25) {
-    score = 40; // Risky
-  } else if (gapPercent <= 50) {
-    score = 15; // Very risky
-  } else {
-    score = 0; // Reject - cannot afford
-  }
-  
+  const gap = askingPrice - CMSP;
+  const gapPercent = CMSP > 0 ? ((askingPrice - CMSP) / CMSP) * 100 : 999;
+
+  let score: number;
+  if (askingPrice <= CMSP) score = 90;
+  else if (askingPrice <= CMSP * 1.2) score = 70;
+  else if (askingPrice <= CMSP * 1.5) score = 40;
+  else if (askingPrice <= CMSP * 2.0) score = 20;
+  else score = 5; // Financially unsafe
+
   return { gap, gapPercent, score };
 }
+
+// V4 FORMULA 6: Loan Burden & Interest Penalty
+export function computeLoanImpact(askingPrice: number, downPayment: number, apr: number, termMonths: number): {
+  loanAmount: number;
+  monthly: number;
+  totalInterest: number;
+  interestRatio: number;
+  interestScore: number;
+} {
+  const loanAmount = Math.max(0, askingPrice - downPayment);
+  const monthly = calculateMonthlyPayment(loanAmount, apr, termMonths);
+  const totalInterest = (monthly * termMonths) - loanAmount;
+  const interestRatio = loanAmount > 0 ? totalInterest / loanAmount : 0;
+
+  let interestScore = 90;
+  if (interestRatio > 0.25) interestScore = 60;
+  if (interestRatio > 0.50) interestScore = 40;
+  if (interestRatio > 0.75) interestScore = 20;
+  if (interestRatio > 1.00) interestScore = 5;
+
+  return { loanAmount, monthly, totalInterest, interestRatio, interestScore };
+}
+
+// V4 FORMULA 7: Down Payment Safety Score
+export function computeDownPaymentScore(downPayment: number, askingPrice: number): number {
+  if (askingPrice <= 0) return 50;
+  const pct = downPayment / askingPrice;
+
+  if (pct >= 0.20) return 90;
+  if (pct >= 0.10) return 70;
+  if (pct >= 0.05) return 50;
+  if (pct >= 0.03) return 25;
+  return 10;
+}
+
+// ============= PILLAR CALCULATIONS =============
 
 // Depreciation score (based on age, mileage)
 function calcDepreciation(year: number, mileage: number): PillarResult {
@@ -272,7 +318,7 @@ function calcSafety(year: number, make: string): PillarResult {
   return { score: Math.round(score), details };
 }
 
-// Deal Health score (V3 - incorporates DPG)
+// V4 Deal Health score - now uses DPG as primary factor
 function calcDealHealth(
   dpgScore: number,
   docFee: number,
@@ -280,7 +326,8 @@ function calcDealHealth(
   addOns: number,
   askingPrice: number,
   apr: number,
-  creditScore: string
+  creditScore: string,
+  dpgPercent: number
 ): PillarResult {
   let feeScore = 100;
   
@@ -312,11 +359,13 @@ function calcDealHealth(
   
   feeScore = Math.max(0, Math.min(100, feeScore));
   
-  // Combine DPG score (50%) and fee score (50%)
-  const score = Math.round(dpgScore * 0.50 + feeScore * 0.50);
+  // V4: DPG is now 60% of deal health, fees 40%
+  const score = Math.round(dpgScore * 0.60 + feeScore * 0.40);
   
   let details = "";
-  if (dpgScore < 50) details = "The dealer is asking significantly above market value. Negotiate hard or walk away.";
+  if (dpgScore <= 10) details = "DANGER: Price is extremely above market value. This deal is a scam or severe ripoff.";
+  else if (dpgScore <= 30) details = "The dealer is asking far above market value. Walk away or negotiate aggressively.";
+  else if (dpgScore < 50) details = "The dealer is asking significantly above market value. Negotiate hard.";
   else if (addOns > 500) details = "High dealer add-ons detected. These are often overpriced—negotiate to remove them.";
   else if (dealerFee > 500) details = "Dealer fee seems high. Try to negotiate it down or off.";
   else if (docFee > 700) details = "Doc fee exceeds typical range. Some states cap this fee.";
@@ -327,40 +376,32 @@ function calcDealHealth(
   return { score, details };
 }
 
-// Affordability score (V3 - incorporates CFG and burdens)
+// V4 Affordability score - uses CFG, interest, and down payment
 function calcAffordability(
   cfgScore: number,
+  interestScore: number,
+  downPaymentScore: number,
   monthlyPayment: number,
-  insurance: number,
-  fuelCost: number,
-  maintenance: number,
-  monthlyIncome: number
+  totalMonthlyCost: number,
+  monthlyIncome: number,
+  cfgPercent: number
 ): PillarResult {
-  const totalMonthlyCost = monthlyPayment + insurance + fuelCost + maintenance;
   const paymentBurden = (monthlyPayment / monthlyIncome) * 100;
   const totalBurden = (totalMonthlyCost / monthlyIncome) * 100;
   
-  let burdenScore = 100;
-  
-  // Payment burden (should be under 10-15%)
-  if (paymentBurden > 20) burdenScore = 30;
-  else if (paymentBurden > 15) burdenScore = 50;
-  else if (paymentBurden > 12) burdenScore = 70;
-  else if (paymentBurden > 10) burdenScore = 85;
-  
-  // Total operating burden penalty
-  if (totalBurden > 25) burdenScore -= 20;
-  else if (totalBurden > 20) burdenScore -= 10;
-  
-  burdenScore = Math.max(0, Math.min(100, burdenScore));
-  
-  // Combine CFG score (40%) and burden score (60%)
-  const score = Math.round(cfgScore * 0.40 + burdenScore * 0.60);
+  // V4 Final Affordability Weighting:
+  // CFG: 40%, Interest: 30%, Down Payment: 30%
+  const score = Math.round(
+    cfgScore * 0.40 +
+    interestScore * 0.30 +
+    downPaymentScore * 0.30
+  );
   
   let details = "";
-  if (cfgScore === 0) details = `This car is far above your safe buying range. It could severely strain your finances.`;
-  else if (cfgScore < 40) details = `This car exceeds your safe budget by a significant margin. Consider a less expensive option.`;
-  else if (totalBurden > 25) details = `Total car costs (${totalBurden.toFixed(0)}% of income) are dangerously high. This could strain your budget.`;
+  if (cfgScore <= 5) details = `DANGER: This car is far above your safe buying range. It could severely strain your finances.`;
+  else if (cfgScore <= 20) details = `This car is ${cfgPercent.toFixed(0)}% above your maximum safe budget. Consider a much less expensive option.`;
+  else if (cfgScore < 40) details = `This car exceeds your safe budget significantly. Consider a less expensive option.`;
+  else if (totalBurden > 25) details = `Total car costs (${totalBurden.toFixed(0)}% of income) are dangerously high.`;
   else if (paymentBurden > 15) details = `Payment alone is ${paymentBurden.toFixed(0)}% of income. This is higher than recommended.`;
   else if (score >= 80) details = `Car fits comfortably within your budget. Total cost is ${totalBurden.toFixed(0)}% of income.`;
   else details = `At ${totalBurden.toFixed(0)}% of income, this is manageable but be mindful of other expenses.`;
@@ -368,82 +409,108 @@ function calcAffordability(
   return { score, details };
 }
 
-function generateRecommendation(overall: number, pillars: ScoreResult['pillars'], dpgPercent: number, cfgPercent: number): string {
+// V4 Recommendation generator
+function generateRecommendation(
+  overall: number, 
+  pillars: ScoreResult['pillars'], 
+  dpgPercent: number, 
+  cfgPercent: number,
+  sanityFlags: string[],
+  autoFail: boolean
+): string {
+  if (autoFail) {
+    return `🚨 CRITICAL: This deal failed basic sanity checks. ${sanityFlags.join(" ")} This deal is financially unsafe and priced far above market norms. Do not proceed under any circumstances.`;
+  }
+  
   const warnings: string[] = [];
   
-  if (dpgPercent > 15) warnings.push("significantly overpriced");
-  if (cfgPercent > 25) warnings.push("beyond your safe budget");
-  if (pillars.affordability.score < 40) warnings.push("could strain your finances");
+  if (dpgPercent > 50) warnings.push("massively overpriced");
+  else if (dpgPercent > 30) warnings.push("severely overpriced");
+  else if (dpgPercent > 15) warnings.push("significantly overpriced");
+  
+  if (cfgPercent > 50) warnings.push("way beyond your safe budget");
+  else if (cfgPercent > 25) warnings.push("beyond your safe budget");
+  
+  if (pillars.affordability.score < 30) warnings.push("could devastate your finances");
+  else if (pillars.affordability.score < 50) warnings.push("could strain your finances");
+  
   if (pillars.reliability.score < 60) warnings.push("reliability concerns");
   
   if (overall >= 80) {
-    return "This looks like a solid deal! The numbers check out well across all five pillars. The price is fair, and it fits your budget. If it feels right, you can move forward with confidence.";
+    return "This looks like a solid deal! The numbers check out well across all pillars. The price is fair, and it fits your budget. If it feels right, you can move forward with confidence.";
   } else if (overall >= 60) {
     const weakest = Object.entries(pillars).sort((a, b) => a[1].score - b[1].score)[0];
     return `This deal is okay but has room for improvement. Focus on ${weakest[0].replace(/([A-Z])/g, ' $1').toLowerCase().trim()}—it's pulling your score down. Consider negotiating or shopping around.`;
   } else if (overall >= 40) {
-    return `Caution advised. This deal has concerns: ${warnings.join(", ")}. We recommend getting additional quotes or considering different vehicles before committing.`;
+    return `Caution advised. This deal has concerns: ${warnings.length > 0 ? warnings.join(", ") : "multiple red flags"}. We recommend getting additional quotes or considering different vehicles before committing.`;
   } else {
-    return `This deal has significant red flags: ${warnings.join(", ")}. We strongly recommend walking away and exploring better options. Your financial health is more important than any single car.`;
+    return `🚨 This deal has significant red flags: ${warnings.length > 0 ? warnings.join(", ") : "major financial concerns"}. We strongly recommend walking away and exploring better options. Your financial health is more important than any single car.`;
   }
 }
 
-// Main scoring function
+// ============= MAIN SCORING FUNCTION =============
+
 export function calculateDuoDriveScore(input: DealInput): ScoreResult {
-  const effectivePrice = (input.negotiatedPrice || input.askingPrice) - input.downPayment - input.tradeIn;
-  const totalFees = input.docFee + input.dealerFee + input.addOns + input.taxes + input.registration;
-  const loanAmount = Math.max(0, effectivePrice + totalFees);
+  const askingPrice = input.negotiatedPrice || input.askingPrice;
   
-  // Calculate payments
+  // V4: Calculate True Market Price
+  const trueMarketPrice = estimateTMP(input.year, input.mileage, input.estimatedMarketValue);
+  
+  // V4: Apply sanity checks FIRST
+  const sanity = applySanityChecks(askingPrice, trueMarketPrice, input.year);
+  
+  // V4: Calculate DPG (Deal Price Gap)
+  const dpg = computeDPG(askingPrice, trueMarketPrice);
+  
+  // V4: Calculate CMSP and CFG
+  const customerMaxSafePrice = computeCMSP(input.monthlyIncome, input.term);
+  const cfg = computeCFG(askingPrice, customerMaxSafePrice);
+  
+  // Calculate loan details
+  const totalFees = input.docFee + input.dealerFee + input.addOns + input.taxes + input.registration;
+  const effectivePrice = askingPrice - input.downPayment - input.tradeIn + totalFees;
+  const loanAmount = Math.max(0, effectivePrice);
+  
+  // V4: Loan impact and down payment scores
+  const loanImpact = computeLoanImpact(askingPrice, input.downPayment, input.apr, input.term);
+  const downPaymentScore = computeDownPaymentScore(input.downPayment, askingPrice);
+  
+  // Calculate monthly costs
   const monthlyPayment = calculateMonthlyPayment(loanAmount, input.apr, input.term);
   const totalPaid = monthlyPayment * input.term;
   const totalInterest = totalPaid - loanAmount;
-  const interestRatio = loanAmount > 0 ? (totalInterest / loanAmount) * 100 : 0;
+  const interestRatio = loanAmount > 0 ? totalInterest / loanAmount : 0;
   const totalCost = totalPaid + input.downPayment + input.tradeIn;
-  
-  // V3 Calculations
-  const trueMarketPrice = input.estimatedMarketValue 
-    ? calculateTrueMarketPrice(input.estimatedMarketValue, input.year, input.mileage, input.trim)
-    : input.askingPrice * 0.9; // Fallback: assume 10% markup if no estimate
-  
-  const dpg = calculateDealPriceGap(input.askingPrice, trueMarketPrice);
-  const customerMaxSafePrice = calculateCustomerMaxSafePrice(input.monthlyIncome, input.apr, input.term);
-  const cfg = calculateCustomerFitGap(input.askingPrice, customerMaxSafePrice);
-  
-  // Calculate costs
   const totalMonthlyCost = monthlyPayment + input.insurance + input.fuelCost + input.maintenance;
   const paymentBurdenPercent = (monthlyPayment / input.monthlyIncome) * 100;
   const operatingCostBurden = (totalMonthlyCost / input.monthlyIncome) * 100;
   
-  // Calculate pillars
+  // Calculate traditional pillars
   const depreciation = calcDepreciation(input.year, input.mileage);
   const reliability = calcReliability(input.make, input.mileage);
   const safety = calcSafety(input.year, input.make);
+  
+  // V4: Updated deal health using DPG
   const dealHealth = calcDealHealth(
     dpg.score,
     input.docFee,
     input.dealerFee,
     input.addOns,
-    input.askingPrice,
+    askingPrice,
     input.apr,
-    input.creditScore
-  );
-  const affordability = calcAffordability(
-    cfg.score,
-    monthlyPayment,
-    input.insurance,
-    input.fuelCost,
-    input.maintenance,
-    input.monthlyIncome
+    input.creditScore,
+    dpg.gapPercent
   );
   
-  // Calculate overall score (weighted average)
-  const overall = Math.round(
-    depreciation.score * 0.15 +
-    reliability.score * 0.20 +
-    safety.score * 0.15 +
-    dealHealth.score * 0.25 +
-    affordability.score * 0.25
+  // V4: Updated affordability using CFG, interest, and down payment
+  const affordability = calcAffordability(
+    cfg.score,
+    loanImpact.interestScore,
+    downPaymentScore,
+    monthlyPayment,
+    totalMonthlyCost,
+    input.monthlyIncome,
+    cfg.gapPercent
   );
   
   const pillars = {
@@ -454,15 +521,58 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
     affordability,
   };
   
+  // V4: If sanity checks failed, override score
+  if (sanity.autoFail) {
+    return {
+      overall: sanity.autoFailScore,
+      pillars: {
+        depreciation,
+        reliability,
+        safety,
+        dealHealth: { score: sanity.autoFailScore, details: sanity.errors.join(" ") },
+        affordability: { score: sanity.autoFailScore, details: "Deal failed sanity checks - do not proceed." },
+      },
+      recommendation: generateRecommendation(sanity.autoFailScore, pillars, dpg.gapPercent, cfg.gapPercent, sanity.errors, true),
+      monthlyPayment: Math.round(monthlyPayment),
+      totalCost: Math.round(totalCost),
+      loanAmount: Math.round(loanAmount),
+      totalInterest: Math.round(totalInterest),
+      interestRatio: Math.round(interestRatio * 100) / 100,
+      trueMarketPrice: Math.round(trueMarketPrice),
+      dealPriceGap: Math.round(dpg.gap),
+      dealPriceGapPercent: Math.round(dpg.gapPercent * 10) / 10,
+      customerMaxSafePrice: Math.round(customerMaxSafePrice),
+      customerFitGap: Math.round(cfg.gap),
+      customerFitGapPercent: Math.round(cfg.gapPercent * 10) / 10,
+      paymentBurdenPercent: Math.round(paymentBurdenPercent * 10) / 10,
+      operatingCostBurden: Math.round(operatingCostBurden * 10) / 10,
+      totalMonthlyCost: Math.round(totalMonthlyCost),
+      sanityFlags: sanity.errors,
+      autoFail: true,
+    };
+  }
+  
+  // V4: Final Score Weighting
+  // DPG: 40% (biggest factor - is the price sane?)
+  // CFG: 30% (can buyer afford it?)
+  // Interest: 15% (long-term safety)
+  // Down Payment: 15% (buyer equity)
+  const overall = Math.round(
+    dpg.score * 0.40 +
+    cfg.score * 0.30 +
+    loanImpact.interestScore * 0.15 +
+    downPaymentScore * 0.15
+  );
+  
   return {
     overall,
     pillars,
-    recommendation: generateRecommendation(overall, pillars, dpg.gapPercent, cfg.gapPercent),
+    recommendation: generateRecommendation(overall, pillars, dpg.gapPercent, cfg.gapPercent, sanity.errors, false),
     monthlyPayment: Math.round(monthlyPayment),
     totalCost: Math.round(totalCost),
     loanAmount: Math.round(loanAmount),
     totalInterest: Math.round(totalInterest),
-    interestRatio: Math.round(interestRatio * 10) / 10,
+    interestRatio: Math.round(interestRatio * 100) / 100,
     trueMarketPrice: Math.round(trueMarketPrice),
     dealPriceGap: Math.round(dpg.gap),
     dealPriceGapPercent: Math.round(dpg.gapPercent * 10) / 10,
@@ -472,6 +582,8 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
     paymentBurdenPercent: Math.round(paymentBurdenPercent * 10) / 10,
     operatingCostBurden: Math.round(operatingCostBurden * 10) / 10,
     totalMonthlyCost: Math.round(totalMonthlyCost),
+    sanityFlags: sanity.errors,
+    autoFail: false,
   };
 }
 
@@ -487,5 +599,6 @@ export function getDealHealthLabel(score: number): string {
   if (score >= 80) return "Great Deal";
   if (score >= 60) return "Fair Deal";
   if (score >= 40) return "Needs Negotiation";
-  return "Overpriced";
+  if (score >= 20) return "Overpriced";
+  return "Walk Away";
 }

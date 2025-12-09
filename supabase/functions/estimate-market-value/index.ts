@@ -1,8 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { 
+  checkRateLimit, 
+  getClientIP, 
+  rateLimitExceededResponse 
+} from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Rate limit: 15 requests per minute per IP
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 15,
+  windowMs: 60 * 1000,
+  keyPrefix: "estimate-market-value",
 };
 
 interface VehicleInfo {
@@ -19,6 +31,15 @@ serve(async (req) => {
   }
 
   try {
+    // Check rate limit
+    const clientIP = getClientIP(req);
+    const rateLimitResult = checkRateLimit(clientIP, RATE_LIMIT_CONFIG);
+    
+    if (!rateLimitResult.allowed) {
+      console.log(`Rate limit exceeded for IP: ${clientIP}`);
+      return rateLimitExceededResponse(rateLimitResult, corsHeaders);
+    }
+
     const vehicle: VehicleInfo = await req.json();
     console.log("Estimating market value for:", JSON.stringify(vehicle));
 

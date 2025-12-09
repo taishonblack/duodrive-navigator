@@ -43,6 +43,8 @@ export function EmailShareDialog({ scoreResult, dealData, trigger }: EmailShareD
     setIsSending(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const { data, error: fnError } = await supabase.functions.invoke("send-score-report", {
         body: {
           recipientEmail: email,
@@ -67,6 +69,7 @@ export function EmailShareDialog({ scoreResult, dealData, trigger }: EmailShareD
             affordability: scoreResult.pillars.affordability,
           },
         },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
       if (fnError) throw fnError;

@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { 
+  isValidUUID, 
+  isValidReminderType, 
+  sanitizeForHtml,
+  validationErrorResponse,
+  type ValidationError 
+} from "../_shared/validation.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -13,6 +20,42 @@ interface ReminderRequest {
   sessionId?: string;
   requestId?: string;
   reminderType: "session_starting" | "session_claimed" | "session_scheduled";
+}
+
+function validateRequest(data: unknown): { valid: true; data: ReminderRequest } | { valid: false; errors: ValidationError[] } {
+  const errors: ValidationError[] = [];
+  
+  if (!data || typeof data !== "object") {
+    return { valid: false, errors: [{ field: "body", message: "Request body must be an object" }] };
+  }
+  
+  const req = data as Record<string, unknown>;
+  
+  // Must have either sessionId or requestId
+  if (!req.sessionId && !req.requestId) {
+    errors.push({ field: "sessionId/requestId", message: "Either sessionId or requestId is required" });
+  }
+  
+  // Validate sessionId if provided
+  if (req.sessionId !== undefined && !isValidUUID(req.sessionId)) {
+    errors.push({ field: "sessionId", message: "Invalid sessionId format (must be UUID)" });
+  }
+  
+  // Validate requestId if provided
+  if (req.requestId !== undefined && !isValidUUID(req.requestId)) {
+    errors.push({ field: "requestId", message: "Invalid requestId format (must be UUID)" });
+  }
+  
+  // Validate reminderType
+  if (!isValidReminderType(req.reminderType)) {
+    errors.push({ field: "reminderType", message: "reminderType must be one of: session_starting, session_claimed, session_scheduled" });
+  }
+  
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+  
+  return { valid: true, data: req as unknown as ReminderRequest };
 }
 
 const sessionTypeLabels = {
@@ -49,7 +92,16 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { sessionId, requestId, reminderType }: ReminderRequest = await req.json();
+    const rawData = await req.json();
+    
+    // Validate input
+    const validation = validateRequest(rawData);
+    if (!validation.valid) {
+      console.error("Validation failed:", validation.errors);
+      return validationErrorResponse(validation.errors, corsHeaders);
+    }
+    
+    const { sessionId, requestId, reminderType } = validation.data;
 
     console.log("Processing reminder:", { sessionId, requestId, reminderType });
 
@@ -166,6 +218,10 @@ serve(async (req) => {
       throw new Error("Either sessionId or requestId is required");
     }
 
+    // Sanitize data for HTML
+    const safeCustomerName = sanitizeForHtml(customerName);
+    const safeCoachName = coachName ? sanitizeForHtml(coachName) : null;
+
     // Build email content based on reminder type
     let subject: string;
     let htmlContent: string;
@@ -183,14 +239,14 @@ serve(async (req) => {
               <h1 style="color: white; margin: 0; font-size: 24px;">Your Session Starts Soon!</h1>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${customerName},</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${safeCustomerName},</p>
               <p style="font-size: 16px; color: #374151;">Your <strong>${sessionLabel}</strong> coaching session is about to begin!</p>
               
               <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 20px 0;">
                 <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">Session Details:</p>
                 <p style="margin: 5px 0; color: #111827;"><strong>📅 Date:</strong> ${formattedDate}</p>
                 <p style="margin: 5px 0; color: #111827;"><strong>🕐 Time:</strong> ${formattedTime}</p>
-                ${coachName ? `<p style="margin: 5px 0; color: #111827;"><strong>👤 Coach:</strong> ${coachName}</p>` : ""}
+                ${safeCoachName ? `<p style="margin: 5px 0; color: #111827;"><strong>👤 Coach:</strong> ${safeCoachName}</p>` : ""}
               </div>
 
               ${meetLink ? `
@@ -229,11 +285,11 @@ serve(async (req) => {
               <h1 style="color: white; margin: 0; font-size: 24px;">Coach Assigned!</h1>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${customerName},</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${safeCustomerName},</p>
               <p style="font-size: 16px; color: #374151;">Great news! A coach has been assigned to your <strong>${sessionLabel}</strong> session.</p>
               
               <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 20px 0;">
-                ${coachName ? `<p style="margin: 0 0 15px 0; font-size: 18px; color: #111827;"><strong>Your Coach:</strong> ${coachName}</p>` : ""}
+                ${safeCoachName ? `<p style="margin: 0 0 15px 0; font-size: 18px; color: #111827;"><strong>Your Coach:</strong> ${safeCoachName}</p>` : ""}
                 <p style="margin: 5px 0; color: #111827;"><strong>📅 Date:</strong> ${formattedDate}</p>
                 <p style="margin: 5px 0; color: #111827;"><strong>🕐 Time:</strong> ${formattedTime}</p>
               </div>
@@ -259,7 +315,7 @@ serve(async (req) => {
               <h1 style="color: white; margin: 0; font-size: 24px;">Session Confirmed!</h1>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${customerName},</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${safeCustomerName},</p>
               <p style="font-size: 16px; color: #374151;">Your <strong>${sessionLabel}</strong> coaching session has been scheduled!</p>
               
               <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 20px 0;">

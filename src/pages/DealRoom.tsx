@@ -200,20 +200,6 @@ const glossaryTerms = [
   { term: "Ground Clearance", definition: "Distance between the lowest point of the vehicle and the ground. Important for off-road.", category: "features", tip: "Higher clearance helps with snow and rough roads but hurts fuel economy." },
 ];
 
-interface ScoreResult {
-  overall: number;
-  pillars: {
-    depreciation: { score: number; details: string };
-    reliability: { score: number; details: string };
-    safety: { score: number; details: string };
-    dealHealth: { score: number; details: string };
-    affordability: { score: number; details: string };
-  };
-  recommendation: string;
-  monthlyPayment: number;
-  totalCost: number;
-}
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

@@ -125,9 +125,9 @@ export default function CoachDashboard() {
 
   const fetchRequests = async (coachId: string) => {
     try {
-      // Fetch pending requests (queue)
+      // Fetch pending requests from secure view (masks contact info)
       const { data: pending, error: pendingError } = await supabase
-        .from("coaching_requests")
+        .from("coaching_requests_coach_view")
         .select("*")
         .eq("status", "pending")
         .order("scheduled_date", { ascending: true })
@@ -136,9 +136,9 @@ export default function CoachDashboard() {
       if (pendingError) throw pendingError;
       setPendingRequests(pending || []);
 
-      // Fetch my claimed requests
+      // Fetch my claimed requests (use secure view for consistent data)
       const { data: mine, error: mineError } = await supabase
-        .from("coaching_requests")
+        .from("coaching_requests_coach_view")
         .select("*")
         .eq("coach_id", coachId)
         .neq("status", "pending")

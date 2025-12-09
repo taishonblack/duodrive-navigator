@@ -438,10 +438,37 @@ export default function DealRoom() {
 
     setIsLoading(true);
     try {
-      const payload = {
+      // Step 1: Get AI market value estimate
+      let estimatedMarketValue: number | undefined;
+      
+      try {
+        const { data: marketData, error: marketError } = await supabase.functions.invoke('estimate-market-value', {
+          body: {
+            year: parseInt(dealData.year),
+            make: dealData.make,
+            model: dealData.model || "Unknown",
+            trim: dealData.trim || undefined,
+            mileage: parseNumber(dealData.mileage) || 50000,
+          },
+        });
+        
+        if (!marketError && marketData?.estimatedValue) {
+          estimatedMarketValue = marketData.estimatedValue;
+          toast({
+            title: "Market Value Estimated",
+            description: `AI estimates this vehicle at $${estimatedMarketValue.toLocaleString()} (${marketData.confidence} confidence)`,
+          });
+        }
+      } catch (marketErr) {
+        console.log("Market estimation failed, using fallback:", marketErr);
+      }
+
+      // Step 2: Calculate score using frontend engine
+      const input = {
         year: parseInt(dealData.year) || new Date().getFullYear(),
         make: dealData.make,
         model: dealData.model || "Unknown",
+        trim: dealData.trim || undefined,
         mileage: parseNumber(dealData.mileage),
         askingPrice: parseNumber(dealData.askingPrice),
         negotiatedPrice: parseNumber(dealData.negotiatedPrice) || undefined,
@@ -459,19 +486,16 @@ export default function DealRoom() {
         insurance: parseNumber(dealData.insurance) || 150,
         fuelCost: parseNumber(dealData.fuelCost) || 200,
         maintenance: parseNumber(dealData.maintenance) || 50,
+        estimatedMarketValue,
       };
 
-      const { data, error } = await supabase.functions.invoke('duodrive-score', {
-        body: payload,
-      });
-
-      if (error) throw error;
+      const result = calculateDuoDriveScore(input);
       
-      setScoreResult(data);
-      setActiveTab("overview");
+      setScoreResult(result);
+      setActiveTab("calculator");
       toast({
         title: "Score Calculated!",
-        description: `Your DuoDrive Score is ${data.overall}`,
+        description: `Your DuoDrive Score is ${result.overall}`,
       });
     } catch (error) {
       console.error('Error calculating score:', error);
@@ -953,61 +977,216 @@ export default function DealRoom() {
 
           {/* CALCULATOR TAB */}
           <TabsContent value="calculator" className="animate-fade-in">
-            <div className="max-w-2xl mx-auto p-8 rounded-2xl bg-card border border-border shadow-card">
-              <h2 className="text-2xl font-semibold text-foreground mb-6 text-center">
-                Payment Calculator
-              </h2>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Vehicle Price</Label>
-                    <Input placeholder="$32,000" />
+            {!scoreResult ? (
+              <div className="max-w-2xl mx-auto p-8 rounded-2xl bg-card border border-border shadow-card text-center">
+                <Calculator className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">No Analysis Yet</h2>
+                <p className="text-muted-foreground mb-6">
+                  Fill in your deal details and click "Evaluate My Deal" to see the full analysis.
+                </p>
+                <Button onClick={() => setActiveTab("deal")}>Enter Deal Details</Button>
+              </div>
+            ) : (
+              <div className="max-w-4xl mx-auto space-y-6">
+                {/* Fairness Meter */}
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-elevated">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-foreground">Deal Fairness Meter</h2>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                      scoreResult.pillars.dealHealth.score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      scoreResult.pillars.dealHealth.score >= 60 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                      scoreResult.pillars.dealHealth.score >= 40 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                      {scoreResult.pillars.dealHealth.score >= 80 ? <CheckCircle2 className="h-4 w-4" /> :
+                       scoreResult.pillars.dealHealth.score >= 40 ? <AlertTriangle className="h-4 w-4" /> :
+                       <XCircle className="h-4 w-4" />}
+                      {getDealHealthLabel(scoreResult.pillars.dealHealth.score)}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Down Payment</Label>
-                    <Input placeholder="$5,000" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Trade-In</Label>
-                    <Input placeholder="$0" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>APR (%)</Label>
-                    <Input placeholder="6.5" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Loan Term</Label>
-                    <Select defaultValue="60">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="36">36 months</SelectItem>
-                        <SelectItem value="48">48 months</SelectItem>
-                        <SelectItem value="60">60 months</SelectItem>
-                        <SelectItem value="72">72 months</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Est. Tax Rate (%)</Label>
-                    <Input placeholder="8.5" />
+                  <div className="relative">
+                    <Progress 
+                      value={scoreResult.pillars.dealHealth.score} 
+                      className="h-4 rounded-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                      <span>Overpriced</span>
+                      <span>Needs Work</span>
+                      <span>Fair</span>
+                      <span>Great Deal</span>
+                    </div>
                   </div>
                 </div>
 
-                <Button className="w-full" size="lg">
-                  Calculate Payment
-                </Button>
+                {/* V3 Metrics Grid */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* True Market Price */}
+                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">True Market Price (TMP)</p>
+                        <p className="text-2xl font-bold text-foreground">${scoreResult.trueMarketPrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">AI-estimated fair value based on year, make, model, and mileage</p>
+                  </div>
 
-                <div className="p-6 rounded-xl bg-muted text-center">
-                  <p className="text-sm text-muted-foreground">Estimated Monthly Payment</p>
-                  <p className="text-4xl font-bold text-foreground mt-2">$487</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Total Interest: $2,220 | Total Cost: $29,220
-                  </p>
+                  {/* Deal Price Gap */}
+                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                        scoreResult.dealPriceGapPercent <= 0 ? 'bg-green-100 dark:bg-green-900/30' :
+                        scoreResult.dealPriceGapPercent <= 10 ? 'bg-yellow-100 dark:bg-yellow-900/30' :
+                        'bg-red-100 dark:bg-red-900/30'
+                      }`}>
+                        <TrendingUp className={`h-5 w-5 ${
+                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.dealPriceGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Deal Price Gap (DPG)</p>
+                        <p className={`text-2xl font-bold ${
+                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.dealPriceGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {scoreResult.dealPriceGap >= 0 ? '+' : ''}${scoreResult.dealPriceGap.toLocaleString()} ({scoreResult.dealPriceGapPercent}%)
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {scoreResult.dealPriceGapPercent <= 0 ? 'Great! Price is at or below market value.' :
+                       scoreResult.dealPriceGapPercent <= 10 ? 'Fair price, close to market value.' :
+                       scoreResult.dealPriceGapPercent <= 20 ? 'Overpriced. Try to negotiate down.' :
+                       'Significantly overpriced. Consider walking away.'}
+                    </p>
+                  </div>
+
+                  {/* Customer Max Safe Price */}
+                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Your Safe Max Price (CMSP)</p>
+                        <p className="text-2xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Based on 12% of your income rule for monthly payment</p>
+                  </div>
+
+                  {/* Customer Fit Gap */}
+                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                        scoreResult.customerFitGapPercent <= 0 ? 'bg-green-100 dark:bg-green-900/30' :
+                        scoreResult.customerFitGapPercent <= 10 ? 'bg-yellow-100 dark:bg-yellow-900/30' :
+                        scoreResult.customerFitGapPercent <= 25 ? 'bg-orange-100 dark:bg-orange-900/30' :
+                        'bg-red-100 dark:bg-red-900/30'
+                      }`}>
+                        <Heart className={`h-5 w-5 ${
+                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Budget Fit Gap (CFG)</p>
+                        <p className={`text-2xl font-bold ${
+                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {scoreResult.customerFitGap >= 0 ? '+' : ''}${scoreResult.customerFitGap.toLocaleString()} ({scoreResult.customerFitGapPercent}%)
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {scoreResult.customerFitGapPercent <= 0 ? 'Fits within your safe budget!' :
+                       scoreResult.customerFitGapPercent <= 10 ? 'Slightly above safe range.' :
+                       scoreResult.customerFitGapPercent <= 25 ? 'Risky stretch for your budget.' :
+                       'Far above what you can safely afford.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Financial Details */}
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Loan & Payment Details</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">${scoreResult.monthlyPayment.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">Monthly Payment</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">${scoreResult.loanAmount.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">Loan Amount</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">${scoreResult.totalInterest.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">Total Interest</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-muted">
+                      <p className="text-2xl font-bold text-foreground">{scoreResult.interestRatio}%</p>
+                      <p className="text-sm text-muted-foreground">Interest Ratio</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monthly Burden Analysis */}
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Monthly Cost Burden</h3>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-xl bg-muted">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">Payment Burden</span>
+                        <span className={`text-lg font-bold ${
+                          scoreResult.paymentBurdenPercent <= 10 ? 'text-green-600' :
+                          scoreResult.paymentBurdenPercent <= 15 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>{scoreResult.paymentBurdenPercent}%</span>
+                      </div>
+                      <Progress value={Math.min(scoreResult.paymentBurdenPercent * 4, 100)} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">Target: under 12% of income</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-muted">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">Total Operating Cost</span>
+                        <span className={`text-lg font-bold ${
+                          scoreResult.operatingCostBurden <= 15 ? 'text-green-600' :
+                          scoreResult.operatingCostBurden <= 20 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>{scoreResult.operatingCostBurden}%</span>
+                      </div>
+                      <Progress value={Math.min(scoreResult.operatingCostBurden * 3.3, 100)} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">Target: under 20% of income</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-muted">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">Total Monthly Cost</span>
+                        <span className="text-lg font-bold text-foreground">${scoreResult.totalMonthlyCost.toLocaleString()}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3">Payment + insurance + fuel + maintenance</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* View Full Score Button */}
+                <div className="text-center">
+                  <Button onClick={() => setActiveTab("overview")} size="lg">
+                    View Full Score Breakdown
+                  </Button>
                 </div>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           {/* AI COPILOT TAB */}

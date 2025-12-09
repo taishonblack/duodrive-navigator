@@ -191,6 +191,16 @@ export default function CoachDashboard() {
 
       if (error) throw error;
 
+      // Send email notification to customer
+      try {
+        await supabase.functions.invoke("send-session-reminder", {
+          body: { requestId, reminderType: "session_claimed" },
+        });
+      } catch (emailError) {
+        console.error("Failed to send notification email:", emailError);
+        // Don't fail the claim if email fails
+      }
+
       toast({
         title: "Request claimed!",
         description: "This request has been assigned to you.",
@@ -227,7 +237,7 @@ export default function CoachDashboard() {
 
       if (error) throw error;
 
-      // If starting session, create coaching_session record
+      // If starting session, create coaching_session record and send notification
       if (newStatus === "in_progress") {
         const request = myRequests.find(r => r.id === requestId);
         if (request) {
@@ -241,6 +251,8 @@ export default function CoachDashboard() {
             .eq("request_id", requestId)
             .maybeSingle();
 
+          let sessionId = existingSession?.id;
+
           if (!existingSession) {
             const { data: requestData } = await supabase
               .from("coaching_requests")
@@ -249,7 +261,7 @@ export default function CoachDashboard() {
               .single();
 
             if (requestData) {
-              await supabase
+              const { data: newSession } = await supabase
                 .from("coaching_sessions")
                 .insert({
                   request_id: requestId,
@@ -259,7 +271,22 @@ export default function CoachDashboard() {
                   scheduled_duration_minutes: durationMap[request.session_type],
                   started_at: new Date().toISOString(),
                   status: "active",
-                });
+                })
+                .select()
+                .single();
+              
+              sessionId = newSession?.id;
+            }
+          }
+
+          // Send session starting notification
+          if (sessionId) {
+            try {
+              await supabase.functions.invoke("send-session-reminder", {
+                body: { sessionId, reminderType: "session_starting" },
+              });
+            } catch (emailError) {
+              console.error("Failed to send session notification:", emailError);
             }
           }
         }

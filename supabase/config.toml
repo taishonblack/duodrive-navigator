@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.create-masked-phone]
 verify_jwt = true
+
+[functions.send-session-reminder]
+verify_jwt = false

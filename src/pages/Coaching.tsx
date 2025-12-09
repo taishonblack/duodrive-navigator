@@ -1,10 +1,35 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { CoachingCard } from "@/components/CoachingCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Upload, Target, MessageCircle, Phone, Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Upload, Target, MessageCircle, Phone, Users, Loader2, Video } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { SessionTimer } from "@/components/SessionTimer";
+import { format } from "date-fns";
+
+interface ActiveSession {
+  id: string;
+  session_type: "text" | "phone" | "video";
+  scheduled_duration_minutes: number;
+  started_at: string | null;
+  status: string;
+  meet_link: string | null;
+  masked_phone_number: string | null;
+  coach_name?: string;
+}
+
+interface CoachingRequest {
+  id: string;
+  session_type: "text" | "phone" | "video";
+  status: string;
+  scheduled_date: string;
+  scheduled_time: string;
+}
 
 const coachingTiers = [
   {
@@ -50,9 +75,225 @@ const coachingTiers = [
   },
 ];
 
+const sessionTypeIcons = {
+  text: MessageCircle,
+  phone: Phone,
+  video: Video,
+};
+
 export default function Coaching() {
+  const [user, setUser] = useState<any>(null);
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [upcomingRequests, setUpcomingRequests] = useState<CoachingRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    checkUserAndFetchSessions();
+  }, []);
+
+  const checkUserAndFetchSessions = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+
+      if (currentUser) {
+        // Fetch active sessions for this customer
+        const { data: sessions, error: sessionsError } = await supabase
+          .from("coaching_sessions")
+          .select(`
+            id,
+            session_type,
+            scheduled_duration_minutes,
+            started_at,
+            status,
+            meet_link,
+            masked_phone_number,
+            coach_id
+          `)
+          .eq("customer_id", currentUser.id)
+          .in("status", ["scheduled", "active"])
+          .order("created_at", { ascending: false });
+
+        if (!sessionsError && sessions) {
+          // Fetch coach names
+          const coachIds = sessions.map(s => s.coach_id).filter(Boolean);
+          let coachNames: Record<string, string> = {};
+          
+          if (coachIds.length > 0) {
+            const { data: coaches } = await supabase
+              .from("coaches")
+              .select("id, display_name")
+              .in("id", coachIds);
+            
+            if (coaches) {
+              coaches.forEach(c => {
+                coachNames[c.id] = c.display_name;
+              });
+            }
+          }
+
+          setActiveSessions(sessions.map(s => ({
+            ...s,
+            coach_name: s.coach_id ? coachNames[s.coach_id] : undefined,
+          })));
+        }
+
+        // Fetch upcoming requests
+        const { data: requests, error: requestsError } = await supabase
+          .from("coaching_requests")
+          .select("id, session_type, status, scheduled_date, scheduled_time")
+          .eq("customer_id", currentUser.id)
+          .in("status", ["pending", "claimed"])
+          .order("scheduled_date", { ascending: true });
+
+        if (!requestsError && requests) {
+          setUpcomingRequests(requests);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Layout>
+      {/* Active Sessions Banner */}
+      {user && !isLoading && (activeSessions.length > 0 || upcomingRequests.length > 0) && (
+        <section className="py-6 bg-primary/5 border-b border-primary/10">
+          <div className="container mx-auto px-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Your Coaching Sessions</h2>
+            
+            {/* Active Sessions with Timer */}
+            {activeSessions.filter(s => s.status === "active" && s.started_at).length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Active Now</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeSessions
+                    .filter(s => s.status === "active" && s.started_at)
+                    .map((session) => (
+                      <div key={session.id} className="space-y-3">
+                        <SessionTimer
+                          sessionId={session.id}
+                          sessionType={session.session_type}
+                          scheduledDurationMinutes={session.scheduled_duration_minutes}
+                          startedAt={session.started_at}
+                          isCoach={false}
+                        />
+                        {/* Connection Info */}
+                        {session.session_type === "video" && session.meet_link && (
+                          <Card className="border-primary/20">
+                            <CardContent className="p-3">
+                              <p className="text-sm text-muted-foreground mb-2">Join your video call:</p>
+                              <Button asChild size="sm" className="w-full">
+                                <a href={session.meet_link} target="_blank" rel="noopener noreferrer">
+                                  <Video className="h-4 w-4 mr-2" />
+                                  Join Google Meet
+                                </a>
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {session.session_type === "phone" && session.masked_phone_number && (
+                          <Card className="border-primary/20">
+                            <CardContent className="p-3">
+                              <p className="text-sm text-muted-foreground mb-1">Call this number:</p>
+                              <p className="text-lg font-mono font-semibold text-foreground">
+                                {session.masked_phone_number}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {session.coach_name && (
+                          <p className="text-sm text-muted-foreground text-center">
+                            Coach: <span className="font-medium text-foreground">{session.coach_name}</span>
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Scheduled Sessions */}
+            {activeSessions.filter(s => s.status === "scheduled").length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Scheduled</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeSessions
+                    .filter(s => s.status === "scheduled")
+                    .map((session) => {
+                      const Icon = sessionTypeIcons[session.session_type];
+                      return (
+                        <Card key={session.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                                <Icon className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium capitalize">{session.session_type} Session</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {session.scheduled_duration_minutes} minutes
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="ml-auto">Scheduled</Badge>
+                            </div>
+                            {session.coach_name && (
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Coach: {session.coach_name}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming Requests (pending/claimed) */}
+            {upcomingRequests.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Upcoming Requests</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {upcomingRequests.map((request) => {
+                    const Icon = sessionTypeIcons[request.session_type];
+                    return (
+                      <Card key={request.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium capitalize text-sm">{request.session_type}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {format(new Date(request.scheduled_date), "MMM d")} at {request.scheduled_time}
+                              </p>
+                            </div>
+                            <Badge 
+                              variant="outline" 
+                              className={request.status === "claimed" 
+                                ? "bg-blue-500/10 text-blue-600 border-blue-500/20" 
+                                : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                              }
+                            >
+                              {request.status === "claimed" ? "Assigned" : "Pending"}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Hero */}
       <section className="py-16 md:py-24 gradient-hero">
         <div className="container mx-auto px-4">

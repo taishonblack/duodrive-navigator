@@ -63,7 +63,7 @@ export function CoachSchedulingForm({ dealId }: CoachSchedulingFormProps) {
         return;
       }
 
-      const { error } = await supabase.from("coaching_requests").insert({
+      const { data: insertedRequest, error } = await supabase.from("coaching_requests").insert({
         customer_id: user.id,
         deal_id: dealId || null,
         session_type: sessionType as "text" | "phone" | "video",
@@ -72,9 +72,21 @@ export function CoachSchedulingForm({ dealId }: CoachSchedulingFormProps) {
         phone_number: phone,
         email: email,
         notes: notes || null,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Send confirmation email to customer
+      if (insertedRequest) {
+        try {
+          await supabase.functions.invoke("send-session-reminder", {
+            body: { requestId: insertedRequest.id, reminderType: "session_scheduled" },
+          });
+        } catch (emailError) {
+          console.error("Failed to send confirmation email:", emailError);
+          // Don't fail the submission if email fails
+        }
+      }
 
       setIsSubmitted(true);
       toast({

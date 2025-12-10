@@ -99,11 +99,32 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
         },
+        "attention-pulse": {
+          "0%": { 
+            transform: "scale(1)",
+            boxShadow: "0 0 0 0 hsl(var(--primary) / 0.7)"
+          },
+          "70%": { 
+            transform: "scale(1.05)",
+            boxShadow: "0 0 0 15px hsl(var(--primary) / 0)"
+          },
+          "100%": { 
+            transform: "scale(1)",
+            boxShadow: "0 0 0 0 hsl(var(--primary) / 0)"
+          },
+        },
+        "wiggle": {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "25%": { transform: "rotate(-8deg)" },
+          "75%": { transform: "rotate(8deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
+        "attention-pulse": "attention-pulse 2s ease-in-out infinite",
+        "wiggle": "wiggle 0.5s ease-in-out infinite",
       },
     },
   },

@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -689,11 +689,6 @@ export default function DealRoom() {
         creditScore: extracted.creditScore || prev.creditScore,
       }));
 
-      toast({
-        title: "Deal Extracted!",
-        description: `Found ${extractedCount || newExtractedFields.size} fields. Check "The Deal" tab to review and add any missing details.`,
-      });
-
       // Clear the text input
       setDealTextInput("");
       
@@ -705,8 +700,100 @@ export default function DealRoom() {
       
       setChatMessages(prev => [...prev, {
         role: 'assistant',
-        content: `${extractedSummary} I've populated the deal form with ${extractedCount || newExtractedFields.size} fields. You can review them in "The Deal" tab.\n\nWould you like me to:\n• Analyze this deal and calculate your DuoDrive Score?\n• Explain any of the numbers I found?\n• Look for red flags in the pricing?`
+        content: `${extractedSummary} I've populated the deal form with ${extractedCount || newExtractedFields.size} fields.\n\nCalculating your DuoDrive Score now...`
       }]);
+
+      toast({
+        title: "Deal Extracted!",
+        description: `Found ${extractedCount || newExtractedFields.size} fields. Calculating score...`,
+      });
+
+      // Auto-calculate score if we have minimum required fields
+      const canCalculate = extracted.year && extracted.make && extracted.askingPrice;
+      if (canCalculate) {
+        // Use extracted data directly for immediate calculation
+        setTimeout(async () => {
+          try {
+            // Get market value estimate first
+            let estimatedMarketValue: number | undefined;
+            try {
+              const { data: marketData, error: marketError } = await supabase.functions.invoke('estimate-market-value', {
+                body: {
+                  year: parseInt(extracted.year),
+                  make: extracted.make,
+                  model: extracted.model || "Unknown",
+                  trim: extracted.trim || undefined,
+                  mileage: parseNumber(extracted.mileage) || 50000,
+                },
+              });
+              if (!marketError && marketData?.estimatedValue) {
+                estimatedMarketValue = marketData.estimatedValue;
+              }
+            } catch (marketErr) {
+              console.log("Market estimation failed, using fallback:", marketErr);
+            }
+
+            const input = {
+              year: parseInt(extracted.year) || new Date().getFullYear(),
+              make: extracted.make,
+              model: extracted.model || "Unknown",
+              trim: extracted.trim || undefined,
+              mileage: parseNumber(extracted.mileage),
+              askingPrice: parseNumber(extracted.askingPrice),
+              negotiatedPrice: parseNumber(extracted.negotiatedPrice) || undefined,
+              downPayment: parseNumber(extracted.downPayment),
+              tradeIn: parseNumber(extracted.tradeIn),
+              apr: parseNumber(extracted.apr) || 7.0,
+              term: parseInt(extracted.term) || 60,
+              docFee: parseNumber(extracted.docFee),
+              dealerFee: parseNumber(extracted.dealerFee),
+              addOns: parseNumber(extracted.addOns),
+              taxes: parseNumber(extracted.taxes),
+              registration: parseNumber(extracted.registration),
+              monthlyIncome: parseNumber(extracted.monthlyIncome) || 5000, // Default if not provided
+              creditScore: extracted.creditScore || "fair",
+              insurance: 150,
+              fuelCost: 200,
+              maintenance: 50,
+              estimatedMarketValue,
+            };
+
+            const result = calculateDuoDriveScore(input);
+            setScoreResult(result);
+
+            // Update chat with score result
+            const scoreMessage = result.overall >= 70 
+              ? `Great news! Your DuoDrive Score is **${result.overall}/100** - this looks like a ${result.overall >= 80 ? 'great' : 'decent'} deal!`
+              : result.overall >= 50 
+              ? `Your DuoDrive Score is **${result.overall}/100** - this deal has some concerns.`
+              : `⚠️ Your DuoDrive Score is **${result.overall}/100** - I'd recommend caution with this deal.`;
+
+            setChatMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                role: 'assistant',
+                content: `${extractedSummary}\n\n${scoreMessage}\n\n**Key findings:**\n• True Market Price: $${result.trueMarketPrice.toLocaleString()}\n• Deal Price Gap: ${result.dealPriceGapPercent >= 0 ? '+' : ''}${result.dealPriceGapPercent}%\n• Monthly Payment: $${result.monthlyPayment.toLocaleString()}\n\n${result.recommendation}\n\nWould you like me to explain any of these numbers or suggest negotiation strategies?`
+              };
+              return updated;
+            });
+
+            toast({
+              title: `DuoDrive Score: ${result.overall}`,
+              description: result.overall >= 70 ? "This looks like a good deal!" : "Review the analysis for concerns.",
+            });
+          } catch (scoreError) {
+            console.error("Auto-score calculation error:", scoreError);
+            setChatMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                role: 'assistant',
+                content: `${extractedSummary}\n\nI couldn't auto-calculate the score - you may need to add your monthly income in "The Deal" tab, then click "Calculate Score".`
+              };
+              return updated;
+            });
+          }
+        }, 100);
+      }
 
     } catch (error) {
       console.error("Text extraction error:", error);
@@ -717,6 +804,39 @@ export default function DealRoom() {
       });
     } finally {
       setIsExtractingText(false);
+    }
+  };
+
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        setDealTextInput(text.trim());
+        toast({
+          title: "Pasted from clipboard",
+          description: "Click 'Extract Deal Info' to analyze.",
+        });
+        // Auto-extract if text looks like deal info (has numbers)
+        if (/\d/.test(text)) {
+          // Set the text first, then trigger extraction
+          setTimeout(() => {
+            extractDealFromText();
+          }, 100);
+        }
+      } else {
+        toast({
+          title: "Clipboard empty",
+          description: "Copy some deal information first, then try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Clipboard access error:", error);
+      toast({
+        title: "Clipboard access denied",
+        description: "Please paste manually using Ctrl+V or Cmd+V.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1362,10 +1482,19 @@ TTL & fees $2,800`}
                       )}
                     </Button>
                     <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={pasteFromClipboard}
+                        disabled={isExtractingText}
+                        className="h-11"
+                      >
+                        <Clipboard className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Paste</span>
+                      </Button>
                       <Label htmlFor="file-upload-copilot" className="cursor-pointer">
                         <div className="flex items-center gap-2 px-4 py-2 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
                           <ImagePlus className="h-4 w-4" />
-                          <span className="hidden sm:inline">Upload Image</span>
+                          <span className="hidden sm:inline">Image</span>
                         </div>
                         <Input
                           id="file-upload-copilot"

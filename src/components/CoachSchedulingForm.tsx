@@ -231,12 +231,21 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
         } catch (emailError) {
           console.error("Failed to send confirmation email:", emailError);
         }
+
+        // Notify available coaches about the new request
+        try {
+          await supabase.functions.invoke("notify-coaches", {
+            body: { requestId: insertedRequest.id },
+          });
+        } catch (notifyError) {
+          console.error("Failed to notify coaches:", notifyError);
+        }
       }
 
       setIsSubmitted(true);
       toast({
         title: "Request submitted!",
-        description: "A coach will review your deal and reach out at your scheduled time.",
+        description: "A coach will review your request and respond within 2-4 business hours.",
       });
     } catch (error: any) {
       console.error("Error scheduling:", error);

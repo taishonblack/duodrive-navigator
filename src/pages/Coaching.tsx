@@ -1,13 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Layout } from "@/components/Layout";
 import { CoachingCard } from "@/components/CoachingCard";
+import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Upload, Target, MessageCircle, Phone, Users, Loader2, Video } from "lucide-react";
+import { Calendar, Target, MessageCircle, Phone, Users, Video, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SessionTimer } from "@/components/SessionTimer";
 import { format } from "date-fns";
@@ -37,6 +35,7 @@ const coachingTiers = [
     price: 29,
     duration: "10 minutes",
     icon: MessageCircle,
+    tier: "quick",
     features: [
       "Text-based consultation",
       "Quick deal review",
@@ -50,6 +49,7 @@ const coachingTiers = [
     price: 99,
     duration: "30 minutes",
     icon: Phone,
+    tier: "live",
     features: [
       "Live phone consultation",
       "In-depth deal analysis",
@@ -64,6 +64,7 @@ const coachingTiers = [
     price: 499,
     duration: "End-to-end support",
     icon: Users,
+    tier: "concierge",
     features: [
       "Complete buying assistance",
       "Direct dealer communication",
@@ -86,9 +87,18 @@ export default function Coaching() {
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [upcomingRequests, setUpcomingRequests] = useState<CoachingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTier, setSelectedTier] = useState<string>("");
+  const bookingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkUserAndFetchSessions();
+    
+    // Check if we need to scroll to booking section (from redirect)
+    if (window.location.hash === "#book-session") {
+      setTimeout(() => {
+        bookingRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
   }, []);
 
   const checkUserAndFetchSessions = async () => {
@@ -324,6 +334,11 @@ export default function Coaching() {
                   duration={tier.duration}
                   features={tier.features}
                   popular={tier.popular}
+                  icon={tier.icon}
+                  onGetStarted={() => {
+                    setSelectedTier(tier.tier);
+                    bookingRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }}
                 />
               </div>
             ))}
@@ -353,7 +368,7 @@ export default function Coaching() {
               </div>
               <h3 className="text-lg font-semibold text-foreground">2. Share Your Deal</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Upload your quote and share any concerns or questions.
+                Connect a deal from your Deal Room or describe your situation.
               </p>
             </div>
             <div className="text-center animate-fade-up" style={{ animationDelay: "200ms" }}>
@@ -370,59 +385,16 @@ export default function Coaching() {
       </section>
 
       {/* Booking Form */}
-      <section className="py-16">
+      <section id="book-session" ref={bookingRef} className="py-16 scroll-mt-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-xl mx-auto">
-            <div className="p-8 rounded-2xl bg-card border border-border shadow-elevated">
-              <h2 className="text-2xl font-semibold text-foreground text-center mb-6">
-                Book a Session
-              </h2>
-              <form className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Your Name</Label>
-                  <Input id="name" placeholder="John Smith" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (optional)</Label>
-                  <Input id="phone" placeholder="(555) 123-4567" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tier">Coaching Tier</Label>
-                  <select
-                    id="tier"
-                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="quick">Quick Text Help - $29</option>
-                    <option value="live">Live Phone Session - $99</option>
-                    <option value="concierge">Full Concierge - $499</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goals">What do you need help with?</Label>
-                  <Textarea
-                    id="goals"
-                    placeholder="Tell us about your deal and what questions you have..."
-                    rows={4}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Upload Documents (optional)</Label>
-                  <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Drag and drop or click to upload
-                    </p>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" size="lg">
-                  Continue to Booking
-                </Button>
-              </form>
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-2">Book a Session</h2>
+              <p className="text-muted-foreground">
+                Schedule a time that works for you. Our coaches will be ready to help.
+              </p>
             </div>
+            <CoachSchedulingForm preselectedTier={selectedTier} />
           </div>
         </div>
       </section>

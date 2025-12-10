@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
+import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2 } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -223,6 +224,7 @@ export default function DealRoom() {
   const [dealTextInput, setDealTextInput] = useState("");
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isSmartFilling, setIsSmartFilling] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const { toast } = useToast();
   
   // Helper to get input class with extracted highlight
@@ -515,10 +517,11 @@ export default function DealRoom() {
     }
   };
 
-  const sendChatMessage = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
+  const sendChatMessage = async (directMessage?: string) => {
+    const messageToSend = directMessage || chatInput;
+    if (!messageToSend.trim() || isChatLoading) return;
 
-    const userMessage: ChatMessage = { role: 'user', content: chatInput };
+    const userMessage: ChatMessage = { role: 'user', content: messageToSend };
     setChatMessages(prev => [...prev, userMessage]);
     setChatInput("");
     setIsChatLoading(true);
@@ -1895,7 +1898,7 @@ TTL & fees $2,800`}
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
                       disabled={isChatLoading}
                     />
-                    <Button onClick={sendChatMessage} disabled={isChatLoading || !chatInput.trim()}>
+                    <Button onClick={() => sendChatMessage()} disabled={isChatLoading || !chatInput.trim()}>
                       {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -1926,7 +1929,7 @@ TTL & fees $2,800`}
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
                       disabled={isChatLoading}
                     />
-                    <Button onClick={sendChatMessage} disabled={isChatLoading || !chatInput.trim()}>
+                    <Button onClick={() => sendChatMessage()} disabled={isChatLoading || !chatInput.trim()}>
                       {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -2284,6 +2287,26 @@ TTL & fees $2,800`}
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Side Panel AI Copilot - visible on non-copilot tabs */}
+      {activeTab !== "copilot" && (
+        <DealRoomCopilot
+          messages={chatMessages.map((msg, idx) => ({
+            role: msg.role,
+            content: msg.content
+          }))}
+          onSendMessage={(msg) => sendChatMessage(msg)}
+          isLoading={isChatLoading}
+          isOpen={isSidePanelOpen}
+          onToggle={() => setIsSidePanelOpen(!isSidePanelOpen)}
+          dealContext={{
+            year: dealData.year,
+            make: dealData.make,
+            model: dealData.model,
+            askingPrice: dealData.askingPrice
+          }}
+        />
+      )}
     </Layout>
   );
 }

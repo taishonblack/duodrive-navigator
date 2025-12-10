@@ -22,6 +22,16 @@ interface ReminderRequest {
   reminderType: "session_starting" | "session_claimed" | "session_scheduled";
 }
 
+interface DealDetails {
+  name: string;
+  year: string | null;
+  make: string | null;
+  model: string | null;
+  trim: string | null;
+  asking_price: string | null;
+  negotiated_price: string | null;
+}
+
 function validateRequest(data: unknown): { valid: true; data: ReminderRequest } | { valid: false; errors: ValidationError[] } {
   const errors: ValidationError[] = [];
   
@@ -31,22 +41,18 @@ function validateRequest(data: unknown): { valid: true; data: ReminderRequest } 
   
   const req = data as Record<string, unknown>;
   
-  // Must have either sessionId or requestId
   if (!req.sessionId && !req.requestId) {
     errors.push({ field: "sessionId/requestId", message: "Either sessionId or requestId is required" });
   }
   
-  // Validate sessionId if provided
   if (req.sessionId !== undefined && !isValidUUID(req.sessionId)) {
     errors.push({ field: "sessionId", message: "Invalid sessionId format (must be UUID)" });
   }
   
-  // Validate requestId if provided
   if (req.requestId !== undefined && !isValidUUID(req.requestId)) {
     errors.push({ field: "requestId", message: "Invalid requestId format (must be UUID)" });
   }
   
-  // Validate reminderType
   if (!isValidReminderType(req.reminderType)) {
     errors.push({ field: "reminderType", message: "reminderType must be one of: session_starting, session_claimed, session_scheduled" });
   }
@@ -59,9 +65,9 @@ function validateRequest(data: unknown): { valid: true; data: ReminderRequest } 
 }
 
 const sessionTypeLabels = {
-  text: "Text Coaching",
-  phone: "Phone Session", 
-  video: "Video Chat",
+  text: "Text Coaching ($29)",
+  phone: "Phone Session ($99)", 
+  video: "Video Chat ($499)",
 };
 
 const formatTime = (time: string) => {
@@ -82,6 +88,33 @@ const formatDate = (dateStr: string) => {
   });
 };
 
+const formatPrice = (price: string | null) => {
+  if (!price) return null;
+  const num = parseFloat(price.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return null;
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(num);
+};
+
+const buildDealSection = (deal: DealDetails | null) => {
+  if (!deal) return "";
+  
+  const vehicle = [deal.year, deal.make, deal.model, deal.trim].filter(Boolean).join(" ");
+  const askingPrice = formatPrice(deal.asking_price);
+  const negotiatedPrice = formatPrice(deal.negotiated_price);
+  
+  if (!vehicle && !askingPrice) return "";
+  
+  return `
+    <div style="background: #ecfdf5; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #10b981;">
+      <p style="margin: 0 0 10px 0; color: #047857; font-size: 14px; font-weight: 600;">🚗 Deal Details:</p>
+      ${deal.name ? `<p style="margin: 5px 0; color: #111827;"><strong>Deal Name:</strong> ${sanitizeForHtml(deal.name)}</p>` : ""}
+      ${vehicle ? `<p style="margin: 5px 0; color: #111827;"><strong>Vehicle:</strong> ${sanitizeForHtml(vehicle)}</p>` : ""}
+      ${askingPrice ? `<p style="margin: 5px 0; color: #111827;"><strong>Asking Price:</strong> ${askingPrice}</p>` : ""}
+      ${negotiatedPrice ? `<p style="margin: 5px 0; color: #111827;"><strong>Negotiated Price:</strong> ${negotiatedPrice}</p>` : ""}
+    </div>
+  `;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -94,7 +127,6 @@ serve(async (req) => {
 
     const rawData = await req.json();
     
-    // Validate input
     const validation = validateRequest(rawData);
     if (!validation.valid) {
       console.error("Validation failed:", validation.errors);
@@ -113,9 +145,9 @@ serve(async (req) => {
     let coachName: string | null = null;
     let meetLink: string | null = null;
     let maskedPhone: string | null = null;
+    let dealDetails: DealDetails | null = null;
 
     if (sessionId) {
-      // Fetch session details
       const { data: session, error: sessionError } = await supabase
         .from("coaching_sessions")
         .select(`
@@ -134,10 +166,9 @@ serve(async (req) => {
         throw new Error("Session not found");
       }
 
-      // Get request details
       const { data: request, error: requestError } = await supabase
         .from("coaching_requests")
-        .select("email, phone_number, scheduled_date, scheduled_time, customer_id")
+        .select("email, phone_number, scheduled_date, scheduled_time, customer_id, deal_id")
         .eq("id", session.request_id)
         .single();
 
@@ -146,7 +177,19 @@ serve(async (req) => {
         throw new Error("Request not found");
       }
 
-      // Get coach name
+      // Fetch deal details if available
+      if (request.deal_id) {
+        const { data: deal } = await supabase
+          .from("deals")
+          .select("name, year, make, model, trim, asking_price, negotiated_price")
+          .eq("id", request.deal_id)
+          .single();
+        
+        if (deal) {
+          dealDetails = deal;
+        }
+      }
+
       if (session.coach_id) {
         const { data: coach } = await supabase
           .from("coaches")
@@ -163,7 +206,6 @@ serve(async (req) => {
       meetLink = session.meet_link;
       maskedPhone = session.masked_phone_number;
 
-      // Try to get customer name from profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("email")
@@ -172,7 +214,6 @@ serve(async (req) => {
       customerName = profile?.email?.split("@")[0] || "there";
 
     } else if (requestId) {
-      // Fetch request details directly
       const { data: request, error: requestError } = await supabase
         .from("coaching_requests")
         .select(`
@@ -182,7 +223,8 @@ serve(async (req) => {
           scheduled_time,
           session_type,
           customer_id,
-          coach_id
+          coach_id,
+          deal_id
         `)
         .eq("id", requestId)
         .single();
@@ -192,7 +234,19 @@ serve(async (req) => {
         throw new Error("Request not found");
       }
 
-      // Get coach name if assigned
+      // Fetch deal details if available
+      if (request.deal_id) {
+        const { data: deal } = await supabase
+          .from("deals")
+          .select("name, year, make, model, trim, asking_price, negotiated_price")
+          .eq("id", request.deal_id)
+          .single();
+        
+        if (deal) {
+          dealDetails = deal;
+        }
+      }
+
       if (request.coach_id) {
         const { data: coach } = await supabase
           .from("coaches")
@@ -207,7 +261,6 @@ serve(async (req) => {
       scheduledDate = request.scheduled_date;
       scheduledTime = request.scheduled_time;
 
-      // Try to get customer name
       const { data: profile } = await supabase
         .from("profiles")
         .select("email")
@@ -218,17 +271,16 @@ serve(async (req) => {
       throw new Error("Either sessionId or requestId is required");
     }
 
-    // Sanitize data for HTML
     const safeCustomerName = sanitizeForHtml(customerName);
     const safeCoachName = coachName ? sanitizeForHtml(coachName) : null;
 
-    // Build email content based on reminder type
     let subject: string;
     let htmlContent: string;
 
     const sessionLabel = sessionTypeLabels[sessionType as keyof typeof sessionTypeLabels] || sessionType;
     const formattedDate = formatDate(scheduledDate);
     const formattedTime = formatTime(scheduledTime);
+    const dealSection = buildDealSection(dealDetails);
 
     switch (reminderType) {
       case "session_starting":
@@ -248,6 +300,8 @@ serve(async (req) => {
                 <p style="margin: 5px 0; color: #111827;"><strong>🕐 Time:</strong> ${formattedTime}</p>
                 ${safeCoachName ? `<p style="margin: 5px 0; color: #111827;"><strong>👤 Coach:</strong> ${safeCoachName}</p>` : ""}
               </div>
+
+              ${dealSection}
 
               ${meetLink ? `
                 <div style="text-align: center; margin: 25px 0;">
@@ -294,6 +348,8 @@ serve(async (req) => {
                 <p style="margin: 5px 0; color: #111827;"><strong>🕐 Time:</strong> ${formattedTime}</p>
               </div>
 
+              ${dealSection}
+
               <p style="font-size: 14px; color: #6b7280;">
                 We'll send you another reminder when your session is about to start with connection details.
               </p>
@@ -323,8 +379,10 @@ serve(async (req) => {
                 <p style="margin: 5px 0; color: #111827;"><strong>🕐 Time:</strong> ${formattedTime}</p>
               </div>
 
+              ${dealSection}
+
               <p style="font-size: 14px; color: #6b7280;">
-                A coach will be assigned soon, and we'll notify you once that happens. You'll receive connection details before your session starts.
+                A coach will be assigned soon (typically within 2-4 hours), and we'll notify you once that happens. You'll receive connection details before your session starts.
               </p>
               
               <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -346,7 +404,6 @@ serve(async (req) => {
         throw new Error("Invalid reminder type");
     }
 
-    // Send the email
     const emailResponse = await resend.emails.send({
       from: "DuoDrive <onboarding@resend.dev>",
       to: [customerEmail],

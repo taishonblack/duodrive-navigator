@@ -11,6 +11,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
+import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2 } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,7 @@ import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
+const SIDE_PANEL_KEY = "duodrive_side_panel_open";
 
 const glossaryCategories = [
   { id: "all", label: "All Terms" },
@@ -224,8 +226,24 @@ export default function DealRoom() {
   const [dealTextInput, setDealTextInput] = useState("");
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isSmartFilling, setIsSmartFilling] = useState(false);
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDE_PANEL_KEY);
+      return saved === "true";
+    } catch {
+      return false;
+    }
+  });
   const { toast } = useToast();
+
+  // Persist side panel state
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDE_PANEL_KEY, String(isSidePanelOpen));
+    } catch (e) {
+      console.error("Failed to save side panel state:", e);
+    }
+  }, [isSidePanelOpen]);
   
   // Helper to get input class with extracted highlight
   const getInputClass = (field: string) => 
@@ -1114,6 +1132,9 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
   return (
     <Layout>
+      {/* First-visit tutorial overlay */}
+      <DealRoomTutorial />
+      
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

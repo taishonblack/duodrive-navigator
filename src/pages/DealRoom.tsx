@@ -913,6 +913,34 @@ export default function DealRoom() {
     key !== "term" && value !== ""
   );
 
+  // Calculate missing fields that would improve score accuracy
+  const getMissingFields = () => {
+    const missing: { field: string; label: string; importance: 'critical' | 'recommended' | 'optional' }[] = [];
+    
+    // Critical fields for scoring
+    if (!dealData.year) missing.push({ field: 'year', label: 'Year', importance: 'critical' });
+    if (!dealData.make) missing.push({ field: 'make', label: 'Make', importance: 'critical' });
+    if (!dealData.askingPrice) missing.push({ field: 'askingPrice', label: 'Asking Price', importance: 'critical' });
+    if (!dealData.monthlyIncome) missing.push({ field: 'monthlyIncome', label: 'Monthly Income', importance: 'critical' });
+    
+    // Recommended for better accuracy
+    if (!dealData.model) missing.push({ field: 'model', label: 'Model', importance: 'recommended' });
+    if (!dealData.mileage) missing.push({ field: 'mileage', label: 'Mileage', importance: 'recommended' });
+    if (!dealData.apr) missing.push({ field: 'apr', label: 'APR', importance: 'recommended' });
+    if (!dealData.downPayment) missing.push({ field: 'downPayment', label: 'Down Payment', importance: 'recommended' });
+    if (!dealData.creditScore) missing.push({ field: 'creditScore', label: 'Credit Score', importance: 'recommended' });
+    
+    // Optional but helpful
+    if (!dealData.trim) missing.push({ field: 'trim', label: 'Trim', importance: 'optional' });
+    if (!dealData.docFee && !dealData.dealerFee) missing.push({ field: 'fees', label: 'Fees', importance: 'optional' });
+    if (!dealData.taxes) missing.push({ field: 'taxes', label: 'Taxes', importance: 'optional' });
+    if (!dealData.insurance) missing.push({ field: 'insurance', label: 'Insurance Cost', importance: 'optional' });
+    
+    return missing;
+  };
+
+  const missingFields = getMissingFields();
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -1590,6 +1618,52 @@ TTL & fees $2,800`}
                       Get Negotiation Script
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* What's Missing Indicator */}
+              {hasFormData && missingFields.length > 0 && (
+                <div className="p-4 rounded-xl bg-muted/50 border border-border">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                    <h4 className="text-sm font-medium text-foreground">What's missing?</h4>
+                    <span className="text-xs text-muted-foreground">Adding these improves accuracy</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {missingFields.filter(f => f.importance === 'critical').map(f => (
+                      <button
+                        key={f.field}
+                        onClick={() => setActiveTab("deal")}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                      >
+                        <XCircle className="h-3 w-3" />
+                        {f.label}
+                      </button>
+                    ))}
+                    {missingFields.filter(f => f.importance === 'recommended').map(f => (
+                      <button
+                        key={f.field}
+                        onClick={() => setActiveTab("deal")}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                    {missingFields.filter(f => f.importance === 'optional').slice(0, 3).map(f => (
+                      <button
+                        key={f.field}
+                        onClick={() => setActiveTab("deal")}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-muted text-muted-foreground hover:bg-accent transition-colors"
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  {missingFields.filter(f => f.importance === 'critical').length > 0 && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      Red items are required for accurate scoring
+                    </p>
+                  )}
                 </div>
               )}
 

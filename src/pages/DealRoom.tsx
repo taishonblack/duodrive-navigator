@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -208,7 +209,7 @@ interface ChatMessage {
 }
 
 export default function DealRoom() {
-  const [activeTab, setActiveTab] = useState("deal");
+  const [activeTab, setActiveTab] = useState("copilot");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
@@ -219,6 +220,8 @@ export default function DealRoom() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+  const [dealTextInput, setDealTextInput] = useState("");
+  const [isExtractingText, setIsExtractingText] = useState(false);
   const { toast } = useToast();
   
   // Helper to get input class with extracted highlight
@@ -616,6 +619,107 @@ export default function DealRoom() {
     }
   };
 
+  const extractDealFromText = async () => {
+    if (!dealTextInput.trim() || isExtractingText) return;
+
+    setIsExtractingText(true);
+    toast({
+      title: "Understanding your deal...",
+      description: "AI is extracting the details. This may take a moment.",
+    });
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-deal-text`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ text: dealTextInput }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to extract deal data");
+      }
+
+      const { data: extracted, extractedCount } = await response.json();
+
+      if (!extracted) {
+        throw new Error("No data extracted from the text");
+      }
+
+      // Track which fields were extracted
+      const newExtractedFields = new Set<string>();
+      const extractableFields = [
+        'year', 'make', 'model', 'trim', 'mileage', 'vin',
+        'askingPrice', 'negotiatedPrice', 'downPayment', 'tradeIn', 'apr', 'term',
+        'docFee', 'dealerFee', 'addOns', 'taxes', 'registration', 'monthlyIncome', 'creditScore'
+      ];
+
+      extractableFields.forEach(field => {
+        if (extracted[field]) {
+          newExtractedFields.add(field);
+        }
+      });
+
+      setExtractedFields(newExtractedFields);
+
+      // Update form with extracted data
+      setDealData((prev) => ({
+        ...prev,
+        year: extracted.year || prev.year,
+        make: extracted.make || prev.make,
+        model: extracted.model || prev.model,
+        trim: extracted.trim || prev.trim,
+        mileage: extracted.mileage || prev.mileage,
+        vin: extracted.vin || prev.vin,
+        askingPrice: extracted.askingPrice || prev.askingPrice,
+        negotiatedPrice: extracted.negotiatedPrice || prev.negotiatedPrice,
+        downPayment: extracted.downPayment || prev.downPayment,
+        tradeIn: extracted.tradeIn || prev.tradeIn,
+        apr: extracted.apr || prev.apr,
+        term: extracted.term || prev.term,
+        docFee: extracted.docFee || prev.docFee,
+        dealerFee: extracted.dealerFee || prev.dealerFee,
+        addOns: extracted.addOns || prev.addOns,
+        taxes: extracted.taxes || prev.taxes,
+        registration: extracted.registration || prev.registration,
+        monthlyIncome: extracted.monthlyIncome || prev.monthlyIncome,
+        creditScore: extracted.creditScore || prev.creditScore,
+      }));
+
+      toast({
+        title: "Deal Extracted!",
+        description: `Found ${extractedCount || newExtractedFields.size} fields. Check "The Deal" tab to review and add any missing details.`,
+      });
+
+      // Clear the text input
+      setDealTextInput("");
+      
+      // Add AI message about what was extracted
+      const vehicleInfo = [extracted.year, extracted.make, extracted.model, extracted.trim].filter(Boolean).join(" ");
+      const extractedSummary = vehicleInfo 
+        ? `I extracted a ${vehicleInfo}` + (extracted.askingPrice ? ` with an asking price of $${parseInt(extracted.askingPrice).toLocaleString()}` : "") + "."
+        : "I extracted some deal information.";
+      
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `${extractedSummary} I've populated the deal form with ${extractedCount || newExtractedFields.size} fields. You can review them in "The Deal" tab.\n\nWould you like me to:\n• Analyze this deal and calculate your DuoDrive Score?\n• Explain any of the numbers I found?\n• Look for red flags in the pricing?`
+      }]);
+
+    } catch (error) {
+      console.error("Text extraction error:", error);
+      toast({
+        title: "Extraction Failed",
+        description: error instanceof Error ? error.message : "Could not understand the deal. Try rephrasing or adding more details.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExtractingText(false);
+    }
+  };
+
   const handleLoadDeal = (deal: any) => {
     setDealData({
       year: deal.year || "",
@@ -645,7 +749,7 @@ export default function DealRoom() {
     });
     setScoreResult(deal.score_result || null);
     setChatMessages([]);
-    setActiveTab("deal");
+    setActiveTab("copilot");
   };
 
   const handleNewDeal = () => {
@@ -679,7 +783,7 @@ export default function DealRoom() {
     setScoreResult(null);
     setChatMessages([]);
     setExtractedFields(new Set());
-    setActiveTab("deal");
+    setActiveTab("copilot");
     localStorage.removeItem(DEAL_CACHE_KEY);
     toast({ title: "New Deal", description: "Started a fresh deal" });
   };
@@ -696,7 +800,7 @@ export default function DealRoom() {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">Deal Room</h1>
             <p className="mt-2 text-muted-foreground">
-              Enter your deal details and let DuoDrive analyze it for you.
+              Send me your deal — I'll break it down for you.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -733,6 +837,10 @@ export default function DealRoom() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-muted rounded-xl">
+            <TabsTrigger value="copilot" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">AI Copilot</span>
+            </TabsTrigger>
             <TabsTrigger value="deal" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <Upload className="h-4 w-4" />
               <span className="hidden sm:inline">The Deal</span>
@@ -740,10 +848,6 @@ export default function DealRoom() {
             <TabsTrigger value="calculator" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <Calculator className="h-4 w-4" />
               <span className="hidden sm:inline">Calculator</span>
-            </TabsTrigger>
-            <TabsTrigger value="copilot" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
-              <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline">AI Copilot</span>
             </TabsTrigger>
             <TabsTrigger value="glossary" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <BookOpen className="h-4 w-4" />
@@ -1200,78 +1304,244 @@ export default function DealRoom() {
             )}
           </TabsContent>
 
-          {/* AI COPILOT TAB */}
+          {/* AI COPILOT TAB - PRIMARY ENTRY POINT */}
           <TabsContent value="copilot" className="animate-fade-in">
-            <div className="max-w-3xl mx-auto p-8 rounded-2xl bg-card border border-border shadow-card">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Bot className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">AI Copilot</h2>
-                  <p className="text-sm text-muted-foreground">Your car buying assistant</p>
-                </div>
-              </div>
-              
-              {/* Chat Messages */}
-              <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-                {chatMessages.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-muted">
-                    <p className="text-sm text-foreground">
-                      Hi! I'm your DuoDrive AI Copilot. I can help you:
-                    </p>
-                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                      <li>• Understand any part of your deal</li>
-                      <li>• Explain fees and what they mean</li>
-                      <li>• Spot potential red flags</li>
-                      <li>• Suggest negotiation strategies</li>
-                      <li>• Answer questions about your DuoDrive Score</li>
-                    </ul>
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* Hero Section */}
+              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/30 to-primary/5 border border-primary/20">
+                <div className="flex justify-center mb-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+                    <Sparkles className="h-8 w-8" />
                   </div>
-                ) : (
-                  chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`p-4 rounded-xl ${
-                        msg.role === 'user' 
-                          ? 'bg-primary/10 ml-8' 
-                          : 'bg-muted mr-8'
-                      }`}
-                    >
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        {msg.role === 'user' ? 'You' : 'AI Copilot'}
-                      </p>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{msg.content}</p>
-                    </div>
-                  ))
-                )}
-                {isChatLoading && chatMessages[chatMessages.length - 1]?.content === '' && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Thinking...</span>
-                  </div>
-                )}
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+                  Send me your deal — I'll break it down
+                </h2>
+                <p className="text-muted-foreground max-w-xl mx-auto">
+                  Paste your dealer quote, type the numbers, or upload a screenshot. I'll extract everything and tell you if it's a good deal.
+                </p>
               </div>
 
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Ask me anything about your deal..." 
-                  className="flex-1" 
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
-                  disabled={isChatLoading}
-                />
-                <Button onClick={sendChatMessage} disabled={isChatLoading || !chatInput.trim()}>
-                  {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
-                </Button>
-              </div>
-              
-              {scoreResult && (
-                <p className="text-xs text-muted-foreground mt-4 text-center">
-                  AI has access to your DuoDrive Score ({scoreResult.overall}) and deal details
-                </p>
+              {/* Deal Input Area */}
+              {chatMessages.length === 0 && !hasFormData && (
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Paste your deal information</h3>
+                  </div>
+                  <Textarea
+                    placeholder={`Paste anything here — dealer quote, text message, email, notes, etc.
+
+Example:
+2017 Camry SE, 82k miles
+Price $17,900, down payment $500
+APR 11.9%, 60 months
+TTL & fees $2,800`}
+                    className="min-h-[160px] mb-4 resize-none"
+                    value={dealTextInput}
+                    onChange={(e) => setDealTextInput(e.target.value)}
+                    disabled={isExtractingText}
+                  />
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      onClick={extractDealFromText} 
+                      disabled={!dealTextInput.trim() || isExtractingText}
+                      className="flex-1"
+                      size="lg"
+                    >
+                      {isExtractingText ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Understanding your deal...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5 mr-2" />
+                          Extract Deal Info
+                        </>
+                      )}
+                    </Button>
+                    <div className="flex gap-2">
+                      <Label htmlFor="file-upload-copilot" className="cursor-pointer">
+                        <div className="flex items-center gap-2 px-4 py-2 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
+                          <ImagePlus className="h-4 w-4" />
+                          <span className="hidden sm:inline">Upload Image</span>
+                        </div>
+                        <Input
+                          id="file-upload-copilot"
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={isExtracting}
+                        />
+                      </Label>
+                      <Label htmlFor="camera-capture-copilot" className="cursor-pointer">
+                        <div className="flex items-center gap-2 px-4 py-2 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
+                          <Camera className="h-4 w-4" />
+                          <span className="hidden sm:inline">Camera</span>
+                        </div>
+                        <Input
+                          id="camera-capture-copilot"
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={isExtracting}
+                        />
+                      </Label>
+                    </div>
+                  </div>
+                  {isExtracting && (
+                    <div className="flex items-center gap-2 mt-4 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Extracting from image...</span>
+                    </div>
+                  )}
+                </div>
               )}
+
+              {/* Quick Actions when deal data exists */}
+              {hasFormData && chatMessages.length === 0 && (
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Bot className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">I see you have a deal in progress</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {dealData.year && dealData.make && (
+                      <>Looking at a {dealData.year} {dealData.make} {dealData.model || ''} {dealData.askingPrice && `for ${dealData.askingPrice.startsWith('$') ? dealData.askingPrice : `$${parseInt(dealData.askingPrice).toLocaleString()}`}`}. </>
+                    )}
+                    What would you like to do?
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setChatMessages([{ role: 'user', content: 'Calculate my DuoDrive Score and tell me if this is a good deal.' }]);
+                        evaluateDeal();
+                      }}
+                      disabled={isLoading}
+                      className="justify-start"
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Calculate DuoDrive Score
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab("deal")}
+                      className="justify-start"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Review/Edit Deal Details
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        const msg = "What should I look out for in this deal? Are there any red flags?";
+                        setChatInput(msg);
+                        setTimeout(() => sendChatMessage(), 100);
+                      }}
+                      className="justify-start"
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Check for Red Flags
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        const msg = "Give me a negotiation script to get a better price on this deal.";
+                        setChatInput(msg);
+                        setTimeout(() => sendChatMessage(), 100);
+                      }}
+                      className="justify-start"
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Get Negotiation Script
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Chat Messages */}
+              {chatMessages.length > 0 && (
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto">
+                    {chatMessages.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`p-4 rounded-xl ${
+                          msg.role === 'user' 
+                            ? 'bg-primary/10 ml-8' 
+                            : 'bg-muted mr-8'
+                        }`}
+                      >
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          {msg.role === 'user' ? 'You' : 'AI Copilot'}
+                        </p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                    ))}
+                    {isChatLoading && chatMessages[chatMessages.length - 1]?.content === '' && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Thinking...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Ask me anything about your deal..." 
+                      className="flex-1" 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                      disabled={isChatLoading}
+                    />
+                    <Button onClick={sendChatMessage} disabled={isChatLoading || !chatInput.trim()}>
+                      {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  
+                  {scoreResult && (
+                    <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border">
+                      <div className="flex items-center gap-2">
+                        <div className={`h-3 w-3 rounded-full ${getDealHealthColor(scoreResult.overall).replace('text-', 'bg-')}`} />
+                        <span className="text-sm text-muted-foreground">DuoDrive Score: <strong className="text-foreground">{scoreResult.overall}</strong></span>
+                      </div>
+                      <Button variant="link" size="sm" onClick={() => setActiveTab("overview")} className="text-primary">
+                        View Full Analysis <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Input area when chat is active but no messages visible */}
+              {(hasFormData || chatMessages.length > 0) && chatMessages.length === 0 && (
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Ask me anything about your deal..." 
+                      className="flex-1" 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                      disabled={isChatLoading}
+                    />
+                    <Button onClick={sendChatMessage} disabled={isChatLoading || !chatInput.trim()}>
+                      {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom tips */}
+              <div className="text-center text-xs text-muted-foreground">
+                <p>I can read dealer quotes, text messages, emails, bullet points, or any format. Just paste it!</p>
+              </div>
             </div>
           </TabsContent>
 

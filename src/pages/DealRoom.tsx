@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2 } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -222,6 +222,7 @@ export default function DealRoom() {
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [dealTextInput, setDealTextInput] = useState("");
   const [isExtractingText, setIsExtractingText] = useState(false);
+  const [isSmartFilling, setIsSmartFilling] = useState(false);
   const { toast } = useToast();
   
   // Helper to get input class with extracted highlight
@@ -837,6 +838,173 @@ export default function DealRoom() {
         description: "Please paste manually using Ctrl+V or Cmd+V.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Smart Fill - AI suggests reasonable defaults for missing fields
+  const smartFillMissingFields = async () => {
+    if (isSmartFilling) return;
+    
+    setIsSmartFilling(true);
+    toast({
+      title: "Smart Fill",
+      description: "AI is suggesting reasonable defaults...",
+    });
+
+    try {
+      // Build context from existing deal data
+      const vehicleInfo = [dealData.year, dealData.make, dealData.model, dealData.trim].filter(Boolean).join(" ");
+      const askingPrice = parseNumber(dealData.askingPrice);
+      
+      const prompt = `Based on this vehicle: ${vehicleInfo || 'unknown vehicle'}${askingPrice ? ` with asking price $${askingPrice.toLocaleString()}` : ''}, suggest reasonable default values for a typical car buyer.
+
+Return ONLY a JSON object with these fields (use null for any you can't reasonably estimate):
+{
+  "apr": number or null (typical APR percentage for this price range, usually 5-12%),
+  "downPayment": number or null (10-20% of asking price is typical),
+  "monthlyIncome": number or null (estimate based on vehicle price - someone buying this car likely earns 3-4x annual of car price),
+  "insurance": number or null (typical monthly insurance for this vehicle type, $100-300),
+  "fuelCost": number or null (typical monthly fuel cost, $150-300),
+  "maintenance": number or null (typical monthly maintenance reserve, $50-150),
+  "creditScore": string or null ("excellent", "good", "fair", or "poor" - assume "good" if vehicle is reasonably priced)
+}
+
+Be conservative and realistic. Only suggest values that make sense for a typical buyer of this vehicle.`;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: prompt }],
+          dealContext: { year: dealData.year, make: dealData.make, model: dealData.model, askingPrice: dealData.askingPrice },
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to get AI suggestions");
+      }
+
+      // Collect the full response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) fullContent += content;
+          } catch { /* ignore */ }
+        }
+      }
+
+      // Extract JSON from the response
+      const jsonMatch = fullContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("Could not parse AI suggestions");
+      }
+
+      const suggestions = JSON.parse(jsonMatch[0]);
+      const newExtractedFields = new Set(extractedFields);
+      let fieldsUpdated = 0;
+
+      // Apply suggestions only to empty fields
+      setDealData((prev) => {
+        const updated = { ...prev };
+        
+        if (suggestions.apr && !prev.apr) {
+          updated.apr = String(suggestions.apr);
+          newExtractedFields.add("apr");
+          fieldsUpdated++;
+        }
+        if (suggestions.downPayment && !prev.downPayment) {
+          updated.downPayment = String(suggestions.downPayment);
+          newExtractedFields.add("downPayment");
+          fieldsUpdated++;
+        }
+        if (suggestions.monthlyIncome && !prev.monthlyIncome) {
+          updated.monthlyIncome = String(suggestions.monthlyIncome);
+          newExtractedFields.add("monthlyIncome");
+          fieldsUpdated++;
+        }
+        if (suggestions.insurance && !prev.insurance) {
+          updated.insurance = String(suggestions.insurance);
+          newExtractedFields.add("insurance");
+          fieldsUpdated++;
+        }
+        if (suggestions.fuelCost && !prev.fuelCost) {
+          updated.fuelCost = String(suggestions.fuelCost);
+          newExtractedFields.add("fuelCost");
+          fieldsUpdated++;
+        }
+        if (suggestions.maintenance && !prev.maintenance) {
+          updated.maintenance = String(suggestions.maintenance);
+          newExtractedFields.add("maintenance");
+          fieldsUpdated++;
+        }
+        if (suggestions.creditScore && !prev.creditScore) {
+          updated.creditScore = suggestions.creditScore;
+          newExtractedFields.add("creditScore");
+          fieldsUpdated++;
+        }
+        
+        return updated;
+      });
+
+      setExtractedFields(newExtractedFields);
+
+      // Add chat message about the suggestions
+      if (fieldsUpdated > 0) {
+        const suggestionDetails = [];
+        if (suggestions.apr) suggestionDetails.push(`APR: ${suggestions.apr}%`);
+        if (suggestions.downPayment) suggestionDetails.push(`Down Payment: $${suggestions.downPayment.toLocaleString()}`);
+        if (suggestions.monthlyIncome) suggestionDetails.push(`Monthly Income: $${suggestions.monthlyIncome.toLocaleString()}`);
+        if (suggestions.insurance) suggestionDetails.push(`Insurance: $${suggestions.insurance}/mo`);
+        if (suggestions.fuelCost) suggestionDetails.push(`Fuel: $${suggestions.fuelCost}/mo`);
+        if (suggestions.maintenance) suggestionDetails.push(`Maintenance: $${suggestions.maintenance}/mo`);
+        if (suggestions.creditScore) suggestionDetails.push(`Credit Score: ${suggestions.creditScore}`);
+
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `I've filled in ${fieldsUpdated} fields with reasonable estimates:\n\n• ${suggestionDetails.join('\n• ')}\n\n**These are estimates** based on typical values for this vehicle. You can adjust them in "The Deal" tab if your situation is different.`
+        }]);
+
+        toast({
+          title: "Smart Fill Complete",
+          description: `Filled ${fieldsUpdated} fields with AI suggestions. Green highlights show updated fields.`,
+        });
+      } else {
+        toast({
+          title: "No Fields to Fill",
+          description: "All relevant fields already have values.",
+        });
+      }
+
+    } catch (error) {
+      console.error("Smart fill error:", error);
+      toast({
+        title: "Smart Fill Failed",
+        description: "Couldn't generate suggestions. Please fill in manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSmartFilling(false);
     }
   };
 
@@ -1624,10 +1792,31 @@ TTL & fees $2,800`}
               {/* What's Missing Indicator */}
               {hasFormData && missingFields.length > 0 && (
                 <div className="p-4 rounded-xl bg-muted/50 border border-border">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    <h4 className="text-sm font-medium text-foreground">What's missing?</h4>
-                    <span className="text-xs text-muted-foreground">Adding these improves accuracy</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <h4 className="text-sm font-medium text-foreground">What's missing?</h4>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">Adding these improves accuracy</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={smartFillMissingFields}
+                      disabled={isSmartFilling}
+                      className="h-8"
+                    >
+                      {isSmartFilling ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                          Filling...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="h-3 w-3 mr-1.5" />
+                          Smart Fill
+                        </>
+                      )}
+                    </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {missingFields.filter(f => f.importance === 'critical').map(f => (
@@ -1664,6 +1853,9 @@ TTL & fees $2,800`}
                       Red items are required for accurate scoring
                     </p>
                   )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Click "Smart Fill" to let AI suggest reasonable defaults based on your vehicle
+                  </p>
                 </div>
               )}
 

@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.extract-quote]
 verify_jwt = false
 
+[functions.extract-deal-text]
+verify_jwt = false
+
 [functions.estimate-market-value]
 verify_jwt = false
 

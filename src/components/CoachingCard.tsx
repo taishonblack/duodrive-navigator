@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { Check, LucideIcon } from "lucide-react";
 
 interface CoachingCardProps {
   title: string;
@@ -8,6 +8,8 @@ interface CoachingCardProps {
   duration: string;
   features: string[];
   popular?: boolean;
+  icon?: LucideIcon;
+  onGetStarted?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -18,6 +20,8 @@ export function CoachingCard({
   duration,
   features,
   popular = false,
+  icon: Icon,
+  onGetStarted,
   className,
   style,
 }: CoachingCardProps) {
@@ -38,6 +42,11 @@ export function CoachingCard({
         </div>
       )}
       <div className="text-center mb-6">
+        {Icon && (
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mx-auto mb-3">
+            <Icon className="h-6 w-6" />
+          </div>
+        )}
         <h3 className="text-xl font-semibold text-foreground">{title}</h3>
         <p className="text-sm text-muted-foreground mt-1">{duration}</p>
       </div>
@@ -57,6 +66,7 @@ export function CoachingCard({
       <Button
         className="w-full"
         variant={popular ? "default" : "outline"}
+        onClick={onGetStarted}
       >
         Get Started
       </Button>

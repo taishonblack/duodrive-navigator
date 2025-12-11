@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { X, Send, Bot, User, Sparkles, RotateCcw } from "lucide-react";
+import { X, Send, Bot, User, Sparkles, RotateCcw, ArrowRight } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCopilotChat } from "@/hooks/useCopilotChat";
 import { parseExtractedDealData, ExtractedDealData } from "@/hooks/useDealExtraction";
@@ -11,7 +11,9 @@ const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
 export function AICopilot() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [hasExtractedData, setHasExtractedData] = useState(false);
   const [input, setInput] = useState("");
   const [showAnimation, setShowAnimation] = useState(true);
   
@@ -132,6 +134,7 @@ export function AICopilot() {
       const { extractedData } = parseExtractedDealData(assistantContent);
       if (extractedData) {
         storeExtractedDeal(extractedData);
+        setHasExtractedData(true);
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -239,6 +242,21 @@ export function AICopilot() {
                 )}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                {/* Show Deal Room link on the last assistant message if data was extracted */}
+                {message.role === "assistant" && 
+                 index === messages.length - 1 && 
+                 hasExtractedData && 
+                 !isLoading && (
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate("/deal-room");
+                    }}
+                    className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                  >
+                    Go to Deal Room <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

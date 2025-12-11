@@ -4,6 +4,7 @@ import { User } from "@supabase/supabase-js";
 
 const CHAT_STORAGE_KEY = "duodrive_copilot_chat";
 const CHAT_TIMESTAMP_KEY = "duodrive_copilot_chat_timestamp";
+const RESUME_CONVERSATION_KEY = "duodrive_resume_conversation";
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export interface ChatMessage {
@@ -111,6 +112,23 @@ export function useCopilotChat() {
 
     const loadOrCreateConversation = async () => {
       try {
+        // Check if we're resuming a specific conversation
+        const resumeData = localStorage.getItem(RESUME_CONVERSATION_KEY);
+        if (resumeData) {
+          try {
+            const parsed = JSON.parse(resumeData);
+            if (parsed.id && parsed.messages) {
+              setConversationId(parsed.id);
+              setMessages(parsed.messages);
+              // Clear the resume flag
+              localStorage.removeItem(RESUME_CONVERSATION_KEY);
+              return;
+            }
+          } catch {
+            localStorage.removeItem(RESUME_CONVERSATION_KEY);
+          }
+        }
+
         // Check for existing active conversation (updated within last 24 hours)
         const cutoff = new Date(Date.now() - TWENTY_FOUR_HOURS_MS).toISOString();
         const { data: existing } = await supabase

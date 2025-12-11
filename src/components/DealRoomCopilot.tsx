@@ -36,9 +36,10 @@ export function DealRoomCopilot({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when messages change or during loading
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;

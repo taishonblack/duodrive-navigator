@@ -9,12 +9,11 @@ const footerLinks = {
   ],
   company: [
     { href: "/why-duodrive", label: "Why DuoDrive" },
-    { href: "#", label: "About Us" },
     { href: "/contact", label: "Contact" },
     { href: "/coach", label: "Coach Login" },
   ],
   legal: [
-    { href: "#", label: "Privacy Policy" },
+    { href: "/privacy", label: "Privacy Policy" },
     { href: "#", label: "Terms of Service" },
   ],
 };

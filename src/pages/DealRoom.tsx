@@ -21,9 +21,11 @@ import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreRe
 import { Progress } from "@/components/ui/progress";
 import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
+import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
+const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
 const glossaryCategories = [
   { id: "all", label: "All Terms" },
@@ -302,6 +304,45 @@ export default function DealRoom() {
     }
   }, [dealData]);
 
+  // Check for extracted deal data from floating copilot (synced from other pages)
+  useEffect(() => {
+    try {
+      const extractedData = localStorage.getItem(EXTRACTED_DEAL_KEY);
+      if (extractedData) {
+        const parsed = JSON.parse(extractedData) as ExtractedDealData;
+        const fieldNames = getExtractedFieldNames(parsed);
+        
+        if (fieldNames.length > 0) {
+          // Apply extracted data to deal form
+          const newExtractedFields = new Set<string>();
+          
+          setDealData((prev) => {
+            const updated = { ...prev };
+            Object.entries(parsed).forEach(([key, value]) => {
+              if (value !== undefined && value !== null && value !== "") {
+                updated[key as keyof typeof prev] = String(value);
+                newExtractedFields.add(key);
+              }
+            });
+            return updated;
+          });
+
+          setExtractedFields((prev) => new Set([...prev, ...newExtractedFields]));
+
+          toast({
+            title: "Deal info synced!",
+            description: `Applied ${fieldNames.length} field${fieldNames.length > 1 ? 's' : ''} from your conversation: ${fieldNames.slice(0, 3).join(", ")}${fieldNames.length > 3 ? ` +${fieldNames.length - 3} more` : ""}`,
+          });
+
+          // Clear the extracted data after applying
+          localStorage.removeItem(EXTRACTED_DEAL_KEY);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to sync extracted deal:", e);
+    }
+  }, []); // Run only on mount
+
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
   const filteredTerms = glossaryTerms
@@ -539,6 +580,35 @@ export default function DealRoom() {
     }
   };
 
+  // Apply extracted deal data from AI response
+  const applyExtractedDealData = (extractedData: ExtractedDealData) => {
+    const newExtractedFields = new Set<string>();
+
+    setDealData((prev) => {
+      const updated = { ...prev };
+
+      Object.entries(extractedData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          updated[key as keyof typeof prev] = String(value);
+          newExtractedFields.add(key);
+        }
+      });
+
+      return updated;
+    });
+
+    setExtractedFields((prev) => new Set([...prev, ...newExtractedFields]));
+
+    // Show toast with extracted fields
+    const fieldNames = getExtractedFieldNames(extractedData);
+    if (fieldNames.length > 0) {
+      toast({
+        title: "Deal Updated",
+        description: `Added ${fieldNames.length} field${fieldNames.length > 1 ? 's' : ''}: ${fieldNames.slice(0, 3).join(", ")}${fieldNames.length > 3 ? ` +${fieldNames.length - 3} more` : ""}`,
+      });
+    }
+  };
+
   const sendChatMessage = async (directMessage?: string) => {
     const messageToSend = directMessage || chatInput;
     if (!messageToSend.trim() || isChatLoading) return;
@@ -618,9 +688,11 @@ export default function DealRoom() {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
+              // Parse for extracted data and show clean content
+              const { cleanContent } = parseExtractedDealData(assistantContent);
               setChatMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+                updated[updated.length - 1] = { role: 'assistant', content: cleanContent };
                 return updated;
               });
             }
@@ -628,6 +700,12 @@ export default function DealRoom() {
             // Incomplete JSON, continue
           }
         }
+      }
+
+      // After streaming is complete, extract any deal data from the full response
+      const { extractedData } = parseExtractedDealData(assistantContent);
+      if (extractedData) {
+        applyExtractedDealData(extractedData);
       }
     } catch (error) {
       console.error("Chat error:", error);

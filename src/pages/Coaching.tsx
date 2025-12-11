@@ -77,6 +77,25 @@ const coachingTiers = [
   },
 ];
 
+const serviceSchema = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "serviceType": "Car Buying Coaching",
+  "provider": {
+    "@type": "Organization",
+    "name": "DuoDrive",
+    "url": "https://duodrive.app"
+  },
+  "description": "Expert car buying coaching services to help you negotiate the best deal.",
+  "offers": coachingTiers.map(tier => ({
+    "@type": "Offer",
+    "name": tier.title,
+    "price": tier.price,
+    "priceCurrency": "USD",
+    "description": tier.features.join(". ")
+  }))
+};
+
 const sessionTypeIcons = {
   text: MessageCircle,
   phone: Phone,
@@ -188,6 +207,7 @@ export default function Coaching() {
         description="Get personalized car buying help from expert coaches. Text, phone, or full concierge service to help you negotiate the best deal."
         canonical="/coaching"
         keywords="car buying coach, car buying help, car negotiation, dealership negotiation, car buying expert"
+        structuredData={serviceSchema}
       />
       {/* Active Sessions Banner */}
       {user && !isLoading && (activeSessions.length > 0 || upcomingRequests.length > 0) && (

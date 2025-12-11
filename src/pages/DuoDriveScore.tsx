@@ -52,6 +52,39 @@ const scoreRanges = [
   { range: "0-39", label: "Risky", color: "bg-score-risky", description: "Significant concerns identified." },
 ];
 
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": pillars.map(pillar => ({
+    "@type": "Question",
+    "name": `What is the ${pillar.title} pillar in the DuoDrive Score?`,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": pillar.description + " " + pillar.details
+    }
+  }))
+};
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Understanding the DuoDrive Score",
+  "description": "Learn how the DuoDrive Score evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability.",
+  "author": {
+    "@type": "Organization",
+    "name": "DuoDrive"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "DuoDrive",
+    "url": "https://duodrive.app"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://duodrive.app/score"
+  }
+};
+
 export default function DuoDriveScore() {
   const [selectedPillar, setSelectedPillar] = useState<typeof pillars[0] | null>(null);
 
@@ -62,6 +95,7 @@ export default function DuoDriveScore() {
         description="Learn how the DuoDrive Score evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability."
         canonical="/score"
         keywords="DuoDrive Score, car deal evaluation, car buying score, vehicle scoring, car deal analysis"
+        structuredData={[faqSchema, articleSchema]}
       />
       {/* Hero */}
       <section className="py-16 md:py-24 gradient-hero">

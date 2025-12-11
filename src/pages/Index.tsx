@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ScoreRing";
@@ -70,6 +70,12 @@ const coachingTiers = [
 ];
 
 export default function Index() {
+  const navigate = useNavigate();
+
+  const handleGetStarted = (tier: string) => {
+    navigate(`/coaching#book-session?tier=${encodeURIComponent(tier)}`);
+  };
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -194,12 +200,11 @@ export default function Index() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {coachingTiers.map((tier, index) => (
+            {coachingTiers.map((tier) => (
               <CoachingCard
                 key={tier.title}
                 {...tier}
-                className="animate-fade-up"
-                style={{ animationDelay: `${index * 100}ms` } as React.CSSProperties}
+                onGetStarted={() => handleGetStarted(tier.title)}
               />
             ))}
           </div>

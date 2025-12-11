@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Bot, X, Send, User, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { Bot, X, Send, User, ChevronRight, ChevronLeft, Sparkles, RotateCcw } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,6 +12,7 @@ interface Message {
 interface DealRoomCopilotProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
+  onClearMessages?: () => void;
   isLoading: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -26,6 +27,7 @@ interface DealRoomCopilotProps {
 export function DealRoomCopilot({
   messages,
   onSendMessage,
+  onClearMessages,
   isLoading,
   isOpen,
   onToggle,
@@ -84,13 +86,24 @@ export function DealRoomCopilot({
               )}
             </div>
           </div>
-          <button
-            onClick={onToggle}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-            aria-label="Close copilot"
-          >
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onClearMessages && messages.length > 0 && (
+              <button
+                onClick={onClearMessages}
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                title="Clear conversation"
+              >
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+            <button
+              onClick={onToggle}
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              aria-label="Close copilot"
+            >
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}

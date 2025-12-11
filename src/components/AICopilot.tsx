@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { X, Send, Bot, User, Sparkles } from "lucide-react";
+import { X, Send, Bot, User, Sparkles, RotateCcw } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCopilotChat } from "@/hooks/useCopilotChat";
 
@@ -13,7 +13,7 @@ export function AICopilot() {
   const [showAnimation, setShowAnimation] = useState(true);
   
   // Use shared chat hook for synced messages
-  const { messages, setMessages, refreshWelcome, isLoading, setIsLoading } = useCopilotChat();
+  const { messages, setMessages, refreshWelcome, clearMessages, isLoading, setIsLoading } = useCopilotChat();
 
   // Hide the floating copilot on Deal Room (it's integrated there)
   const isDealRoom = location.pathname === "/deal-room";
@@ -128,12 +128,23 @@ Ready to analyze a deal? Head to the **Deal Room** or paste your quote here!`;
               <p className="text-xs text-muted-foreground">Always here to help</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            {messages.length > 1 && (
+              <button
+                onClick={clearMessages}
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                title="Clear conversation"
+              >
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}

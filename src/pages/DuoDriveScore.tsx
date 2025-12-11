@@ -80,15 +80,13 @@ export default function DuoDriveScore() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pillars.map((pillar, index) => (
+            {pillars.map((pillar) => (
               <PillarCard
                 key={pillar.title}
                 icon={pillar.icon}
                 title={pillar.title}
                 description={pillar.description}
                 onClick={() => setSelectedPillar(pillar)}
-                className="animate-fade-up"
-                style={{ animationDelay: `${index * 100}ms` } as React.CSSProperties}
               />
             ))}
           </div>

@@ -362,12 +362,8 @@ export default function Coaching() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {coachingTiers.map((tier, index) => (
-              <div
-                key={tier.title}
-                className="animate-fade-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
+            {coachingTiers.map((tier) => (
+              <div key={tier.title}>
                 <CoachingCard
                   title={tier.title}
                   price={tier.price}

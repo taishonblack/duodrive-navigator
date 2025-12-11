@@ -12,8 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2, Bell, Car, BarChart3, GraduationCap, Newspaper, AlertTriangle } from "lucide-react";
+import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2, Bell, Car, BarChart3, GraduationCap, Newspaper, AlertTriangle, MessageSquare } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
+import { ChatTranscripts } from "@/components/ChatTranscripts";
 
 interface MFAFactor {
   id: string;
@@ -836,6 +837,22 @@ export default function Account() {
               <p className="text-xs text-muted-foreground mt-3">
                 Once deleted, your data cannot be recovered.
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Chat History Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                AI Copilot History
+              </CardTitle>
+              <CardDescription>
+                View your past conversations with the AI Copilot
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChatTranscripts />
             </CardContent>
           </Card>
         </div>

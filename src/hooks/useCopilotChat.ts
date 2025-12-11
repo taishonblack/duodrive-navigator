@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 const CHAT_STORAGE_KEY = "duodrive_copilot_chat";
+const CHAT_TIMESTAMP_KEY = "duodrive_copilot_chat_timestamp";
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -30,9 +34,28 @@ Once I have your deal info, I'll calculate your DuoDrive Score and show you if i
 Ready when you are! 🚗`,
 });
 
+// Check if chat has expired (24 hours)
+const isChatExpired = (): boolean => {
+  try {
+    const timestamp = localStorage.getItem(CHAT_TIMESTAMP_KEY);
+    if (!timestamp) return true;
+    const storedTime = parseInt(timestamp, 10);
+    return Date.now() - storedTime > TWENTY_FOUR_HOURS_MS;
+  } catch {
+    return true;
+  }
+};
+
 // Get stored messages or initialize with welcome message
 const getStoredMessages = (): ChatMessage[] => {
   try {
+    // Check expiration first
+    if (isChatExpired()) {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+      localStorage.removeItem(CHAT_TIMESTAMP_KEY);
+      return [getWelcomeMessage()];
+    }
+    
     const stored = localStorage.getItem(CHAT_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
@@ -46,10 +69,14 @@ const getStoredMessages = (): ChatMessage[] => {
   return [getWelcomeMessage()];
 };
 
-// Save messages to localStorage
-const saveMessages = (messages: ChatMessage[]) => {
+// Save messages to localStorage with timestamp
+const saveMessagesToLocal = (messages: ChatMessage[]) => {
   try {
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    // Only set timestamp if not already set (first message in session)
+    if (!localStorage.getItem(CHAT_TIMESTAMP_KEY)) {
+      localStorage.setItem(CHAT_TIMESTAMP_KEY, Date.now().toString());
+    }
   } catch (e) {
     console.error("Failed to save chat messages:", e);
   }
@@ -58,11 +85,104 @@ const saveMessages = (messages: ChatMessage[]) => {
 export function useCopilotChat() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => getStoredMessages());
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Persist messages whenever they change
+  // Track auth state
   useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load or create conversation for authenticated users
+  useEffect(() => {
+    if (!user) {
+      setConversationId(null);
+      return;
+    }
+
+    const loadOrCreateConversation = async () => {
+      try {
+        // Check for existing active conversation (updated within last 24 hours)
+        const cutoff = new Date(Date.now() - TWENTY_FOUR_HOURS_MS).toISOString();
+        const { data: existing } = await supabase
+          .from("chat_conversations")
+          .select("id, messages")
+          .eq("user_id", user.id)
+          .gte("updated_at", cutoff)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          setConversationId(existing.id);
+          // Load messages from database
+          const dbMessages = existing.messages as unknown as ChatMessage[];
+          if (dbMessages && Array.isArray(dbMessages) && dbMessages.length > 0) {
+            setMessages(dbMessages);
+          }
+        } else {
+          // Create new conversation
+          const { data: newConv, error } = await supabase
+            .from("chat_conversations")
+            .insert([{
+              user_id: user.id,
+              messages: JSON.parse(JSON.stringify(messages)),
+            }])
+            .select("id")
+            .single();
+
+          if (error) {
+            console.error("Failed to create conversation:", error);
+          } else {
+            setConversationId(newConv.id);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load/create conversation:", e);
+      }
+    };
+
+    loadOrCreateConversation();
+  }, [user]);
+
+  // Persist messages - debounced for DB, immediate for localStorage
+  useEffect(() => {
+    // Always save to localStorage for immediate access
+    saveMessagesToLocal(messages);
+
+    // For authenticated users, also save to database (debounced)
+    if (user && conversationId) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          await supabase
+            .from("chat_conversations")
+            .update({ messages: JSON.parse(JSON.stringify(messages)) })
+            .eq("id", conversationId);
+        } catch (e) {
+          console.error("Failed to save to database:", e);
+        }
+      }, 1000); // Debounce 1 second
+    }
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [messages, user, conversationId]);
 
   const addMessage = useCallback((message: ChatMessage) => {
     setMessages(prev => [...prev, message]);
@@ -77,10 +197,33 @@ export function useCopilotChat() {
     });
   }, []);
 
-  const clearMessages = useCallback(() => {
+  const clearMessages = useCallback(async () => {
     const welcome = getWelcomeMessage();
     setMessages([welcome]);
-  }, []);
+    
+    // Reset timestamp for new 24-hour window
+    localStorage.setItem(CHAT_TIMESTAMP_KEY, Date.now().toString());
+    
+    // For authenticated users, create a new conversation
+    if (user) {
+      try {
+        const { data: newConv, error } = await supabase
+          .from("chat_conversations")
+          .insert([{
+            user_id: user.id,
+            messages: JSON.parse(JSON.stringify([welcome])),
+          }])
+          .select("id")
+          .single();
+
+        if (!error && newConv) {
+          setConversationId(newConv.id);
+        }
+      } catch (e) {
+        console.error("Failed to create new conversation:", e);
+      }
+    }
+  }, [user]);
 
   const refreshWelcome = useCallback(() => {
     // Only refresh if there's just the welcome message

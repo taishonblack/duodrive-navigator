@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { CoachingCard } from "@/components/CoachingCard";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { Button } from "@/components/ui/button";
@@ -182,6 +183,12 @@ export default function Coaching() {
 
   return (
     <Layout>
+      <SEO 
+        title="Expert Car Buying Coaching"
+        description="Get personalized car buying help from expert coaches. Text, phone, or full concierge service to help you negotiate the best deal."
+        canonical="/coaching"
+        keywords="car buying coach, car buying help, car negotiation, dealership negotiation, car buying expert"
+      />
       {/* Active Sessions Banner */}
       {user && !isLoading && (activeSessions.length > 0 || upcomingRequests.length > 0) && (
         <section className="py-6 bg-primary/5 border-b border-primary/10">

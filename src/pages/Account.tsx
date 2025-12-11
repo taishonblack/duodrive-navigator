@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -478,6 +479,12 @@ export default function Account() {
 
   return (
     <Layout>
+      <SEO 
+        title="Account Settings"
+        description="Manage your DuoDrive account settings, security preferences, and notification options."
+        canonical="/account"
+        noIndex
+      />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Account Settings</h1>

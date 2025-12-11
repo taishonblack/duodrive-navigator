@@ -1,9 +1,15 @@
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { FileText } from "lucide-react";
 
 export default function TermsOfService() {
   return (
     <Layout>
+      <SEO 
+        title="Terms of Service"
+        description="DuoDrive Terms of Service. Read our terms and conditions for using the DuoDrive car buying platform."
+        canonical="/terms"
+      />
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-3xl mx-auto">
           {/* Header */}

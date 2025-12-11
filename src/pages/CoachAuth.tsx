@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +67,11 @@ export default function CoachAuth() {
 
   return (
     <Layout>
+      <SEO 
+        title="Coach Portal"
+        description="Sign in to the DuoDrive coach portal to help car buyers."
+        noIndex
+      />
       <div className="min-h-[80vh] flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">

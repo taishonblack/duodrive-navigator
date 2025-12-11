@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -383,6 +384,12 @@ export default function DealComparison() {
 
   return (
     <Layout>
+      <SEO 
+        title="Compare Deals"
+        description="Compare up to 4 car deals side-by-side. See DuoDrive scores, monthly costs, and 5-year projections to find the best deal."
+        canonical="/compare"
+        noIndex
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

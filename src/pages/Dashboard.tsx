@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +174,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      <SEO 
+        title="Dashboard"
+        description="Track your saved car deals, DuoDrive scores, and coaching sessions. Monitor your car buying progress in one place."
+        canonical="/dashboard"
+        noIndex
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

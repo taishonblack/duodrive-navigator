@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { MessageSquare, ChevronDown, ChevronUp, Trash2, Download, FileText, Play, Search, Pencil, X, Check, StickyNote } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronUp, Trash2, Download, FileText, Play, Search, Pencil, X, Check, StickyNote, Pin, PinOff, Tag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +25,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
@@ -40,7 +47,21 @@ interface Conversation {
   updated_at: string;
   title: string | null;
   notes: string | null;
+  tags: string[];
+  is_pinned: boolean;
 }
+
+// Predefined tag colors
+const TAG_COLORS: Record<string, string> = {
+  "Car Deal": "bg-blue-500/20 text-blue-600 border-blue-500/30",
+  "Negotiation": "bg-green-500/20 text-green-600 border-green-500/30",
+  "Financing": "bg-yellow-500/20 text-yellow-600 border-yellow-500/30",
+  "Questions": "bg-purple-500/20 text-purple-600 border-purple-500/30",
+  "Important": "bg-red-500/20 text-red-600 border-red-500/30",
+  "Follow Up": "bg-orange-500/20 text-orange-600 border-orange-500/30",
+};
+
+const SUGGESTED_TAGS = ["Car Deal", "Negotiation", "Financing", "Questions", "Important", "Follow Up"];
 
 // Storage keys for resuming conversations
 const CHAT_STORAGE_KEY = "duodrive_copilot_chat";
@@ -52,10 +73,13 @@ export function ChatTranscripts() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterTag, setFilterTag] = useState<string | null>(null);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [tempTitle, setTempTitle] = useState("");
   const [tempNotes, setTempNotes] = useState("");
+  const [newTagInput, setNewTagInput] = useState("");
+  const [addingTagToId, setAddingTagToId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchConversations = async () => {
@@ -63,12 +87,15 @@ export function ChatTranscripts() {
       const { data, error } = await supabase
         .from("chat_conversations")
         .select("*")
+        .order("is_pinned", { ascending: false })
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
       const mapped = (data || []).map(d => ({
         ...d,
         messages: d.messages as unknown as ChatMessage[],
+        tags: (d.tags as string[]) || [],
+        is_pinned: d.is_pinned || false,
       }));
       setConversations(mapped);
     } catch (e) {
@@ -81,6 +108,9 @@ export function ChatTranscripts() {
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  // Get all unique tags from conversations
+  const allTags = Array.from(new Set(conversations.flatMap(c => c.tags)));
 
   const deleteConversation = async (id: string) => {
     try {
@@ -96,6 +126,81 @@ export function ChatTranscripts() {
     } catch (e) {
       console.error("Failed to delete conversation:", e);
       toast.error("Failed to delete conversation");
+    }
+  };
+
+  const togglePin = async (id: string, currentPinned: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("chat_conversations")
+        .update({ is_pinned: !currentPinned })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setConversations(prev => {
+        const updated = prev.map(c => 
+          c.id === id ? { ...c, is_pinned: !currentPinned } : c
+        );
+        // Re-sort: pinned first, then by updated_at
+        return updated.sort((a, b) => {
+          if (a.is_pinned !== b.is_pinned) return b.is_pinned ? 1 : -1;
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        });
+      });
+      
+      toast.success(currentPinned ? "Unpinned conversation" : "Pinned conversation");
+    } catch (e) {
+      console.error("Failed to toggle pin:", e);
+      toast.error("Failed to update");
+    }
+  };
+
+  const addTag = async (id: string, tag: string) => {
+    const conv = conversations.find(c => c.id === id);
+    if (!conv || conv.tags.includes(tag)) return;
+
+    const newTags = [...conv.tags, tag];
+    
+    try {
+      const { error } = await supabase
+        .from("chat_conversations")
+        .update({ tags: newTags })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setConversations(prev => prev.map(c => 
+        c.id === id ? { ...c, tags: newTags } : c
+      ));
+      setNewTagInput("");
+      setAddingTagToId(null);
+    } catch (e) {
+      console.error("Failed to add tag:", e);
+      toast.error("Failed to add tag");
+    }
+  };
+
+  const removeTag = async (id: string, tag: string) => {
+    const conv = conversations.find(c => c.id === id);
+    if (!conv) return;
+
+    const newTags = conv.tags.filter(t => t !== tag);
+    
+    try {
+      const { error } = await supabase
+        .from("chat_conversations")
+        .update({ tags: newTags })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setConversations(prev => prev.map(c => 
+        c.id === id ? { ...c, tags: newTags } : c
+      ));
+    } catch (e) {
+      console.error("Failed to remove tag:", e);
+      toast.error("Failed to remove tag");
     }
   };
 
@@ -145,6 +250,7 @@ export function ChatTranscripts() {
     setExpandedId(prev => prev === id ? null : id);
     setEditingTitleId(null);
     setEditingNotesId(null);
+    setAddingTagToId(null);
   };
 
   const startEditingTitle = (conv: Conversation, e: React.MouseEvent) => {
@@ -158,12 +264,19 @@ export function ChatTranscripts() {
     setTempNotes(conv.notes || "");
   };
 
+  const getTagColor = (tag: string) => {
+    return TAG_COLORS[tag] || "bg-muted text-muted-foreground border-border";
+  };
+
   const exportAsText = (conv: Conversation) => {
     const dateStr = format(new Date(conv.updated_at), "MMMM d, yyyy 'at' h:mm a");
     const title = conv.title || "Untitled Conversation";
     let content = `DuoDrive AI Copilot Conversation\n`;
     content += `Title: ${title}\n`;
     content += `Date: ${dateStr}\n`;
+    if (conv.tags.length > 0) {
+      content += `Tags: ${conv.tags.join(", ")}\n`;
+    }
     if (conv.notes) {
       content += `Notes: ${conv.notes}\n`;
     }
@@ -195,21 +308,24 @@ export function ChatTranscripts() {
     const maxWidth = pageWidth - margin * 2;
     let y = 20;
 
-    // Title
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text(title, margin, y);
     y += 10;
 
-    // Date
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
     doc.text(`Date: ${dateStr}`, margin, y);
-    y += 8;
+    y += 6;
 
-    // Notes if present
+    if (conv.tags.length > 0) {
+      doc.text(`Tags: ${conv.tags.join(", ")}`, margin, y);
+      y += 6;
+    }
+
     if (conv.notes) {
+      y += 2;
       doc.setFontSize(10);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(80, 80, 80);
@@ -218,30 +334,25 @@ export function ChatTranscripts() {
         doc.text(line, margin, y);
         y += 5;
       });
-      y += 5;
     }
 
-    y += 5;
+    y += 8;
 
-    // Messages
     doc.setTextColor(0, 0, 0);
     conv.messages.forEach(msg => {
       const role = msg.role === "user" ? "You" : "AI Copilot";
       
-      // Check if we need a new page
       if (y > doc.internal.pageSize.getHeight() - 30) {
         doc.addPage();
         y = 20;
       }
 
-      // Role label
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(msg.role === "user" ? 59 : 100, msg.role === "user" ? 130 : 100, msg.role === "user" ? 246 : 100);
       doc.text(role, margin, y);
       y += 6;
 
-      // Message content
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
@@ -264,12 +375,10 @@ export function ChatTranscripts() {
   };
 
   const continueConversation = (conv: Conversation) => {
-    // Store the conversation data to be picked up by the chat hook
     localStorage.setItem(RESUME_CONVERSATION_KEY, JSON.stringify({
       id: conv.id,
       messages: conv.messages,
     }));
-    // Also update the main chat storage so it loads immediately
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(conv.messages));
     localStorage.setItem(CHAT_TIMESTAMP_KEY, Date.now().toString());
     
@@ -277,22 +386,18 @@ export function ChatTranscripts() {
     navigate("/deal-room");
   };
 
-  // Filter conversations based on search query
+  // Filter conversations based on search query and tag filter
   const filteredConversations = conversations.filter(conv => {
+    // Apply tag filter
+    if (filterTag && !conv.tags.includes(filterTag)) return false;
+    
     if (!searchQuery.trim()) return true;
     
     const query = searchQuery.toLowerCase();
-    
-    // Search in title
     if (conv.title?.toLowerCase().includes(query)) return true;
-    
-    // Search in notes
     if (conv.notes?.toLowerCase().includes(query)) return true;
-    
-    // Search in message content
-    return conv.messages.some(msg => 
-      msg.content.toLowerCase().includes(query)
-    );
+    if (conv.tags.some(t => t.toLowerCase().includes(query))) return true;
+    return conv.messages.some(msg => msg.content.toLowerCase().includes(query));
   });
 
   if (loading) {
@@ -317,24 +422,48 @@ export function ChatTranscripts() {
 
   return (
     <div className="space-y-4">
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search conversations..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-        {searchQuery && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-            onClick={() => setSearchQuery("")}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+      {/* Search and Filter Row */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Tag Filters */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs text-muted-foreground self-center">Filter by tag:</span>
+            {allTags.map(tag => (
+              <Badge
+                key={tag}
+                variant="outline"
+                className={`cursor-pointer transition-all ${
+                  filterTag === tag 
+                    ? getTagColor(tag) + " ring-2 ring-offset-1 ring-primary" 
+                    : "hover:bg-muted"
+                }`}
+                onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+              >
+                {tag}
+                {filterTag === tag && <X className="h-3 w-3 ml-1" />}
+              </Badge>
+            ))}
+          </div>
         )}
       </div>
 
@@ -351,13 +480,21 @@ export function ChatTranscripts() {
           const displayTitle = conv.title || format(new Date(conv.updated_at), "MMM d, yyyy 'at' h:mm a");
 
           return (
-            <Card key={conv.id} className="overflow-hidden">
+            <Card key={conv.id} className={`overflow-hidden ${conv.is_pinned ? "ring-1 ring-primary/30 bg-primary/5" : ""}`}>
               <CardHeader 
                 className="cursor-pointer hover:bg-muted/50 transition-colors py-4"
                 onClick={() => toggleExpand(conv.id)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
+                    {/* Pinned indicator */}
+                    {conv.is_pinned && (
+                      <div className="flex items-center gap-1 text-xs text-primary mb-1">
+                        <Pin className="h-3 w-3" />
+                        Pinned
+                      </div>
+                    )}
+
                     {/* Title with edit functionality */}
                     {editingTitleId === conv.id ? (
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -368,27 +505,14 @@ export function ChatTranscripts() {
                           className="h-8 text-sm"
                           autoFocus
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              updateTitle(conv.id, tempTitle);
-                            } else if (e.key === "Escape") {
-                              setEditingTitleId(null);
-                            }
+                            if (e.key === "Enter") updateTitle(conv.id, tempTitle);
+                            else if (e.key === "Escape") setEditingTitleId(null);
                           }}
                         />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-primary"
-                          onClick={() => updateTitle(conv.id, tempTitle)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => updateTitle(conv.id, tempTitle)}>
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground"
-                          onClick={() => setEditingTitleId(null)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingTitleId(null)}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -407,6 +531,17 @@ export function ChatTranscripts() {
                       </CardTitle>
                     )}
                     
+                    {/* Tags */}
+                    {conv.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {conv.tags.map(tag => (
+                          <Badge key={tag} variant="outline" className={`text-xs ${getTagColor(tag)}`}>
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-xs text-muted-foreground">
                         {messageCount} message{messageCount !== 1 ? "s" : ""}
@@ -431,6 +566,99 @@ export function ChatTranscripts() {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
+                    {/* Pin Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${conv.is_pinned ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(conv.id, conv.is_pinned);
+                      }}
+                      title={conv.is_pinned ? "Unpin conversation" : "Pin conversation"}
+                    >
+                      {conv.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                    </Button>
+
+                    {/* Tags Dropdown */}
+                    <Popover open={addingTagToId === conv.id} onOpenChange={(open) => setAddingTagToId(open ? conv.id : null)}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Tag className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground px-1">Add tags</p>
+                          
+                          {/* Suggested tags */}
+                          <div className="flex flex-wrap gap-1">
+                            {SUGGESTED_TAGS.filter(t => !conv.tags.includes(t)).map(tag => (
+                              <Badge
+                                key={tag}
+                                variant="outline"
+                                className={`cursor-pointer hover:bg-muted text-xs ${getTagColor(tag)}`}
+                                onClick={() => addTag(conv.id, tag)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          {/* Custom tag input */}
+                          <div className="flex gap-1">
+                            <Input
+                              placeholder="Custom tag..."
+                              value={newTagInput}
+                              onChange={(e) => setNewTagInput(e.target.value)}
+                              className="h-7 text-xs"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && newTagInput.trim()) {
+                                  addTag(conv.id, newTagInput.trim());
+                                }
+                              }}
+                            />
+                            <Button
+                              size="sm"
+                              className="h-7 px-2"
+                              disabled={!newTagInput.trim()}
+                              onClick={() => addTag(conv.id, newTagInput.trim())}
+                            >
+                              Add
+                            </Button>
+                          </div>
+
+                          {/* Current tags with remove option */}
+                          {conv.tags.length > 0 && (
+                            <>
+                              <div className="border-t pt-2 mt-2">
+                                <p className="text-xs font-medium text-muted-foreground px-1 mb-1">Current tags</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {conv.tags.map(tag => (
+                                    <Badge key={tag} variant="outline" className={`text-xs ${getTagColor(tag)}`}>
+                                      {tag}
+                                      <button
+                                        className="ml-1 hover:text-destructive"
+                                        onClick={() => removeTag(conv.id, tag)}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
                     {/* Continue Conversation Button */}
                     <Button
                       variant="ghost"
@@ -516,12 +744,7 @@ export function ChatTranscripts() {
                         Notes
                       </label>
                       {editingNotesId !== conv.id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-xs"
-                          onClick={() => startEditingNotes(conv)}
-                        >
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => startEditingNotes(conv)}>
                           <Pencil className="h-3 w-3 mr-1" />
                           Edit
                         </Button>
@@ -537,19 +760,8 @@ export function ChatTranscripts() {
                           autoFocus
                         />
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => updateNotes(conv.id, tempNotes)}
-                          >
-                            Save Notes
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingNotesId(null)}
-                          >
-                            Cancel
-                          </Button>
+                          <Button size="sm" onClick={() => updateNotes(conv.id, tempNotes)}>Save Notes</Button>
+                          <Button variant="outline" size="sm" onClick={() => setEditingNotesId(null)}>Cancel</Button>
                         </div>
                       </div>
                     ) : (
@@ -563,17 +775,12 @@ export function ChatTranscripts() {
                   <ScrollArea className="h-[300px] rounded-lg border bg-muted/30 p-4">
                     <div className="space-y-4">
                       {conv.messages.map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
-                              msg.role === "user"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-card border border-border text-foreground"
-                            }`}
-                          >
+                        <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
+                            msg.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-card border border-border text-foreground"
+                          }`}>
                             <p className="whitespace-pre-wrap">{msg.content}</p>
                           </div>
                         </div>
@@ -581,14 +788,9 @@ export function ChatTranscripts() {
                     </div>
                   </ScrollArea>
                   
-                  {/* Action buttons when expanded */}
+                  {/* Action buttons */}
                   <div className="flex gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => continueConversation(conv)}
-                      className="gap-2"
-                    >
+                    <Button variant="default" size="sm" onClick={() => continueConversation(conv)} className="gap-2">
                       <Play className="h-4 w-4" />
                       Continue Conversation
                     </Button>

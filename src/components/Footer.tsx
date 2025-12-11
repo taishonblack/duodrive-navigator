@@ -10,7 +10,7 @@ const footerLinks = {
   company: [
     { href: "/why-duodrive", label: "Why DuoDrive" },
     { href: "#", label: "About Us" },
-    { href: "#", label: "Contact" },
+    { href: "/contact", label: "Contact" },
     { href: "/coach", label: "Coach Login" },
   ],
   legal: [

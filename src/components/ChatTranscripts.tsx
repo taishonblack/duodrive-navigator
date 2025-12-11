@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { MessageSquare, ChevronDown, ChevronUp, Trash2, Download, FileText, Play } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronUp, Trash2, Download, FileText, Play, Search, Pencil, X, Check, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -36,6 +38,8 @@ interface Conversation {
   messages: ChatMessage[];
   created_at: string;
   updated_at: string;
+  title: string | null;
+  notes: string | null;
 }
 
 // Storage keys for resuming conversations
@@ -47,6 +51,11 @@ export function ChatTranscripts() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [tempTitle, setTempTitle] = useState("");
+  const [tempNotes, setTempNotes] = useState("");
   const navigate = useNavigate();
 
   const fetchConversations = async () => {
@@ -90,14 +99,74 @@ export function ChatTranscripts() {
     }
   };
 
+  const updateTitle = async (id: string, title: string) => {
+    try {
+      const { error } = await supabase
+        .from("chat_conversations")
+        .update({ title: title.trim() || null })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setConversations(prev => prev.map(c => 
+        c.id === id ? { ...c, title: title.trim() || null } : c
+      ));
+      toast.success("Title updated");
+    } catch (e) {
+      console.error("Failed to update title:", e);
+      toast.error("Failed to update title");
+    } finally {
+      setEditingTitleId(null);
+    }
+  };
+
+  const updateNotes = async (id: string, notes: string) => {
+    try {
+      const { error } = await supabase
+        .from("chat_conversations")
+        .update({ notes: notes.trim() || null })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setConversations(prev => prev.map(c => 
+        c.id === id ? { ...c, notes: notes.trim() || null } : c
+      ));
+      toast.success("Notes saved");
+    } catch (e) {
+      console.error("Failed to update notes:", e);
+      toast.error("Failed to save notes");
+    } finally {
+      setEditingNotesId(null);
+    }
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
+    setEditingTitleId(null);
+    setEditingNotesId(null);
+  };
+
+  const startEditingTitle = (conv: Conversation, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTitleId(conv.id);
+    setTempTitle(conv.title || "");
+  };
+
+  const startEditingNotes = (conv: Conversation) => {
+    setEditingNotesId(conv.id);
+    setTempNotes(conv.notes || "");
   };
 
   const exportAsText = (conv: Conversation) => {
     const dateStr = format(new Date(conv.updated_at), "MMMM d, yyyy 'at' h:mm a");
+    const title = conv.title || "Untitled Conversation";
     let content = `DuoDrive AI Copilot Conversation\n`;
+    content += `Title: ${title}\n`;
     content += `Date: ${dateStr}\n`;
+    if (conv.notes) {
+      content += `Notes: ${conv.notes}\n`;
+    }
     content += `${"=".repeat(50)}\n\n`;
 
     conv.messages.forEach(msg => {
@@ -120,6 +189,7 @@ export function ChatTranscripts() {
   const exportAsPdf = (conv: Conversation) => {
     const doc = new jsPDF();
     const dateStr = format(new Date(conv.updated_at), "MMMM d, yyyy 'at' h:mm a");
+    const title = conv.title || "Untitled Conversation";
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
     const maxWidth = pageWidth - margin * 2;
@@ -128,7 +198,7 @@ export function ChatTranscripts() {
     // Title
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("DuoDrive AI Copilot Conversation", margin, y);
+    doc.text(title, margin, y);
     y += 10;
 
     // Date
@@ -136,7 +206,22 @@ export function ChatTranscripts() {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
     doc.text(`Date: ${dateStr}`, margin, y);
-    y += 15;
+    y += 8;
+
+    // Notes if present
+    if (conv.notes) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(80, 80, 80);
+      const notesLines = doc.splitTextToSize(`Notes: ${conv.notes}`, maxWidth);
+      notesLines.forEach((line: string) => {
+        doc.text(line, margin, y);
+        y += 5;
+      });
+      y += 5;
+    }
+
+    y += 5;
 
     // Messages
     doc.setTextColor(0, 0, 0);
@@ -192,6 +277,24 @@ export function ChatTranscripts() {
     navigate("/deal-room");
   };
 
+  // Filter conversations based on search query
+  const filteredConversations = conversations.filter(conv => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    
+    // Search in title
+    if (conv.title?.toLowerCase().includes(query)) return true;
+    
+    // Search in notes
+    if (conv.notes?.toLowerCase().includes(query)) return true;
+    
+    // Search in message content
+    return conv.messages.some(msg => 
+      msg.content.toLowerCase().includes(query)
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -214,166 +317,306 @@ export function ChatTranscripts() {
 
   return (
     <div className="space-y-4">
-      {conversations.map(conv => {
-        const messageCount = conv.messages.filter(m => m.role === "user").length;
-        const isExpanded = expandedId === conv.id;
-        const previewMessage = conv.messages.find(m => m.role === "user")?.content || "No messages";
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search conversations..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            onClick={() => setSearchQuery("")}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
 
-        return (
-          <Card key={conv.id} className="overflow-hidden">
-            <CardHeader 
-              className="cursor-pointer hover:bg-muted/50 transition-colors py-4"
-              onClick={() => toggleExpand(conv.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                    {format(new Date(conv.updated_at), "MMM d, yyyy 'at' h:mm a")}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {messageCount} message{messageCount !== 1 ? "s" : ""}
-                  </p>
-                  {!isExpanded && (
-                    <p className="text-sm text-muted-foreground mt-2 truncate">
-                      {previewMessage}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  {/* Continue Conversation Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      continueConversation(conv);
-                    }}
-                    title="Continue this conversation"
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
-                  
-                  {/* Export Dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => exportAsText(conv)}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Export as Text
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => exportAsPdf(conv)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Export as PDF
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+      {filteredConversations.length === 0 ? (
+        <div className="text-center py-8">
+          <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">No conversations match your search.</p>
+        </div>
+      ) : (
+        filteredConversations.map(conv => {
+          const messageCount = conv.messages.filter(m => m.role === "user").length;
+          const isExpanded = expandedId === conv.id;
+          const previewMessage = conv.messages.find(m => m.role === "user")?.content || "No messages";
+          const displayTitle = conv.title || format(new Date(conv.updated_at), "MMM d, yyyy 'at' h:mm a");
 
-                  {/* Delete Button */}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this conversation? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteConversation(conv.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  
-                  {isExpanded ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            
-            {isExpanded && (
-              <CardContent className="pt-0 pb-4">
-                <ScrollArea className="h-[300px] rounded-lg border bg-muted/30 p-4">
-                  <div className="space-y-4">
-                    {conv.messages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
-                            msg.role === "user"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-card border border-border text-foreground"
-                          }`}
+          return (
+            <Card key={conv.id} className="overflow-hidden">
+              <CardHeader 
+                className="cursor-pointer hover:bg-muted/50 transition-colors py-4"
+                onClick={() => toggleExpand(conv.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    {/* Title with edit functionality */}
+                    {editingTitleId === conv.id ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Input
+                          value={tempTitle}
+                          onChange={(e) => setTempTitle(e.target.value)}
+                          placeholder="Enter a title..."
+                          className="h-8 text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              updateTitle(conv.id, tempTitle);
+                            } else if (e.key === "Escape") {
+                              setEditingTitleId(null);
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-primary"
+                          onClick={() => updateTitle(conv.id, tempTitle)}
                         >
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground"
+                          onClick={() => setEditingTitleId(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span className="truncate">{displayTitle}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground flex-shrink-0"
+                          onClick={(e) => startEditingTitle(conv, e)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </CardTitle>
+                    )}
+                    
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        {messageCount} message{messageCount !== 1 ? "s" : ""}
+                      </p>
+                      {!conv.title && (
+                        <p className="text-xs text-muted-foreground">
+                          • {format(new Date(conv.updated_at), "MMM d, yyyy")}
+                        </p>
+                      )}
+                      {conv.notes && (
+                        <span className="text-xs text-primary flex items-center gap-1">
+                          <StickyNote className="h-3 w-3" />
+                          Has notes
+                        </span>
+                      )}
+                    </div>
+                    
+                    {!isExpanded && (
+                      <p className="text-sm text-muted-foreground mt-2 truncate">
+                        {previewMessage}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {/* Continue Conversation Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        continueConversation(conv);
+                      }}
+                      title="Continue this conversation"
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Export Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => exportAsText(conv)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as Text
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportAsPdf(conv)}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Export as PDF
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Delete Button */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this conversation? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteConversation(conv.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
+                    {isExpanded ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              
+              {isExpanded && (
+                <CardContent className="pt-0 pb-4 space-y-4">
+                  {/* Notes Section */}
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <StickyNote className="h-3 w-3" />
+                        Notes
+                      </label>
+                      {editingNotesId !== conv.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={() => startEditingNotes(conv)}
+                        >
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                    {editingNotesId === conv.id ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={tempNotes}
+                          onChange={(e) => setTempNotes(e.target.value)}
+                          placeholder="Add notes about this conversation..."
+                          className="min-h-[80px] text-sm"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => updateNotes(conv.id, tempNotes)}
+                          >
+                            Save Notes
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingNotesId(null)}
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <p className="text-sm text-foreground">
+                        {conv.notes || <span className="text-muted-foreground italic">No notes added</span>}
+                      </p>
+                    )}
                   </div>
-                </ScrollArea>
-                
-                {/* Action buttons when expanded */}
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => continueConversation(conv)}
-                    className="gap-2"
-                  >
-                    <Play className="h-4 w-4" />
-                    Continue Conversation
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Download className="h-4 w-4" />
-                        Export
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => exportAsText(conv)}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Export as Text
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => exportAsPdf(conv)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Export as PDF
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        );
-      })}
+
+                  {/* Messages */}
+                  <ScrollArea className="h-[300px] rounded-lg border bg-muted/30 p-4">
+                    <div className="space-y-4">
+                      {conv.messages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
+                              msg.role === "user"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card border border-border text-foreground"
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  
+                  {/* Action buttons when expanded */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => continueConversation(conv)}
+                      className="gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      Continue Conversation
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Export
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => exportAsText(conv)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as Text
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportAsPdf(conv)}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Export as PDF
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })
+      )}
     </div>
   );
 }

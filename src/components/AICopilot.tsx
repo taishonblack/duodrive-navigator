@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ export function AICopilot() {
   const [isOpen, setIsOpen] = useState(false);
   const [hasExtractedData, setHasExtractedData] = useState(false);
   const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showAnimation, setShowAnimation] = useState(true);
   
   // Use shared chat hook for synced messages
@@ -39,6 +40,11 @@ export function AICopilot() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
   // Store extracted deal data for syncing with Deal Room
   const storeExtractedDeal = (extractedData: ExtractedDealData) => {
@@ -274,6 +280,7 @@ export function AICopilot() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}

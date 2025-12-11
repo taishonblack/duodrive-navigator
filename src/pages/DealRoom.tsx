@@ -16,6 +16,7 @@ import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shi
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCopilotChat, ChatMessage } from "@/hooks/useCopilotChat";
 import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreResult } from "@/lib/duodriveScore";
 import { Progress } from "@/components/ui/progress";
 import { generateScoreReport } from "@/lib/pdfExport";
@@ -206,11 +207,6 @@ const glossaryTerms = [
   { term: "Ground Clearance", definition: "Distance between the lowest point of the vehicle and the ground. Important for off-road.", category: "features", tip: "Higher clearance helps with snow and rough roads but hurts fuel economy." },
 ];
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("copilot");
   const [searchTerm, setSearchTerm] = useState("");
@@ -218,7 +214,15 @@ export default function DealRoom() {
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  
+  // Use shared chat hook for synced messages across all copilot areas
+  const { 
+    messages: chatMessages, 
+    setMessages: setChatMessages, 
+    addMessage, 
+    clearMessages,
+    refreshWelcome 
+  } = useCopilotChat();
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -1057,7 +1061,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
       maintenance: deal.maintenance || "",
     });
     setScoreResult(deal.score_result || null);
-    setChatMessages([]);
+    clearMessages();
     setActiveTab("copilot");
   };
 
@@ -1090,7 +1094,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     };
     setDealData(emptyDeal);
     setScoreResult(null);
-    setChatMessages([]);
+    clearMessages();
     setExtractedFields(new Set());
     setActiveTab("copilot");
     localStorage.removeItem(DEAL_CACHE_KEY);
@@ -1662,15 +1666,15 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                 </p>
               </div>
 
-              {/* Deal Input Area */}
-              {chatMessages.length === 0 && !hasFormData && (
+              {/* Deal Input Area - show when no user messages yet */}
+              {chatMessages.filter(m => m.role === 'user').length === 0 && !hasFormData && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
                   <div className="flex items-center gap-3 mb-4">
                     <FileText className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-foreground">Paste your deal information</h3>
+                    <h3 className="font-semibold text-foreground">Type or paste your deal information</h3>
                   </div>
                   <Textarea
-                    placeholder={`Paste anything here — dealer quote, text message, email, notes, etc.
+                    placeholder={`Type or paste your deal information here — dealer quote, text message, email, notes, etc.
 
 Example:
 2017 Camry SE, 82k miles
@@ -1752,7 +1756,7 @@ TTL & fees $2,800`}
               )}
 
               {/* Quick Actions when deal data exists */}
-              {hasFormData && chatMessages.length === 0 && (
+              {hasFormData && chatMessages.filter(m => m.role === 'user').length === 0 && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
                   <div className="flex items-center gap-3 mb-4">
                     <Bot className="h-5 w-5 text-primary" />
@@ -1884,7 +1888,7 @@ TTL & fees $2,800`}
               )}
 
               {/* Chat Messages */}
-              {chatMessages.length > 0 && (
+              {chatMessages.filter(m => m.role === 'user').length > 0 && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
                   <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto">
                     {chatMessages.map((msg, i) => (
@@ -1912,7 +1916,7 @@ TTL & fees $2,800`}
 
                   <div className="flex gap-2">
                     <Input 
-                      placeholder="Ask me anything about your deal..." 
+                      placeholder="Type or paste your deal information..." 
                       className="flex-1" 
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
@@ -1938,12 +1942,12 @@ TTL & fees $2,800`}
                 </div>
               )}
 
-              {/* Input area when chat is active but no messages visible */}
-              {(hasFormData || chatMessages.length > 0) && chatMessages.length === 0 && (
+              {/* Input area when deal exists but no user chat messages */}
+              {(hasFormData || chatMessages.filter(m => m.role === 'user').length > 0) && chatMessages.filter(m => m.role === 'user').length === 0 && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
                   <div className="flex gap-2">
                     <Input 
-                      placeholder="Ask me anything about your deal..." 
+                      placeholder="Type or paste your deal information..." 
                       className="flex-1" 
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}

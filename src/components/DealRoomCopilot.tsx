@@ -99,7 +99,10 @@ export function DealRoomCopilot({
             <div className="text-center py-8">
               <Sparkles className="h-10 w-10 text-primary mx-auto mb-3 opacity-50" />
               <p className="text-sm text-muted-foreground">
-                Ask me anything about your deal!
+                Type or paste your deal information here!
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                I'll analyze it and help you understand every detail.
               </p>
             </div>
           ) : (
@@ -167,7 +170,7 @@ export function DealRoomCopilot({
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your deal..."
+              placeholder="Type or paste your deal information..."
               className="flex-1"
             />
             <Button type="submit" size="icon" disabled={!input.trim() || isLoading}>

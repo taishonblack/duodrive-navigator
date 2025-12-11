@@ -2,46 +2,18 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { MessageCircle, X, Send, Bot, User, Sparkles } from "lucide-react";
+import { X, Send, Bot, User, Sparkles } from "lucide-react";
 import { useLocation } from "react-router-dom";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
-// Get time-based greeting
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-};
-
-const getInitialMessages = (): Message[] => [
-  {
-    id: "1",
-    role: "assistant",
-    content: `${getGreeting()}! 👋 I'm your DuoDrive AI Copilot. I'm here to help you navigate your car-buying journey with confidence.
-
-How can I help you today?
-
-• Paste a dealer quote and I'll analyze it
-• Ask me to explain any fees or terms
-• Get tips on negotiating your best deal
-
-Would you like me to explain how DuoDrive works and the philosophy behind it?`,
-  },
-];
+import { useCopilotChat } from "@/hooks/useCopilotChat";
 
 export function AICopilot() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>(getInitialMessages);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [showAnimation, setShowAnimation] = useState(true);
+  
+  // Use shared chat hook for synced messages
+  const { messages, setMessages, refreshWelcome, isLoading, setIsLoading } = useCopilotChat();
 
   // Hide the floating copilot on Deal Room (it's integrated there)
   const isDealRoom = location.pathname === "/deal-room";
@@ -57,17 +29,16 @@ export function AICopilot() {
 
   // Refresh greeting when opening
   useEffect(() => {
-    if (isOpen && messages.length === 1) {
-      setMessages(getInitialMessages());
+    if (isOpen) {
+      refreshWelcome();
     }
-  }, [isOpen]);
+  }, [isOpen, refreshWelcome]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
+    const userMessage = {
+      role: "user" as const,
       content: input,
     };
 
@@ -102,14 +73,13 @@ export function AICopilot() {
 3. You get a DuoDrive Score (0-100) showing deal quality
 4. We provide negotiation scripts and recommendations
 
-Ready to analyze a deal? Head to the Deal Room or paste your quote here!`;
+Ready to analyze a deal? Head to the **Deal Room** or paste your quote here!`;
       } else {
         responseContent = "That's a great question! I'm here to help you understand your car deal better. For the best experience, head to the **Deal Room** where I can analyze your specific deal. Just paste your dealer quote and I'll break down every number for you!";
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
+      const assistantMessage = {
+        role: "assistant" as const,
         content: responseContent,
       };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -168,9 +138,9 @@ Ready to analyze a deal? Head to the Deal Room or paste your quote here!`;
 
         {/* Messages */}
         <div className="h-80 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <div
-              key={message.id}
+              key={index}
               className={cn(
                 "flex gap-3",
                 message.role === "user" && "flex-row-reverse"
@@ -198,7 +168,7 @@ Ready to analyze a deal? Head to the Deal Room or paste your quote here!`;
                     : "bg-primary text-primary-foreground"
                 )}
               >
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
             </div>
           ))}
@@ -230,7 +200,7 @@ Ready to analyze a deal? Head to the Deal Room or paste your quote here!`;
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything..."
+              placeholder="Type or paste your deal information..."
               className="flex-1"
             />
             <Button type="submit" size="icon" disabled={!input.trim() || isLoading}>

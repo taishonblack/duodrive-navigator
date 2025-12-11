@@ -42,49 +42,83 @@ export function AICopilot() {
       content: input,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    // Check if user is asking about how DuoDrive works
-    const lowerInput = input.toLowerCase();
-    const isAskingAboutDuoDrive = 
-      lowerInput.includes("how does") || 
-      lowerInput.includes("philosophy") || 
-      lowerInput.includes("explain") ||
-      lowerInput.includes("what is duodrive") ||
-      lowerInput.includes("yes") && messages.length <= 2;
+    let assistantContent = "";
 
-    setTimeout(() => {
-      let responseContent = "";
-      
-      if (isAskingAboutDuoDrive && messages.length <= 2) {
-        responseContent = `DuoDrive was built on a simple belief: car buying should be simple, transparent, and stress-free.
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          dealContext: {},
+        }),
+      });
 
-🎯 **Our Philosophy:**
-• We work exclusively for YOU — not dealerships
-• No hidden fees, no pressure tactics
-• Your DuoDrive Score is transparent and trustworthy
-• Think of us as your financial advisor for car buying
-
-📊 **How It Works:**
-1. Paste your dealer quote or type the deal details
-2. Our AI analyzes the pricing, fees, and terms
-3. You get a DuoDrive Score (0-100) showing deal quality
-4. We provide negotiation scripts and recommendations
-
-Ready to analyze a deal? Head to the **Deal Room** or paste your quote here!`;
-      } else {
-        responseContent = "That's a great question! I'm here to help you understand your car deal better. For the best experience, head to the **Deal Room** where I can analyze your specific deal. Just paste your dealer quote and I'll break down every number for you!";
+      if (!response.ok || !response.body) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to get response");
       }
 
-      const assistantMessage = {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // Add empty assistant message
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+                return updated;
+              });
+            }
+          } catch {
+            // Incomplete JSON, continue
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      // Fallback response on error
+      const fallbackMessage = {
         role: "assistant" as const,
-        content: responseContent,
+        content: "I'm having trouble connecting right now. For the best experience, head to the **Deal Room** where I can analyze your specific deal!",
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, fallbackMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   // Don't render on Deal Room

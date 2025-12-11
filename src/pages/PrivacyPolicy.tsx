@@ -1,9 +1,15 @@
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Shield } from "lucide-react";
 
 export default function PrivacyPolicy() {
   return (
     <Layout>
+      <SEO 
+        title="Privacy Policy"
+        description="DuoDrive Privacy Policy. Learn how we collect, use, and protect your personal information when you use our car buying platform."
+        canonical="/privacy"
+      />
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-3xl mx-auto">
           {/* Header */}

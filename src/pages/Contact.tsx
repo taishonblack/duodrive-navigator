@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,6 +87,11 @@ export default function Contact() {
 
   return (
     <Layout>
+      <SEO 
+        title="Contact Us"
+        description="Get in touch with DuoDrive. Have questions about car deals or need help understanding your DuoDrive Score? We're here to help."
+        canonical="/contact"
+      />
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">
           {/* Header */}

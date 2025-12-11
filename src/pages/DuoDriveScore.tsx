@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { PillarCard } from "@/components/PillarCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -56,6 +57,12 @@ export default function DuoDriveScore() {
 
   return (
     <Layout>
+      <SEO 
+        title="Understanding the DuoDrive Score"
+        description="Learn how the DuoDrive Score evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability."
+        canonical="/score"
+        keywords="DuoDrive Score, car deal evaluation, car buying score, vehicle scoring, car deal analysis"
+      />
       {/* Hero */}
       <section className="py-16 md:py-24 gradient-hero">
         <div className="container mx-auto px-4">

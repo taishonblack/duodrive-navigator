@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Shield, Eye, Heart, Users, ArrowRight, Check } from "lucide-react";
 
@@ -38,6 +39,12 @@ const principles = [
 export default function WhyDuoDrive() {
   return (
     <Layout>
+      <SEO 
+        title="Why DuoDrive"
+        description="We built DuoDrive to protect car buyers from unfair deals, hidden fees, and financial strain. Learn about our mission and values."
+        canonical="/why-duodrive"
+        keywords="why DuoDrive, car buying protection, car buyer advocate, transparent car buying"
+      />
       {/* Hero */}
       <section className="py-16 md:py-24 gradient-hero">
         <div className="container mx-auto px-4">

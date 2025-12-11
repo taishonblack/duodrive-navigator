@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1214,6 +1215,12 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
   return (
     <Layout>
+      <SEO 
+        title="Deal Room"
+        description="Analyze your car deal with AI-powered insights. Get your DuoDrive Score, identify hidden fees, and learn negotiation strategies."
+        canonical="/deal-room"
+        keywords="car deal analyzer, car deal review, car buying AI, DuoDrive Score, car price analysis"
+      />
       {/* First-visit tutorial overlay */}
       <DealRoomTutorial />
       

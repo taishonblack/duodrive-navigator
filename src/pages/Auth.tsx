@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -226,6 +227,12 @@ export default function Auth() {
 
   return (
     <Layout>
+      <SEO 
+        title="Sign In"
+        description="Sign in or create an account to save and compare car deals, track your DuoDrive scores, and book coaching sessions."
+        canonical="/auth"
+        noIndex
+      />
       <div className="container mx-auto px-4 py-16 max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">

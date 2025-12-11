@@ -5,15 +5,12 @@ import { cn } from "@/lib/utils";
 import { X, Send, Bot, User, Sparkles, RotateCcw } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCopilotChat } from "@/hooks/useCopilotChat";
-import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
-import { useToast } from "@/hooks/use-toast";
+import { parseExtractedDealData, ExtractedDealData } from "@/hooks/useDealExtraction";
 
 const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
 export function AICopilot() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [showAnimation, setShowAnimation] = useState(true);
@@ -131,32 +128,10 @@ export function AICopilot() {
         }
       }
 
-      // After streaming is complete, extract deal data
+      // After streaming is complete, extract deal data (store silently, no popup)
       const { extractedData } = parseExtractedDealData(assistantContent);
       if (extractedData) {
         storeExtractedDeal(extractedData);
-        const fieldNames = getExtractedFieldNames(extractedData);
-        if (fieldNames.length > 0) {
-          toast({
-            title: "Deal info captured!",
-            description: (
-              <div className="space-y-2">
-                <p>Found: {fieldNames.slice(0, 4).join(", ")}{fieldNames.length > 4 ? ` +${fieldNames.length - 4} more` : ""}</p>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate("/deal-room");
-                  }}
-                  className="mt-1"
-                >
-                  View in Deal Room →
-                </Button>
-              </div>
-            ),
-          });
-        }
       }
     } catch (error) {
       console.error("Chat error:", error);

@@ -3,11 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { X, Send, Bot, User, Sparkles, RotateCcw } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useCopilotChat } from "@/hooks/useCopilotChat";
+import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
+import { useToast } from "@/hooks/use-toast";
+
+const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
 export function AICopilot() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [showAnimation, setShowAnimation] = useState(true);
@@ -34,6 +40,19 @@ export function AICopilot() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // Store extracted deal data for syncing with Deal Room
+  const storeExtractedDeal = (extractedData: ExtractedDealData) => {
+    try {
+      // Get existing extracted data and merge
+      const existing = localStorage.getItem(EXTRACTED_DEAL_KEY);
+      const existingData = existing ? JSON.parse(existing) : {};
+      const merged = { ...existingData, ...extractedData };
+      localStorage.setItem(EXTRACTED_DEAL_KEY, JSON.stringify(merged));
+    } catch (e) {
+      console.error("Failed to store extracted deal:", e);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -98,15 +117,45 @@ export function AICopilot() {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
+              // Parse and show clean content (without extraction markers)
+              const { cleanContent } = parseExtractedDealData(assistantContent);
               setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+                updated[updated.length - 1] = { role: 'assistant', content: cleanContent };
                 return updated;
               });
             }
           } catch {
             // Incomplete JSON, continue
           }
+        }
+      }
+
+      // After streaming is complete, extract deal data
+      const { extractedData } = parseExtractedDealData(assistantContent);
+      if (extractedData) {
+        storeExtractedDeal(extractedData);
+        const fieldNames = getExtractedFieldNames(extractedData);
+        if (fieldNames.length > 0) {
+          toast({
+            title: "Deal info captured!",
+            description: (
+              <div className="space-y-2">
+                <p>Found: {fieldNames.slice(0, 4).join(", ")}{fieldNames.length > 4 ? ` +${fieldNames.length - 4} more` : ""}</p>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate("/deal-room");
+                  }}
+                  className="mt-1"
+                >
+                  View in Deal Room →
+                </Button>
+              </div>
+            ),
+          });
         }
       }
     } catch (error) {

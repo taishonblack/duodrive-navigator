@@ -27,12 +27,13 @@ export function AICopilot() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Refresh greeting when opening
+  // Refresh greeting when opening (only run when isOpen changes to true)
   useEffect(() => {
     if (isOpen) {
       refreshWelcome();
     }
-  }, [isOpen, refreshWelcome]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;

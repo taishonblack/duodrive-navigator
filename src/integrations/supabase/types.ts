@@ -19,6 +19,8 @@ export type Database = {
           created_at: string
           id: string
           messages: Json
+          notes: string | null
+          title: string | null
           updated_at: string
           user_id: string
         }
@@ -26,6 +28,8 @@ export type Database = {
           created_at?: string
           id?: string
           messages?: Json
+          notes?: string | null
+          title?: string | null
           updated_at?: string
           user_id: string
         }
@@ -33,6 +37,8 @@ export type Database = {
           created_at?: string
           id?: string
           messages?: Json
+          notes?: string | null
+          title?: string | null
           updated_at?: string
           user_id?: string
         }

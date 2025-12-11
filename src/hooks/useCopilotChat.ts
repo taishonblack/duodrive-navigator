@@ -84,10 +84,13 @@ export function useCopilotChat() {
 
   const refreshWelcome = useCallback(() => {
     // Only refresh if there's just the welcome message
-    if (messages.length === 1 && messages[0].role === "assistant") {
-      setMessages([getWelcomeMessage()]);
-    }
-  }, [messages]);
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].role === "assistant") {
+        return [getWelcomeMessage()];
+      }
+      return prev;
+    });
+  }, []);
 
   return {
     messages,

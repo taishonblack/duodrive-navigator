@@ -73,7 +73,9 @@ export default function Index() {
   const navigate = useNavigate();
 
   const handleGetStarted = (tier: string) => {
-    navigate(`/coaching#book-session?tier=${encodeURIComponent(tier)}`);
+    // Store the selected tier in sessionStorage for the Coaching page to pick up
+    sessionStorage.setItem("selectedCoachingTier", tier);
+    navigate("/coaching#book-session");
   };
 
   return (

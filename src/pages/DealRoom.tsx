@@ -12,7 +12,7 @@ import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2 } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw } from "lucide-react";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -1890,6 +1890,18 @@ TTL & fees $2,800`}
               {/* Chat Messages */}
               {chatMessages.filter(m => m.role === 'user').length > 0 && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground">Conversation</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearMessages}
+                      className="h-8 text-muted-foreground hover:text-foreground"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                      Clear
+                    </Button>
+                  </div>
                   <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto">
                     {chatMessages.map((msg, i) => (
                       <div
@@ -2321,6 +2333,7 @@ TTL & fees $2,800`}
             content: msg.content
           }))}
           onSendMessage={(msg) => sendChatMessage(msg)}
+          onClearMessages={clearMessages}
           isLoading={isChatLoading}
           isOpen={isSidePanelOpen}
           onToggle={() => setIsSidePanelOpen(!isSidePanelOpen)}

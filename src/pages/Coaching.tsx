@@ -93,19 +93,6 @@ export default function Coaching() {
   useEffect(() => {
     checkUserAndFetchSessions();
     
-    // Check for preselected tier from Index page
-    const storedTier = sessionStorage.getItem("selectedCoachingTier");
-    if (storedTier) {
-      // Map display name to tier key
-      const tierMap: Record<string, string> = {
-        "Quick Text Help": "quick",
-        "Live Phone Session": "live",
-        "Full Concierge": "concierge",
-      };
-      setSelectedTier(tierMap[storedTier] || storedTier);
-      sessionStorage.removeItem("selectedCoachingTier");
-    }
-    
     // Check if we need to scroll to booking section (from redirect)
     if (window.location.hash === "#book-session") {
       setTimeout(() => {

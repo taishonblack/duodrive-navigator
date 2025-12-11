@@ -36,6 +36,19 @@ const principles = [
   "Expert help available when you need it",
 ];
 
+const aboutSchema = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "Why DuoDrive",
+  "description": "We built DuoDrive to protect car buyers from unfair deals, hidden fees, and financial strain.",
+  "mainEntity": {
+    "@type": "Organization",
+    "name": "DuoDrive",
+    "url": "https://duodrive.app",
+    "description": "DuoDrive protects car buyers with transparent scoring and expert guidance."
+  }
+};
+
 export default function WhyDuoDrive() {
   return (
     <Layout>
@@ -44,6 +57,7 @@ export default function WhyDuoDrive() {
         description="We built DuoDrive to protect car buyers from unfair deals, hidden fees, and financial strain. Learn about our mission and values."
         canonical="/why-duodrive"
         keywords="why DuoDrive, car buying protection, car buyer advocate, transparent car buying"
+        structuredData={aboutSchema}
       />
       {/* Hero */}
       <section className="py-16 md:py-24 gradient-hero">

@@ -8,6 +8,7 @@ interface SEOProps {
   ogType?: string;
   ogImage?: string;
   noIndex?: boolean;
+  structuredData?: object | object[];
 }
 
 const defaultTitle = "DuoDrive - Car Buying Simplified";
@@ -24,8 +25,14 @@ export function SEO({
   ogType = "website",
   ogImage = defaultImage,
   noIndex = false,
+  structuredData,
 }: SEOProps) {
   const pageTitle = title ? `${title} | DuoDrive` : defaultTitle;
+
+  // Handle single object or array of structured data
+  const structuredDataArray = structuredData 
+    ? Array.isArray(structuredData) ? structuredData : [structuredData]
+    : [];
 
   return (
     <Helmet>
@@ -49,6 +56,37 @@ export function SEO({
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImage} />
+
+      {/* Structured Data (JSON-LD) */}
+      {structuredDataArray.map((data, index) => (
+        <script key={index} type="application/ld+json">
+          {JSON.stringify(data)}
+        </script>
+      ))}
     </Helmet>
   );
 }
+
+// Common structured data helpers
+export const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "DuoDrive",
+  "url": "https://duodrive.app",
+  "logo": "https://duodrive.app/favicon.ico",
+  "description": "DuoDrive helps car buyers understand if a deal is safe, fair, and affordable.",
+  "sameAs": []
+};
+
+export const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "DuoDrive",
+  "url": "https://duodrive.app",
+  "description": "Car Buying Simplified - Get instant analysis with the DuoDrive Score",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://duodrive.app/deal-room",
+    "query-input": "required name=search_term_string"
+  }
+};

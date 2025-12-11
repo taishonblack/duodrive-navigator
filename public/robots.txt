@@ -1,3 +1,4 @@
+# DuoDrive robots.txt
 User-agent: Googlebot
 Allow: /
 
@@ -12,3 +13,12 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://duodrive.app/sitemap.xml
+
+# Disallow admin and coach portals
+Disallow: /admin
+Disallow: /admin/
+Disallow: /coach
+Disallow: /coach/

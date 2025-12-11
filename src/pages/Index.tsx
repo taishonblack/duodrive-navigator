@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
+import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ScoreRing";
 import { CoachingCard } from "@/components/CoachingCard";
@@ -84,6 +84,7 @@ export default function Index() {
       <SEO 
         canonical="/"
         keywords="car buying, car deal analyzer, DuoDrive Score, car affordability, vehicle purchase, car buying coach, car buying tips"
+        structuredData={[organizationSchema, websiteSchema]}
       />
       {/* Hero Section */}
       <section className="relative overflow-hidden">

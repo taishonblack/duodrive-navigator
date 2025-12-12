@@ -547,6 +547,51 @@ export type Database = {
         }
         Relationships: []
       }
+      session_ratings: {
+        Row: {
+          chat_session_id: string
+          coach_id: string
+          created_at: string
+          customer_id: string
+          feedback: string | null
+          id: string
+          rating: number
+        }
+        Insert: {
+          chat_session_id: string
+          coach_id: string
+          created_at?: string
+          customer_id: string
+          feedback?: string | null
+          id?: string
+          rating: number
+        }
+        Update: {
+          chat_session_id?: string
+          coach_id?: string
+          created_at?: string
+          customer_id?: string
+          feedback?: string | null
+          id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_ratings_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "coach_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_ratings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

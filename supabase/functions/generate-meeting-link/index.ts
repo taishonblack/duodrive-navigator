@@ -4,6 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +30,38 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
   } catch (error) {
     console.error("Error refreshing token:", error);
     return null;
+  }
+}
+
+async function sendSMS(to: string, body: string) {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.log("Twilio not configured, skipping SMS");
+    return;
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
+      },
+      body: new URLSearchParams({
+        From: TWILIO_PHONE_NUMBER,
+        To: to,
+        Body: body,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("SMS send failed:", error);
+    } else {
+      console.log("SMS sent successfully to:", to);
+    }
+  } catch (error) {
+    console.error("SMS error:", error);
   }
 }
 
@@ -69,11 +104,11 @@ serve(async (req) => {
     }
 
     // Get coach integration for Google Calendar
-    const { data: integration, error: integrationError } = await supabase
+    const { data: integration } = await supabase
       .from("coach_integrations")
       .select("*")
       .eq("coach_id", update.coach_id)
-      .single();
+      .maybeSingle();
 
     let meetLink: string | null = null;
 
@@ -146,7 +181,7 @@ serve(async (req) => {
       console.error("Error saving meet link:", saveError);
     }
 
-    // Get customer and coach emails
+    // Get customer and coach info
     const { data: customerProfile } = await supabase
       .from("profiles")
       .select("email")
@@ -157,9 +192,18 @@ serve(async (req) => {
       .from("profiles")
       .select("email")
       .eq("id", (update as any).coaches?.user_id)
-      .single();
+      .maybeSingle();
 
-    // Send notification emails to both parties
+    // Get customer phone from recent request
+    const { data: recentRequest } = await supabase
+      .from("coaching_requests")
+      .select("phone_number")
+      .eq("customer_id", update.customer_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const customerPhone = recentRequest?.phone_number;
     const coachName = (update as any).coaches?.display_name || "Your Coach";
     
     // Email to customer
@@ -195,6 +239,14 @@ serve(async (req) => {
       });
     }
 
+    // SMS to customer
+    if (customerPhone) {
+      const smsText = meetLink
+        ? `DuoDrive: Your call with ${coachName} is scheduled! Join: ${meetLink}`
+        : `DuoDrive: Time confirmed (${selectedTime}). ${coachName} will send meeting details soon.`;
+      await sendSMS(customerPhone, smsText);
+    }
+
     // Email to coach
     if (coachProfile?.email) {
       const coachHtml = `
@@ -202,7 +254,7 @@ serve(async (req) => {
         <p>Your customer has selected a time for the follow-up call.</p>
         <p><strong>Selected time:</strong> ${selectedTime}</p>
         ${meetLink ? `<p><strong>Google Meet link:</strong> <a href="${meetLink}">${meetLink}</a></p>` : ""}
-        <p><a href="https://duodrive.app/coach-dashboard" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a></p>
+        <p><a href="https://duodrive.app/coach/dashboard" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a></p>
         <p>Best,<br>The DuoDrive Team</p>
       `;
 
@@ -230,7 +282,7 @@ serve(async (req) => {
     console.error("Error in generate-meeting-link:", error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-type": "application/json" } }
     );
   }
 });

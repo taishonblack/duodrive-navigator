@@ -38,3 +38,6 @@ verify_jwt = true
 
 [functions.send-contact-email]
 verify_jwt = false
+
+[functions.notify-customer-chat-ready]
+verify_jwt = true

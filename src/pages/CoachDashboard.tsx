@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
-  Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer
+  Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer,
+  Send, ExternalLink
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +65,7 @@ export default function CoachDashboard() {
   const [pendingRequests, setPendingRequests] = useState<CoachingRequest[]>([]);
   const [myRequests, setMyRequests] = useState<CoachingRequest[]>([]);
   const [activeSessions, setActiveSessions] = useState<Record<string, any>>({});
+  const [chatSessions, setChatSessions] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -163,6 +165,21 @@ export default function CoachDashboard() {
             sessionMap[s.request_id] = s;
           });
           setActiveSessions(sessionMap);
+        }
+
+        // Fetch chat sessions for text coaching
+        const { data: chats, error: chatsError } = await supabase
+          .from("coach_chat_sessions")
+          .select("*")
+          .in("request_id", requestIds)
+          .neq("status", "completed");
+
+        if (!chatsError && chats) {
+          const chatMap: Record<string, any> = {};
+          chats.forEach((c: any) => {
+            chatMap[c.request_id] = c;
+          });
+          setChatSessions(chatMap);
         }
       }
     } catch (error: any) {
@@ -304,6 +321,74 @@ export default function CoachDashboard() {
       toast({
         title: "Error",
         description: "Failed to update status.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Create chat session for text coaching and notify customer
+  const startTextChat = async (requestId: string) => {
+    if (!coach) return;
+    setActionLoading(requestId);
+
+    try {
+      const request = myRequests.find(r => r.id === requestId);
+      if (!request) throw new Error("Request not found");
+
+      // Get customer_id from the request
+      const { data: requestData, error: reqError } = await supabase
+        .from("coaching_requests")
+        .select("customer_id")
+        .eq("id", requestId)
+        .single();
+
+      if (reqError || !requestData) throw new Error("Could not find customer");
+
+      // Check if chat session already exists
+      if (chatSessions[requestId]) {
+        // Navigate to existing chat
+        navigate(`/coaching-chat/${chatSessions[requestId].id}`);
+        return;
+      }
+
+      // Create new chat session
+      const { data: chatSession, error: chatError } = await supabase
+        .from("coach_chat_sessions")
+        .insert({
+          request_id: requestId,
+          coach_id: coach.id,
+          customer_id: requestData.customer_id,
+          scheduled_duration_minutes: 10,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (chatError) throw chatError;
+
+      // Notify customer via email/SMS (without exposing contact info to coach)
+      const { data: { session } } = await supabase.auth.getSession();
+      await supabase.functions.invoke("notify-customer-chat-ready", {
+        body: { chatSessionId: chatSession.id },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      toast({
+        title: "Customer Notified",
+        description: "The customer has been notified via email and SMS. They'll join when ready.",
+      });
+
+      // Navigate to chat page to wait for customer
+      navigate(`/coaching-chat/${chatSession.id}`);
+    } catch (error: any) {
+      console.error("Error starting text chat:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start chat session.",
         variant: "destructive",
       });
     } finally {
@@ -557,9 +642,35 @@ export default function CoachDashboard() {
                           </div>
                         )}
 
+                        {/* Chat session link for text coaching */}
+                        {request.session_type === "text" && chatSessions[request.id] && (
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/coaching-chat/${chatSessions[request.id].id}`)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open Chat
+                          </Button>
+                        )}
+
                         {request.status !== "completed" && request.status !== "cancelled" && (
                           <div className="flex gap-2">
-                            {request.status === "claimed" && (
+                            {request.status === "claimed" && request.session_type === "text" && !chatSessions[request.id] && (
+                              <Button
+                                onClick={() => startTextChat(request.id)}
+                                disabled={actionLoading === request.id}
+                              >
+                                {actionLoading === request.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Notify & Start Chat
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            {request.status === "claimed" && request.session_type !== "text" && (
                               <Button
                                 variant="outline"
                                 onClick={() => updateStatus(request.id, "in_progress")}
@@ -569,7 +680,7 @@ export default function CoachDashboard() {
                                 Start Session
                               </Button>
                             )}
-                            {request.status !== "in_progress" && (
+                            {request.status !== "in_progress" && request.session_type !== "text" && (
                               <Button
                                 onClick={() => updateStatus(request.id, "completed")}
                                 disabled={actionLoading === request.id}

@@ -234,8 +234,12 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
 
         // Notify available coaches about the new request
         try {
+          const { data: { session } } = await supabase.auth.getSession();
           await supabase.functions.invoke("notify-coaches", {
             body: { requestId: insertedRequest.id },
+            headers: {
+              Authorization: `Bearer ${session?.access_token}`,
+            },
           });
         } catch (notifyError) {
           console.error("Failed to notify coaches:", notifyError);

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { sanitizeForHtml, isValidUUID } from "../_shared/validation.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -62,10 +63,11 @@ serve(async (req) => {
 
     const { requestId }: NotifyCoachesRequest = await req.json();
 
-    if (!requestId) {
-      console.error("Missing requestId");
+    // Validate requestId format
+    if (!requestId || !isValidUUID(requestId)) {
+      console.error("Invalid or missing requestId");
       return new Response(
-        JSON.stringify({ error: "requestId is required" }),
+        JSON.stringify({ error: "Valid requestId is required" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -105,16 +107,24 @@ serve(async (req) => {
         .single();
       
       if (deal) {
-        const vehicle = [deal.year, deal.make, deal.model, deal.trim].filter(Boolean).join(" ");
+        // Sanitize all deal fields for HTML
+        const safeName = deal.name ? sanitizeForHtml(deal.name) : "";
+        const safeYear = deal.year ? sanitizeForHtml(deal.year) : "";
+        const safeMake = deal.make ? sanitizeForHtml(deal.make) : "";
+        const safeModel = deal.model ? sanitizeForHtml(deal.model) : "";
+        const safeTrim = deal.trim ? sanitizeForHtml(deal.trim) : "";
+        
+        const vehicle = [safeYear, safeMake, safeModel, safeTrim].filter(Boolean).join(" ");
         const askingPrice = formatPrice(deal.asking_price);
         const negotiatedPrice = formatPrice(deal.negotiated_price);
+        const safeMileage = deal.mileage ? parseInt(deal.mileage).toLocaleString() : "";
         
         dealInfo = `
           <div style="background: #ecfdf5; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #10b981;">
             <p style="margin: 0 0 10px 0; color: #047857; font-size: 14px; font-weight: 600;">🚗 Customer's Deal:</p>
-            ${deal.name ? `<p style="margin: 5px 0; color: #111827;"><strong>Deal Name:</strong> ${deal.name}</p>` : ""}
+            ${safeName ? `<p style="margin: 5px 0; color: #111827;"><strong>Deal Name:</strong> ${safeName}</p>` : ""}
             ${vehicle ? `<p style="margin: 5px 0; color: #111827;"><strong>Vehicle:</strong> ${vehicle}</p>` : ""}
-            ${deal.mileage ? `<p style="margin: 5px 0; color: #111827;"><strong>Mileage:</strong> ${parseInt(deal.mileage).toLocaleString()} miles</p>` : ""}
+            ${safeMileage ? `<p style="margin: 5px 0; color: #111827;"><strong>Mileage:</strong> ${safeMileage} miles</p>` : ""}
             ${askingPrice ? `<p style="margin: 5px 0; color: #111827;"><strong>Asking Price:</strong> ${askingPrice}</p>` : ""}
             ${negotiatedPrice ? `<p style="margin: 5px 0; color: #111827;"><strong>Negotiated Price:</strong> ${negotiatedPrice}</p>` : ""}
           </div>
@@ -166,6 +176,9 @@ serve(async (req) => {
     const formattedTime = formatTime(request.scheduled_time);
     const dashboardUrl = `${supabaseUrl.replace(".supabase.co", ".lovable.app")}/coach-dashboard`;
 
+    // Sanitize customer notes
+    const safeNotes = request.notes ? sanitizeForHtml(request.notes) : "";
+
     // Send notification emails to each coach
     const emailPromises = coaches.map(async (coach) => {
       const email = coachEmails[coach.user_id];
@@ -174,13 +187,16 @@ serve(async (req) => {
         return null;
       }
 
+      // Sanitize coach display name for email
+      const safeDisplayName = sanitizeForHtml(coach.display_name);
+
       const htmlContent = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 24px;">🔔 New Coaching Request!</h1>
           </div>
           <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
-            <p style="font-size: 16px; color: #374151;">Hi ${coach.display_name},</p>
+            <p style="font-size: 16px; color: #374151;">Hi ${safeDisplayName},</p>
             <p style="font-size: 16px; color: #374151;">A new <strong>${sessionLabel}</strong> request is waiting for you!</p>
             
             <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 20px 0;">
@@ -192,10 +208,10 @@ serve(async (req) => {
 
             ${dealInfo}
 
-            ${request.notes ? `
+            ${safeNotes ? `
               <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0 0 5px 0; font-size: 14px; color: #92400e; font-weight: 600;">📝 Customer Notes:</p>
-                <p style="margin: 0; font-size: 14px; color: #78350f;">${request.notes}</p>
+                <p style="margin: 0; font-size: 14px; color: #78350f;">${safeNotes}</p>
               </div>
             ` : ""}
 

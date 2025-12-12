@@ -50,34 +50,42 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Get coach integration details
+    // Check if connected via coach_integrations
     const { data: integration, error: integrationError } = await supabase
       .from("coach_integrations")
-      .select("*")
+      .select("google_connected")
       .eq("coach_id", coachId)
       .single();
 
-    if (integrationError || !integration) {
-      console.error("Coach integration not found:", integrationError);
+    if (integrationError || !integration?.google_connected) {
+      console.error("Coach integration not found or not connected:", integrationError);
       return new Response(
         JSON.stringify({ error: "Coach has not connected Google Calendar" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!integration.google_connected || !integration.google_access_token) {
+    // Get OAuth tokens from secure table (only accessible via service_role)
+    const { data: oauthTokens, error: tokenError } = await supabase
+      .from("coach_oauth_tokens")
+      .select("*")
+      .eq("coach_id", coachId)
+      .single();
+
+    if (tokenError || !oauthTokens?.google_access_token) {
+      console.error("OAuth tokens not found:", tokenError);
       return new Response(
         JSON.stringify({ error: "Google Calendar is not connected" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    let accessToken = integration.google_access_token;
+    let accessToken = oauthTokens.google_access_token;
 
     // Check if token is expired and refresh if needed
-    if (new Date(integration.google_token_expires_at) <= new Date()) {
+    if (new Date(oauthTokens.google_token_expires_at) <= new Date()) {
       console.log("Access token expired, refreshing...");
-      const newToken = await refreshAccessToken(integration.google_refresh_token);
+      const newToken = await refreshAccessToken(oauthTokens.google_refresh_token);
       
       if (!newToken) {
         return new Response(
@@ -88,9 +96,9 @@ serve(async (req) => {
 
       accessToken = newToken;
 
-      // Update token in database
+      // Update token in secure database
       await supabase
-        .from("coach_integrations")
+        .from("coach_oauth_tokens")
         .update({
           google_access_token: newToken,
           google_token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),

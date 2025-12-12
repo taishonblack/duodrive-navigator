@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { isValidUUID, sanitizeForHtml } from "../_shared/validation.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -13,12 +14,6 @@ interface NotifyRequest {
   chatSessionId: string;
 }
 
-const isValidUUID = (id: unknown): id is string => {
-  if (typeof id !== "string") return false;
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,6 +23,15 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify JWT authorization
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const { chatSessionId }: NotifyRequest = await req.json();
 
@@ -98,7 +102,9 @@ serve(async (req) => {
       .eq("id", chatSession.customer_id)
       .single();
 
-    const customerName = customerProfile?.email?.split("@")[0] || "A customer";
+    const rawCustomerName = customerProfile?.email?.split("@")[0] || "A customer";
+    const customerName = sanitizeForHtml(rawCustomerName);
+    const safeCoachName = sanitizeForHtml(coach.display_name);
 
     // Build the chat URL for coach
     const chatUrl = `${supabaseUrl.replace(".supabase.co", ".lovable.app")}/coaching-chat/${chatSessionId}`;
@@ -110,7 +116,7 @@ serve(async (req) => {
           <h1 style="color: white; margin: 0; font-size: 24px;">🎯 Customer Joined Your Chat!</h1>
         </div>
         <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
-          <p style="font-size: 16px; color: #374151;">Hi ${coach.display_name},</p>
+          <p style="font-size: 16px; color: #374151;">Hi ${safeCoachName},</p>
           <p style="font-size: 16px; color: #374151;">
             <strong>${customerName}</strong> has joined your coaching chat session and is ready to start!
           </p>

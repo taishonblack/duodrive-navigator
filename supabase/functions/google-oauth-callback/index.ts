@@ -63,21 +63,34 @@ serve(async (req) => {
     // Calculate token expiry time
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-    // Upsert coach integration record
-    const { error: upsertError } = await supabase
-      .from("coach_integrations")
+    // Store tokens in the secure coach_oauth_tokens table (no user access)
+    const { error: tokenError } = await supabase
+      .from("coach_oauth_tokens")
       .upsert({
         coach_id: state,
-        google_connected: true,
         google_access_token: tokenData.access_token,
         google_refresh_token: tokenData.refresh_token,
         google_token_expires_at: expiresAt,
         updated_at: new Date().toISOString(),
       }, { onConflict: "coach_id" });
 
-    if (upsertError) {
-      console.error("Database error:", upsertError);
-      return new Response("Failed to save integration", { status: 500 });
+    if (tokenError) {
+      console.error("Error storing tokens:", tokenError);
+      return new Response("Failed to store integration", { status: 500 });
+    }
+
+    // Update the coach_integrations table to show connected status (visible to user)
+    const { error: integrationError } = await supabase
+      .from("coach_integrations")
+      .upsert({
+        coach_id: state,
+        google_connected: true,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "coach_id" });
+
+    if (integrationError) {
+      console.error("Error updating integration status:", integrationError);
+      // Don't fail - tokens are already stored securely
     }
 
     console.log("Google integration saved successfully for coach:", state);

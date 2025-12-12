@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { sanitizeForHtml } from "../_shared/validation.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -85,6 +86,7 @@ serve(async (req) => {
     }
 
     const { updateId, selectedTime } = await req.json();
+    const safeSelectedTime = sanitizeForHtml(selectedTime || "");
 
     console.log("Generating meeting link for update:", updateId, "time:", selectedTime);
 
@@ -103,20 +105,37 @@ serve(async (req) => {
       );
     }
 
-    // Get coach integration for Google Calendar
+    // Get OAuth tokens from secure table (only accessible via service_role)
+    const { data: oauthTokens } = await supabase
+      .from("coach_oauth_tokens")
+      .select("*")
+      .eq("coach_id", update.coach_id)
+      .maybeSingle();
+
+    // Check if connected via coach_integrations
     const { data: integration } = await supabase
       .from("coach_integrations")
-      .select("*")
+      .select("google_connected")
       .eq("coach_id", update.coach_id)
       .maybeSingle();
 
     let meetLink: string | null = null;
 
-    if (integration?.google_connected && integration?.google_refresh_token) {
+    if (integration?.google_connected && oauthTokens?.google_refresh_token) {
       // Refresh access token
-      const accessToken = await refreshAccessToken(integration.google_refresh_token);
+      const accessToken = await refreshAccessToken(oauthTokens.google_refresh_token);
       
       if (accessToken) {
+        // Update stored access token
+        await supabase
+          .from("coach_oauth_tokens")
+          .update({
+            google_access_token: accessToken,
+            google_token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("coach_id", update.coach_id);
+
         // Create Google Calendar event with Meet link
         const eventStart = new Date();
         eventStart.setHours(eventStart.getHours() + 24); // Default to 24 hours from now
@@ -204,7 +223,7 @@ serve(async (req) => {
       .maybeSingle();
 
     const customerPhone = recentRequest?.phone_number;
-    const coachName = (update as any).coaches?.display_name || "Your Coach";
+    const coachName = sanitizeForHtml((update as any).coaches?.display_name || "Your Coach");
     
     // Email to customer
     if (customerProfile?.email) {
@@ -212,14 +231,14 @@ serve(async (req) => {
         ? `
           <h2>Your Coaching Call is Scheduled!</h2>
           <p>Great news! Your follow-up call with ${coachName} has been confirmed.</p>
-          <p><strong>Selected time:</strong> ${selectedTime}</p>
+          <p><strong>Selected time:</strong> ${safeSelectedTime}</p>
           <p><strong>Join the meeting:</strong></p>
           <p><a href="${meetLink}" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Join Google Meet</a></p>
           <p>Best,<br>The DuoDrive Team</p>
         `
         : `
           <h2>Time Selected!</h2>
-          <p>You've selected: ${selectedTime}</p>
+          <p>You've selected: ${safeSelectedTime}</p>
           <p>Your coach ${coachName} will send you the meeting details shortly.</p>
           <p>Best,<br>The DuoDrive Team</p>
         `;
@@ -239,11 +258,12 @@ serve(async (req) => {
       });
     }
 
-    // SMS to customer
+    // SMS to customer (not sanitized - plain text)
     if (customerPhone) {
+      const rawCoachName = (update as any).coaches?.display_name || "Your Coach";
       const smsText = meetLink
-        ? `DuoDrive: Your call with ${coachName} is scheduled! Join: ${meetLink}`
-        : `DuoDrive: Time confirmed (${selectedTime}). ${coachName} will send meeting details soon.`;
+        ? `DuoDrive: Your call with ${rawCoachName} is scheduled! Join: ${meetLink}`
+        : `DuoDrive: Time confirmed (${selectedTime}). ${rawCoachName} will send meeting details soon.`;
       await sendSMS(customerPhone, smsText);
     }
 
@@ -252,7 +272,7 @@ serve(async (req) => {
       const coachHtml = `
         <h2>Customer Selected a Time!</h2>
         <p>Your customer has selected a time for the follow-up call.</p>
-        <p><strong>Selected time:</strong> ${selectedTime}</p>
+        <p><strong>Selected time:</strong> ${safeSelectedTime}</p>
         ${meetLink ? `<p><strong>Google Meet link:</strong> <a href="${meetLink}">${meetLink}</a></p>` : ""}
         <p><a href="https://duodrive.app/coach/dashboard" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a></p>
         <p>Best,<br>The DuoDrive Team</p>

@@ -270,8 +270,39 @@ export type Database = {
         Row: {
           coach_id: string
           created_at: string
-          google_access_token: string | null
           google_connected: boolean | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          google_connected?: boolean | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          google_connected?: boolean | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_integrations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: true
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_oauth_tokens: {
+        Row: {
+          coach_id: string
+          created_at: string
+          google_access_token: string | null
           google_refresh_token: string | null
           google_token_expires_at: string | null
           id: string
@@ -281,7 +312,6 @@ export type Database = {
           coach_id: string
           created_at?: string
           google_access_token?: string | null
-          google_connected?: boolean | null
           google_refresh_token?: string | null
           google_token_expires_at?: string | null
           id?: string
@@ -291,7 +321,6 @@ export type Database = {
           coach_id?: string
           created_at?: string
           google_access_token?: string | null
-          google_connected?: boolean | null
           google_refresh_token?: string | null
           google_token_expires_at?: string | null
           id?: string
@@ -299,7 +328,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "coach_integrations_coach_id_fkey"
+            foreignKeyName: "coach_oauth_tokens_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: true
             referencedRelation: "coaches"

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { sanitizeForHtml } from "../_shared/validation.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -62,9 +63,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Verify JWT authorization
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { updateId, customerId, coachName, message, updateType, proposedTimes }: UpdateRequest = await req.json();
 
     console.log("Sending customer update notification:", { updateId, customerId, updateType });
+
+    // Sanitize user-provided content for HTML embedding
+    const safeCoachName = sanitizeForHtml(coachName);
+    const safeMessage = sanitizeForHtml(message);
+    const safeTimes = proposedTimes?.map(t => sanitizeForHtml(t)) || [];
 
     // Get customer email and phone from profiles and coaching_requests
     const { data: profile, error: profileError } = await supabase
@@ -100,14 +115,14 @@ serve(async (req) => {
 
     if (updateType === "schedule_request") {
       subject = `Your DuoDrive Coach wants to schedule a call`;
-      const timesHtml = proposedTimes?.map(t => `<li>${t}</li>`).join("") || "";
+      const timesHtml = safeTimes.map(t => `<li>${t}</li>`).join("") || "";
       htmlContent = `
         <h2>Schedule Request from Your Coach</h2>
         <p>Hi there,</p>
-        <p>Your DuoDrive coach <strong>${coachName}</strong> would like to schedule a follow-up call with you.</p>
+        <p>Your DuoDrive coach <strong>${safeCoachName}</strong> would like to schedule a follow-up call with you.</p>
         <p><strong>Message:</strong></p>
-        <p style="background: #f5f5f5; padding: 15px; border-radius: 8px;">${message}</p>
-        ${proposedTimes?.length ? `
+        <p style="background: #f5f5f5; padding: 15px; border-radius: 8px;">${safeMessage}</p>
+        ${safeTimes.length ? `
         <p><strong>Proposed times:</strong></p>
         <ul>${timesHtml}</ul>
         ` : ""}
@@ -121,8 +136,8 @@ serve(async (req) => {
       htmlContent = `
         <h2>Update from Your Coach</h2>
         <p>Hi there,</p>
-        <p>Your DuoDrive coach <strong>${coachName}</strong> has sent you an update about your car search:</p>
-        <p style="background: #f5f5f5; padding: 15px; border-radius: 8px;">${message}</p>
+        <p>Your DuoDrive coach <strong>${safeCoachName}</strong> has sent you an update about your car search:</p>
+        <p style="background: #f5f5f5; padding: 15px; border-radius: 8px;">${safeMessage}</p>
         <p>Log in to your DuoDrive account to view the full update and respond:</p>
         <p><a href="${dashboardUrl}" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Update</a></p>
         <p>Best,<br>The DuoDrive Team</p>

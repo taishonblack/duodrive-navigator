@@ -82,7 +82,8 @@ export function CustomerUpdateForm({
 
       if (insertError) throw insertError;
 
-      // Send notification email
+      // Send notification email (with authorization)
+      const { data: { session } } = await supabase.auth.getSession();
       const { error: notifyError } = await supabase.functions.invoke("send-customer-update", {
         body: {
           updateId: update.id,
@@ -92,6 +93,7 @@ export function CustomerUpdateForm({
           updateType,
           proposedTimes: filteredTimes,
         },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
 
       if (notifyError) {

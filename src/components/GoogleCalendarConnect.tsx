@@ -72,13 +72,11 @@ export function GoogleCalendarConnect({ coachId }: GoogleCalendarConnectProps) {
 
   const handleDisconnect = async () => {
     try {
+      // Only update the google_connected flag - tokens are in separate secure table
       const { error } = await supabase
         .from("coach_integrations")
         .update({
           google_connected: false,
-          google_access_token: null,
-          google_refresh_token: null,
-          google_token_expires_at: null,
           updated_at: new Date().toISOString(),
         })
         .eq("coach_id", coachId);

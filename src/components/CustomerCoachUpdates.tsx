@@ -8,7 +8,9 @@ import {
   MessageSquare, Calendar, Clock, CheckCircle, Video, 
   Loader2, ChevronRight, Bell
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, addMinutes } from "date-fns";
+import { AddToCalendarButton } from "@/components/AddToCalendarButton";
+import { CalendarEvent } from "@/lib/calendarExport";
 
 interface CoachUpdate {
   id: string;
@@ -268,12 +270,25 @@ export function CustomerCoachUpdates({ userId }: CustomerCoachUpdatesProps) {
                 <p className="text-xs text-muted-foreground line-clamp-1">{update.message}</p>
                 
                 {update.meet_link && (
-                  <Button asChild size="sm" variant="outline" className="mt-2">
-                    <a href={update.meet_link} target="_blank" rel="noopener noreferrer">
-                      <Video className="h-3 w-3 mr-1" />
-                      Join Meeting
-                    </a>
-                  </Button>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={update.meet_link} target="_blank" rel="noopener noreferrer">
+                        <Video className="h-3 w-3 mr-1" />
+                        Join Meeting
+                      </a>
+                    </Button>
+                    {update.customer_selected_time && (
+                      <AddToCalendarButton
+                        event={{
+                          title: `DuoDrive Coaching Session with ${update.coach_name}`,
+                          description: update.message,
+                          startTime: new Date(update.customer_selected_time),
+                          endTime: addMinutes(new Date(update.customer_selected_time), 30),
+                          meetLink: update.meet_link,
+                        }}
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             ))}

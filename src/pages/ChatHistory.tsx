@@ -13,7 +13,8 @@ import {
   Calendar, ChevronRight, Star, RefreshCw, Phone, Video
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, addMinutes } from "date-fns";
+import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 
 interface ChatSession {
   id: string;

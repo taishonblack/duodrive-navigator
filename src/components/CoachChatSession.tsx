@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useChatPresence } from "@/hooks/useChatPresence";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { SessionRatingDialog } from "@/components/SessionRatingDialog";
 
 interface ChatMessage {
@@ -48,6 +49,7 @@ export function CoachChatSession({
   onSessionEnd,
 }: CoachChatSessionProps) {
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -319,6 +321,20 @@ export function CoachChatSession({
           status: "completed",
         })
         .eq("id", sessionId);
+
+      // Log audit event for ending session (only for coaches)
+      if (isCoach && coachId) {
+        logAction({
+          coachId,
+          action: "end_chat_session",
+          resourceType: "coach_chat_sessions",
+          resourceId: sessionId,
+          details: { 
+            duration_minutes: Math.ceil(elapsedSeconds / 60),
+            was_extended: session?.coach_extended || false,
+          },
+        });
+      }
 
       toast({
         title: "Session Ended",

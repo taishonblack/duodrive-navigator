@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarIcon, MessageSquare, Phone, Video, Loader2, CheckCircle, Clock, Sun, Sunset, Moon, FileText } from "lucide-react";
+import { CalendarIcon, MessageSquare, Phone, Video, Loader2, CheckCircle, Clock, Sun, Sunset, Moon, FileText, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +44,7 @@ const PENDING_BOOKING_KEY = "duodrive_pending_booking";
 export function CoachSchedulingForm({ dealId, preselectedTier }: CoachSchedulingFormProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [userDeals, setUserDeals] = useState<Deal[]>([]);
   const [date, setDate] = useState<Date>();
@@ -57,6 +58,29 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoadingDeals, setIsLoadingDeals] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Check for payment success/cancel on mount
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    const paymentSessionType = searchParams.get("session_type");
+    
+    if (paymentStatus === "success" && paymentSessionType) {
+      toast({
+        title: "Payment Successful!",
+        description: paymentSessionType === "video" 
+          ? "Your 20% deposit has been processed. We'll charge the remaining 80% after your session." 
+          : "Your coaching session has been paid for. A coach will contact you soon.",
+      });
+      setIsSubmitted(true);
+    } else if (paymentStatus === "cancelled") {
+      toast({
+        title: "Payment Cancelled",
+        description: "Your payment was cancelled. You can try again when ready.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams, toast]);
 
   // Check for pending booking data on mount
   useEffect(() => {
@@ -209,6 +233,7 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
         return;
       }
 
+      // First, create the coaching request
       const { data: insertedRequest, error } = await supabase.from("coaching_requests").insert({
         customer_id: currentUser.id,
         deal_id: selectedDealId || null,
@@ -222,35 +247,57 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
 
       if (error) throw error;
 
-      // Send confirmation email to customer
-      if (insertedRequest) {
-        try {
-          await supabase.functions.invoke("send-session-reminder", {
-            body: { requestId: insertedRequest.id, reminderType: "session_scheduled" },
-          });
-        } catch (emailError) {
-          console.error("Failed to send confirmation email:", emailError);
+      // Now redirect to Stripe checkout
+      setIsProcessingPayment(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
+        "create-coaching-checkout",
+        {
+          body: { 
+            sessionType, 
+            requestId: insertedRequest.id 
+          },
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
         }
+      );
 
-        // Notify available coaches about the new request
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          await supabase.functions.invoke("notify-coaches", {
-            body: { requestId: insertedRequest.id },
-            headers: {
-              Authorization: `Bearer ${session?.access_token}`,
-            },
-          });
-        } catch (notifyError) {
-          console.error("Failed to notify coaches:", notifyError);
-        }
+      if (checkoutError) throw checkoutError;
+      if (!checkoutData?.url) throw new Error("No checkout URL returned");
+
+      // Send confirmation email to customer (fire and forget)
+      try {
+        await supabase.functions.invoke("send-session-reminder", {
+          body: { requestId: insertedRequest.id, reminderType: "session_scheduled" },
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
       }
 
-      setIsSubmitted(true);
+      // Notify available coaches about the new request (fire and forget)
+      try {
+        await supabase.functions.invoke("notify-coaches", {
+          body: { requestId: insertedRequest.id },
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+        });
+      } catch (notifyError) {
+        console.error("Failed to notify coaches:", notifyError);
+      }
+
+      // Redirect to Stripe checkout
+      window.open(checkoutData.url, "_blank");
+      
       toast({
-        title: "Request submitted!",
-        description: "A coach will review your request and respond within 2-4 business hours.",
+        title: "Redirecting to payment...",
+        description: "Complete your payment in the new tab to confirm your booking.",
       });
+
+      setIsSubmitting(false);
+      setIsProcessingPayment(false);
     } catch (error: any) {
       console.error("Error scheduling:", error);
       toast({
@@ -258,8 +305,8 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
         description: error.message || "Failed to submit request. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsSubmitting(false);
+      setIsProcessingPayment(false);
     }
   };
 
@@ -476,21 +523,36 @@ export function CoachSchedulingForm({ dealId, preselectedTier }: CoachScheduling
 
         <Button
           onClick={handleContinueBooking}
-          disabled={isSubmitting || !date || !time || !sessionType || !phone || !email}
+          disabled={isSubmitting || isProcessingPayment || !date || !time || !sessionType || !phone || !email}
           className="w-full"
           size="lg"
         >
-          {isSubmitting ? (
+          {isSubmitting || isProcessingPayment ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Submitting...
+              {isProcessingPayment ? "Opening Payment..." : "Submitting..."}
             </>
           ) : user ? (
-            "Schedule Coaching Session"
+            <>
+              <CreditCard className="mr-2 h-4 w-4" />
+              {sessionType === "video" 
+                ? "Pay Deposit ($99.80) & Schedule" 
+                : sessionType === "phone" 
+                  ? "Pay $99 & Schedule" 
+                  : sessionType === "text" 
+                    ? "Pay $29 & Schedule" 
+                    : "Schedule & Pay"}
+            </>
           ) : (
             "Continue to Sign In"
           )}
         </Button>
+
+        {sessionType === "video" && user && (
+          <p className="text-xs text-center text-muted-foreground">
+            Full Concierge: 20% deposit now ($99.80), remaining 80% ($399.20) charged after service completion.
+          </p>
+        )}
 
         {!user && (
           <p className="text-xs text-center text-muted-foreground">

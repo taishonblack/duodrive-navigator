@@ -62,3 +62,9 @@ verify_jwt = true
 
 [functions.notify-coach-assigned]
 verify_jwt = true
+
+[functions.create-coaching-checkout]
+verify_jwt = true
+
+[functions.charge-concierge-remaining]
+verify_jwt = true

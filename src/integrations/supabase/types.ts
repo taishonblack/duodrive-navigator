@@ -152,6 +152,73 @@ export type Database = {
           },
         ]
       }
+      coach_customer_updates: {
+        Row: {
+          coach_id: string
+          created_at: string
+          customer_id: string
+          customer_selected_time: string | null
+          id: string
+          meet_link: string | null
+          message: string
+          proposed_times: Json | null
+          request_id: string | null
+          status: string
+          update_type: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          customer_id: string
+          customer_selected_time?: string | null
+          id?: string
+          meet_link?: string | null
+          message: string
+          proposed_times?: Json | null
+          request_id?: string | null
+          status?: string
+          update_type: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          customer_id?: string
+          customer_selected_time?: string | null
+          id?: string
+          meet_link?: string | null
+          message?: string
+          proposed_times?: Json | null
+          request_id?: string | null
+          status?: string
+          update_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_customer_updates_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_customer_updates_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_customer_updates_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_requests_coach_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_integrations: {
         Row: {
           coach_id: string

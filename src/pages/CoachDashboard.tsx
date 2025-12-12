@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
   Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer,
-  Send, ExternalLink, User, BarChart3, Bell
+  Send, ExternalLink, User, BarChart3, Bell, UserCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
 import { SessionTimer } from "@/components/SessionTimer";
 import { CoachProfileEditor } from "@/components/CoachProfileEditor";
 import { CoachAnalytics } from "@/components/CoachAnalytics";
+import { CustomerUpdateForm } from "@/components/CustomerUpdateForm";
 
 interface CoachingRequest {
   id: string;
@@ -73,6 +74,8 @@ export default function CoachDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string; requestId?: string } | null>(null);
+  const [myCustomers, setMyCustomers] = useState<{ id: string; email: string; requestId: string }[]>([]);
 
   // Check and request push notification permission
   useEffect(() => {
@@ -269,6 +272,34 @@ export default function CoachDashboard() {
           });
           setChatSessions(chatMap);
         }
+      }
+
+      // Fetch unique customers from claimed requests (for the Customers tab)
+      if (mine && mine.length > 0) {
+        const uniqueCustomers: { id: string; email: string; requestId: string }[] = [];
+        const seenCustomerIds = new Set<string>();
+        
+        for (const request of mine) {
+          const customerId = (request as any).customer_id;
+          if (customerId && !seenCustomerIds.has(customerId)) {
+            seenCustomerIds.add(customerId);
+            // Get profile info
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("email")
+              .eq("id", customerId)
+              .single();
+            
+            if (profile) {
+              uniqueCustomers.push({
+                id: customerId,
+                email: profile.email || "Customer",
+                requestId: request.id,
+              });
+            }
+          }
+        }
+        setMyCustomers(uniqueCustomers);
       }
     } catch (error: any) {
       console.error("Error fetching requests:", error);
@@ -598,12 +629,16 @@ export default function CoachDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="queue" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="queue">
               Queue ({pendingRequests.length})
             </TabsTrigger>
             <TabsTrigger value="my-requests">
               My Requests ({myRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="customers">
+              <UserCircle className="h-4 w-4 mr-1" />
+              Customers ({myCustomers.length})
             </TabsTrigger>
             <TabsTrigger value="analytics">
               <BarChart3 className="h-4 w-4 mr-1" />
@@ -647,14 +682,9 @@ export default function CoachDashboard() {
                               <Calendar className="h-3 w-3 inline mr-1" />
                               {format(new Date(request.scheduled_date), "PPP")} at {request.scheduled_time}
                             </p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {request.email} • {request.phone_number}
+                            <p className="text-sm text-muted-foreground mt-1 italic">
+                              Contact info hidden until claimed
                             </p>
-                            {request.notes && (
-                              <p className="text-sm text-foreground mt-2 p-2 bg-muted rounded">
-                                "{request.notes}"
-                              </p>
-                            )}
                           </div>
                         </div>
                         <Button
@@ -803,6 +833,84 @@ export default function CoachDashboard() {
                 );
               })
             )}
+          </TabsContent>
+
+          <TabsContent value="customers" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Customer List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Your Customers</CardTitle>
+                  <CardDescription>
+                    Select a customer to send updates or schedule follow-ups
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {myCustomers.length === 0 ? (
+                    <p className="text-muted-foreground text-sm py-4">
+                      No customers yet. Claim a request to get started.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {myCustomers.map((customer) => (
+                        <button
+                          key={customer.id}
+                          onClick={() => setSelectedCustomer({
+                            id: customer.id,
+                            name: customer.email.split("@")[0],
+                            requestId: customer.requestId,
+                          })}
+                          className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                            selectedCustomer?.id === customer.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <UserCircle className="h-8 w-8 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {customer.email.split("@")[0]}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                ID: {customer.id.slice(0, 8)}...
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Update Form */}
+              <div>
+                {selectedCustomer ? (
+                  <CustomerUpdateForm
+                    customerId={selectedCustomer.id}
+                    customerName={selectedCustomer.name}
+                    coachId={coach?.id || ""}
+                    requestId={selectedCustomer.requestId}
+                    onSuccess={() => {
+                      toast({
+                        title: "Update sent",
+                        description: "Customer has been notified via email.",
+                      });
+                    }}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">
+                        Select a customer from the list to send updates or request a call.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">

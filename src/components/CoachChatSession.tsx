@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useChatPresence } from "@/hooks/useChatPresence";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useSessionInactivityTimeout } from "@/hooks/useSessionInactivityTimeout";
+import { useSessionHeartbeat } from "@/hooks/useSessionHeartbeat";
 import { SessionRatingDialog } from "@/components/SessionRatingDialog";
 interface ChatMessage {
   id: string;
@@ -78,6 +79,13 @@ export function CoachChatSession({
     warningBeforeMs: 60 * 1000, // 1 minute warning
     isActive: session?.status === "active" && !session?.coach_extended,
     onTimeout: onSessionEnd,
+  });
+
+  // Session heartbeat for orphan detection
+  useSessionHeartbeat({
+    sessionId,
+    isActive: session?.status === "active",
+    heartbeatIntervalMs: 30 * 1000, // 30 seconds
   });
 
   const totalSeconds = (session?.scheduled_duration_minutes || 10) * 60;

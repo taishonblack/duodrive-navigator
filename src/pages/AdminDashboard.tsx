@@ -298,6 +298,39 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAssignCoach = async (requestId: string, coachId: string) => {
+    try {
+      const { data, error } = await supabase.rpc("admin_assign_coach_to_request", {
+        p_request_id: requestId,
+        p_coach_id: coachId,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Coach Assigned",
+        description: "The request has been assigned to the coach.",
+      });
+
+      // Send notification to customer about assignment
+      try {
+        await supabase.functions.invoke("send-session-reminder", {
+          body: { requestId, reminderType: "session_claimed" },
+        });
+      } catch (emailError) {
+        console.error("Failed to send notification:", emailError);
+      }
+
+      fetchData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign coach",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/admin");
@@ -564,10 +597,11 @@ export default function AdminDashboard() {
               ) : (
                 requests.map((request) => {
                   const Icon = sessionTypeIcons[request.session_type];
+                  const availableCoaches = coaches.filter(c => c.is_available);
                   return (
                     <Card key={request.id}>
                       <CardContent className="py-4">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
                           <div className="flex items-start gap-4">
                             <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
                               <Icon className="h-5 w-5 text-muted-foreground" />
@@ -607,9 +641,34 @@ export default function AdminDashboard() {
                               )}
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(request.created_at).toLocaleString()}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            {request.status === "pending" && (
+                              <div className="flex items-center gap-2">
+                                <Label className="text-sm text-muted-foreground whitespace-nowrap">Assign to:</Label>
+                                <Select
+                                  onValueChange={(coachId) => handleAssignCoach(request.id, coachId)}
+                                >
+                                  <SelectTrigger className="w-40">
+                                    <SelectValue placeholder="Select coach" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableCoaches.length === 0 ? (
+                                      <SelectItem value="none" disabled>No coaches available</SelectItem>
+                                    ) : (
+                                      availableCoaches.map((coach) => (
+                                        <SelectItem key={coach.id} value={coach.id}>
+                                          {coach.display_name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(request.created_at).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

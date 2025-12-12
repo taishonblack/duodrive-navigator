@@ -856,6 +856,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_assign_coach_to_request: {
+        Args: { p_coach_id: string; p_request_id: string }
+        Returns: boolean
+      }
       get_coaching_request_safe: {
         Args: { request_id: string }
         Returns: {

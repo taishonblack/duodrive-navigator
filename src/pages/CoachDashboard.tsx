@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { format } from "date-fns";
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
 import { SessionTimer } from "@/components/SessionTimer";
@@ -67,6 +68,7 @@ const statusColors = {
 export default function CoachDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
   const [coach, setCoach] = useState<Coach | null>(null);
   const [pendingRequests, setPendingRequests] = useState<CoachingRequest[]>([]);
   const [myRequests, setMyRequests] = useState<CoachingRequest[]>([]);
@@ -192,6 +194,16 @@ export default function CoachDashboard() {
       if (pendingError) throw pendingError;
       setPendingRequests(pending || []);
 
+      // Log audit event for viewing pending requests
+      if (pending && pending.length > 0) {
+        logAction({
+          coachId,
+          action: "view_pending_requests",
+          resourceType: "coaching_requests",
+          details: { count: pending.length },
+        });
+      }
+
       // Fetch my claimed requests (use secure view for consistent data)
       const { data: mine, error: mineError } = await supabase
         .from("coaching_requests_coach_view")
@@ -289,6 +301,15 @@ export default function CoachDashboard() {
         .eq("status", "pending");
 
       if (error) throw error;
+
+      // Log audit event for claiming request
+      logAction({
+        coachId: coach.id,
+        action: "claim_request",
+        resourceType: "coaching_requests",
+        resourceId: requestId,
+        details: { status: "claimed" },
+      });
 
       // Send email notification to customer
       try {

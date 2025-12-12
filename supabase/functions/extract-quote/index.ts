@@ -4,11 +4,9 @@ import {
   getClientIP, 
   rateLimitExceededResponse 
 } from "../_shared/rate-limit.ts";
+import { getCorsWithSecurityHeaders } from "../_shared/security-headers.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const corsHeaders = getCorsWithSecurityHeaders();
 
 // Rate limit: 10 requests per minute per IP (more restrictive for OCR)
 const RATE_LIMIT_CONFIG = {

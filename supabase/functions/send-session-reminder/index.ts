@@ -8,13 +8,11 @@ import {
   validationErrorResponse,
   type ValidationError 
 } from "../_shared/validation.ts";
+import { getCorsWithSecurityHeaders } from "../_shared/security-headers.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const corsHeaders = getCorsWithSecurityHeaders();
 
 interface ReminderRequest {
   sessionId?: string;

@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Send, Clock, AlertTriangle, MessageSquare, 
-  Loader2, Play, Square, Circle
+  Loader2, Play, Square, UserX
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useChatPresence } from "@/hooks/useChatPresence";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { useSessionInactivityTimeout } from "@/hooks/useSessionInactivityTimeout";
 import { SessionRatingDialog } from "@/components/SessionRatingDialog";
-
 interface ChatMessage {
   id: string;
   sender_type: "coach" | "customer";
@@ -70,6 +70,15 @@ export function CoachChatSession({
     currentUserId,
     partnerId
   );
+
+  // Inactivity timeout - auto-end session after 5 minutes of no activity
+  const { isWarning: isInactivityWarning, secondsUntilTimeout } = useSessionInactivityTimeout({
+    sessionId,
+    inactivityTimeoutMs: 5 * 60 * 1000, // 5 minutes
+    warningBeforeMs: 60 * 1000, // 1 minute warning
+    isActive: session?.status === "active" && !session?.coach_extended,
+    onTimeout: onSessionEnd,
+  });
 
   const totalSeconds = (session?.scheduled_duration_minutes || 10) * 60;
   const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
@@ -547,7 +556,7 @@ export function CoachChatSession({
           </div>
         )}
 
-        {/* Warning */}
+        {/* Time Warning */}
         {warningLevel !== "none" && !session?.coach_extended && (
           <div className={`flex items-center gap-2 p-2 rounded-md mt-3 ${
             warningLevel === "critical" ? "bg-destructive/10 text-destructive" :
@@ -559,6 +568,16 @@ export function CoachChatSession({
               {warningLevel === "critical" 
                 ? "Session ending soon!" 
                 : `${Math.ceil(remainingSeconds / 60)} minutes remaining`}
+            </span>
+          </div>
+        )}
+
+        {/* Inactivity Warning */}
+        {isInactivityWarning && session?.status === "active" && (
+          <div className="flex items-center gap-2 p-2 rounded-md mt-3 bg-muted/80 text-muted-foreground border border-muted-foreground/20">
+            <UserX className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Inactive — session will auto-end in {secondsUntilTimeout}s. Move mouse or type to stay active.
             </span>
           </div>
         )}

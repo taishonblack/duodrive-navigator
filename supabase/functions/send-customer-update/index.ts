@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +18,38 @@ interface UpdateRequest {
   message: string;
   updateType: "update" | "schedule_request";
   proposedTimes?: string[];
+}
+
+async function sendSMS(to: string, body: string) {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.log("Twilio not configured, skipping SMS");
+    return;
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
+      },
+      body: new URLSearchParams({
+        From: TWILIO_PHONE_NUMBER,
+        To: to,
+        Body: body,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("SMS send failed:", error);
+    } else {
+      console.log("SMS sent successfully to:", to);
+    }
+  } catch (error) {
+    console.error("SMS error:", error);
+  }
 }
 
 serve(async (req) => {
@@ -31,7 +66,7 @@ serve(async (req) => {
 
     console.log("Sending customer update notification:", { updateId, customerId, updateType });
 
-    // Get customer email from profiles
+    // Get customer email and phone from profiles and coaching_requests
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("email")
@@ -46,10 +81,22 @@ serve(async (req) => {
       );
     }
 
+    // Try to get phone number from most recent coaching request
+    const { data: recentRequest } = await supabase
+      .from("coaching_requests")
+      .select("phone_number")
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const customerPhone = recentRequest?.phone_number;
+
     const dashboardUrl = "https://duodrive.app/dashboard";
 
     let subject: string;
     let htmlContent: string;
+    let smsText: string;
 
     if (updateType === "schedule_request") {
       subject = `Your DuoDrive Coach wants to schedule a call`;
@@ -68,6 +115,7 @@ serve(async (req) => {
         <p><a href="${dashboardUrl}" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View & Respond</a></p>
         <p>Best,<br>The DuoDrive Team</p>
       `;
+      smsText = `DuoDrive: ${coachName} wants to schedule a call. Log in to select a time: ${dashboardUrl}`;
     } else {
       subject = `Update from your DuoDrive Coach`;
       htmlContent = `
@@ -79,9 +127,10 @@ serve(async (req) => {
         <p><a href="${dashboardUrl}" style="background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Update</a></p>
         <p>Best,<br>The DuoDrive Team</p>
       `;
+      smsText = `DuoDrive: ${coachName} sent you an update. View it at: ${dashboardUrl}`;
     }
 
-    // Send email using Resend API
+    // Send email
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -99,13 +148,14 @@ serve(async (req) => {
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();
       console.error("Failed to send email:", errorData);
-      return new Response(
-        JSON.stringify({ error: "Failed to send notification" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    } else {
+      console.log("Email sent successfully to:", profile.email);
     }
 
-    console.log("Update notification sent successfully to:", profile.email);
+    // Send SMS if phone number available
+    if (customerPhone) {
+      await sendSMS(customerPhone, smsText);
+    }
 
     return new Response(
       JSON.stringify({ success: true }),

@@ -287,8 +287,10 @@ export function CoachChatSession({
       // Notify coach that customer has started (if customer is starting)
       if (!isCoach) {
         try {
+          const { data: { session } } = await supabase.auth.getSession();
           const { data } = await supabase.functions.invoke("notify-coach-customer-joined", {
             body: { chatSessionId: sessionId },
+            headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
           });
           console.log("Coach notification sent:", data);
         } catch (notifyError) {

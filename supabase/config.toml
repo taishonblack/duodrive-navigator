@@ -43,10 +43,10 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.notify-coach-customer-joined]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-customer-update]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-meeting-link]
 verify_jwt = true

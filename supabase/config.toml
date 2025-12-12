@@ -44,3 +44,9 @@ verify_jwt = true
 
 [functions.notify-coach-customer-joined]
 verify_jwt = false
+
+[functions.send-customer-update]
+verify_jwt = false
+
+[functions.generate-meeting-link]
+verify_jwt = true

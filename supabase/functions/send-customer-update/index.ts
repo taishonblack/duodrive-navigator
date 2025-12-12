@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { sanitizeForHtml } from "../_shared/validation.ts";
+import { checkRateLimit, getClientIP, rateLimitExceededResponse } from "../_shared/rate-limit.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -10,6 +11,13 @@ const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Rate limit: 5 requests per minute per IP (coaches sending updates)
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 5,
+  windowMs: 60 * 1000,
+  keyPrefix: "send-customer-update",
 };
 
 interface UpdateRequest {
@@ -56,6 +64,15 @@ async function sendSMS(to: string, body: string) {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Check rate limit
+  const clientIP = getClientIP(req);
+  const rateLimitResult = checkRateLimit(clientIP, RATE_LIMIT_CONFIG);
+  
+  if (!rateLimitResult.allowed) {
+    console.log("Rate limit exceeded for IP:", clientIP);
+    return rateLimitExceededResponse(rateLimitResult, corsHeaders);
   }
 
   try {

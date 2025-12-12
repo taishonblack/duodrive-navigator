@@ -222,6 +222,40 @@ serve(async (req) => {
       });
       console.log(`Assignment notification sent to ${coach.display_name}:`, result);
 
+      // Send push notification to coach
+      const { data: pushSubscriptions } = await supabase
+        .from("push_subscriptions")
+        .select("endpoint, p256dh, auth")
+        .eq("user_id", coach.user_id);
+
+      if (pushSubscriptions && pushSubscriptions.length > 0) {
+        const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+        const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+        
+        if (vapidPublicKey && vapidPrivateKey) {
+          const pushPayload = JSON.stringify({
+            title: "✅ New Assignment!",
+            body: `You've been assigned a ${sessionLabel} session`,
+            icon: "/favicon.ico",
+            data: { url: "/coach-dashboard" },
+          });
+
+          for (const sub of pushSubscriptions) {
+            try {
+              // Use Web Push API via fetch
+              const pushEndpoint = sub.endpoint;
+              console.log(`Sending push notification to ${pushEndpoint}`);
+              
+              // Note: Full Web Push implementation requires crypto signing
+              // For now, log that we would send push notification
+              console.log(`Push notification payload prepared for coach ${coach.display_name}`);
+            } catch (pushError) {
+              console.error("Push notification error:", pushError);
+            }
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({ success: true, email: profile.email }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

@@ -195,28 +195,34 @@ export type Database = {
       }
       coaches: {
         Row: {
+          bio: string | null
           created_at: string
           display_name: string
           id: string
           is_available: boolean
+          photo_url: string | null
           tier: Database["public"]["Enums"]["coaching_tier"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          bio?: string | null
           created_at?: string
           display_name: string
           id?: string
           is_available?: boolean
+          photo_url?: string | null
           tier?: Database["public"]["Enums"]["coaching_tier"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          bio?: string | null
           created_at?: string
           display_name?: string
           id?: string
           is_available?: boolean
+          photo_url?: string | null
           tier?: Database["public"]["Enums"]["coaching_tier"]
           updated_at?: string
           user_id?: string

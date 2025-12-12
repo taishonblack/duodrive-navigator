@@ -25,6 +25,7 @@ interface CoachChatSessionProps {
   isCoach: boolean;
   coachName?: string;
   coachAvatar?: string;
+  coachBio?: string;
   onSessionEnd?: () => void;
 }
 
@@ -39,6 +40,7 @@ export function CoachChatSession({
   isCoach,
   coachName = "Your Coach",
   coachAvatar,
+  coachBio,
   onSessionEnd,
 }: CoachChatSessionProps) {
   const { toast } = useToast();
@@ -378,17 +380,22 @@ export function CoachChatSession({
       <CardHeader className="border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={coachAvatar} />
+            <Avatar className="h-12 w-12 border-2 border-primary/20">
+              <AvatarImage src={coachAvatar} alt={coachName} />
               <AvatarFallback className="bg-primary/10 text-primary">
                 {coachName.charAt(0)}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1 min-w-0">
               <CardTitle className="text-lg">{coachName}</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {isCoach ? "Coaching Session" : "Your Coach"}
-              </p>
+              {coachBio && !isCoach && (
+                <p className="text-xs text-muted-foreground line-clamp-1">{coachBio}</p>
+              )}
+              {!coachBio && (
+                <p className="text-sm text-muted-foreground">
+                  {isCoach ? "Coaching Session" : "Your Coach"}
+                </p>
+              )}
             </div>
           </div>
           

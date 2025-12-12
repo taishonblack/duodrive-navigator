@@ -16,7 +16,7 @@ export default function CoachingChat() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
-  const [coachInfo, setCoachInfo] = useState<{ name: string; avatar?: string } | null>(null);
+  const [coachInfo, setCoachInfo] = useState<{ name: string; avatar?: string; bio?: string } | null>(null);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -57,15 +57,19 @@ export default function CoachingChat() {
       if (session.customer_id === currentUser.id) {
         setIsCoach(false);
         
-        // Get coach info
+        // Get coach info with photo and bio
         const { data: coach } = await supabase
           .from("coaches")
-          .select("display_name")
+          .select("display_name, photo_url, bio")
           .eq("id", session.coach_id)
           .single();
         
         if (coach) {
-          setCoachInfo({ name: coach.display_name });
+          setCoachInfo({ 
+            name: coach.display_name,
+            avatar: coach.photo_url || undefined,
+            bio: coach.bio || undefined,
+          });
         }
         
         setIsLoading(false);
@@ -75,13 +79,17 @@ export default function CoachingChat() {
       // Check if user is the coach
       const { data: coachData } = await supabase
         .from("coaches")
-        .select("id, display_name")
+        .select("id, display_name, photo_url, bio")
         .eq("user_id", currentUser.id)
         .single();
 
       if (coachData && coachData.id === session.coach_id) {
         setIsCoach(true);
-        setCoachInfo({ name: coachData.display_name });
+        setCoachInfo({ 
+          name: coachData.display_name,
+          avatar: coachData.photo_url || undefined,
+          bio: coachData.bio || undefined,
+        });
         setIsLoading(false);
         return;
       }
@@ -214,6 +222,7 @@ export default function CoachingChat() {
           isCoach={isCoach}
           coachName={coachInfo?.name}
           coachAvatar={coachInfo?.avatar}
+          coachBio={coachInfo?.bio}
           onSessionEnd={handleSessionEnd}
         />
       </div>

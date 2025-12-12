@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { CoachingCard } from "@/components/CoachingCard";
@@ -6,6 +7,7 @@ import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Target, MessageCircle, Phone, Users, Video, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SessionTimer } from "@/components/SessionTimer";
@@ -20,6 +22,8 @@ interface ActiveSession {
   meet_link: string | null;
   masked_phone_number: string | null;
   coach_name?: string;
+  coach_photo_url?: string;
+  coach_bio?: string;
 }
 
 interface CoachingRequest {
@@ -28,6 +32,17 @@ interface CoachingRequest {
   status: string;
   scheduled_date: string;
   scheduled_time: string;
+}
+
+interface ActiveChatSession {
+  id: string;
+  status: string;
+  scheduled_duration_minutes: number;
+  started_at: string | null;
+  coach_id: string;
+  coach_name?: string;
+  coach_photo_url?: string;
+  coach_bio?: string;
 }
 
 const coachingTiers = [
@@ -103,8 +118,10 @@ const sessionTypeIcons = {
 };
 
 export default function Coaching() {
+  const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [activeChatSessions, setActiveChatSessions] = useState<ActiveChatSession[]>([]);
   const [upcomingRequests, setUpcomingRequests] = useState<CoachingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<string>("");
@@ -158,26 +175,75 @@ export default function Coaching() {
           .order("created_at", { ascending: false });
 
         if (!sessionsError && sessions) {
-          // Fetch coach names
+          // Fetch coach details including photo and bio
           const coachIds = sessions.map(s => s.coach_id).filter(Boolean);
-          let coachNames: Record<string, string> = {};
+          let coachData: Record<string, { name: string; photo_url?: string; bio?: string }> = {};
           
           if (coachIds.length > 0) {
             const { data: coaches } = await supabase
               .from("coaches")
-              .select("id, display_name")
+              .select("id, display_name, photo_url, bio")
               .in("id", coachIds);
             
             if (coaches) {
               coaches.forEach(c => {
-                coachNames[c.id] = c.display_name;
+                coachData[c.id] = {
+                  name: c.display_name,
+                  photo_url: c.photo_url || undefined,
+                  bio: c.bio || undefined,
+                };
               });
             }
           }
 
           setActiveSessions(sessions.map(s => ({
             ...s,
-            coach_name: s.coach_id ? coachNames[s.coach_id] : undefined,
+            coach_name: s.coach_id ? coachData[s.coach_id]?.name : undefined,
+            coach_photo_url: s.coach_id ? coachData[s.coach_id]?.photo_url : undefined,
+            coach_bio: s.coach_id ? coachData[s.coach_id]?.bio : undefined,
+          })));
+        }
+
+        // Fetch active chat sessions (for Quick Text Help)
+        const { data: chatSessions, error: chatError } = await supabase
+          .from("coach_chat_sessions")
+          .select(`
+            id,
+            status,
+            scheduled_duration_minutes,
+            started_at,
+            coach_id
+          `)
+          .eq("customer_id", currentUser.id)
+          .in("status", ["ready", "active"])
+          .order("created_at", { ascending: false });
+
+        if (!chatError && chatSessions) {
+          const chatCoachIds = chatSessions.map(s => s.coach_id).filter(Boolean);
+          let chatCoachData: Record<string, { name: string; photo_url?: string; bio?: string }> = {};
+          
+          if (chatCoachIds.length > 0) {
+            const { data: coaches } = await supabase
+              .from("coaches")
+              .select("id, display_name, photo_url, bio")
+              .in("id", chatCoachIds);
+            
+            if (coaches) {
+              coaches.forEach(c => {
+                chatCoachData[c.id] = {
+                  name: c.display_name,
+                  photo_url: c.photo_url || undefined,
+                  bio: c.bio || undefined,
+                };
+              });
+            }
+          }
+
+          setActiveChatSessions(chatSessions.map(s => ({
+            ...s,
+            coach_name: s.coach_id ? chatCoachData[s.coach_id]?.name : undefined,
+            coach_photo_url: s.coach_id ? chatCoachData[s.coach_id]?.photo_url : undefined,
+            coach_bio: s.coach_id ? chatCoachData[s.coach_id]?.bio : undefined,
           })));
         }
 
@@ -210,12 +276,77 @@ export default function Coaching() {
         structuredData={serviceSchema}
       />
       {/* Active Sessions Banner */}
-      {user && !isLoading && (activeSessions.length > 0 || upcomingRequests.length > 0) && (
+      {user && !isLoading && (activeSessions.length > 0 || activeChatSessions.length > 0 || upcomingRequests.length > 0) && (
         <section className="py-6 bg-primary/5 border-b border-primary/10">
           <div className="container mx-auto px-4">
             <h2 className="text-xl font-semibold text-foreground mb-4">Your Coaching Sessions</h2>
             
-            {/* Active Sessions with Timer */}
+            {/* Active Chat Sessions (Quick Text Help) */}
+            {activeChatSessions.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                  <MessageCircle className="h-4 w-4 inline mr-1" />
+                  Text Chat Sessions
+                </h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeChatSessions.map((session) => (
+                    <Card key={session.id} className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <Avatar className="h-12 w-12 border-2 border-primary/20">
+                            <AvatarImage src={session.coach_photo_url} alt={session.coach_name} />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {session.coach_name?.charAt(0) || "C"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground">
+                              {session.coach_name || "Your Coach"}
+                            </p>
+                            {session.coach_bio && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                {session.coach_bio}
+                              </p>
+                            )}
+                          </div>
+                          <Badge 
+                            variant="outline" 
+                            className={session.status === "active" 
+                              ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                              : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                            }
+                          >
+                            {session.status === "active" ? "In Progress" : "Ready"}
+                          </Badge>
+                        </div>
+                        
+                        {session.status === "active" && session.started_at && (
+                          <div className="mb-3">
+                            <SessionTimer
+                              sessionId={session.id}
+                              sessionType="text"
+                              scheduledDurationMinutes={session.scheduled_duration_minutes}
+                              startedAt={session.started_at}
+                              isCoach={false}
+                            />
+                          </div>
+                        )}
+                        
+                        <Button 
+                          className="w-full" 
+                          onClick={() => navigate(`/coaching-chat/${session.id}`)}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          {session.status === "active" ? "Continue Chat" : "Join Chat"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active Sessions with Timer (Phone/Video) */}
             {activeSessions.filter(s => s.status === "active" && s.started_at).length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-muted-foreground mb-3">Active Now</h3>
@@ -256,9 +387,15 @@ export default function Coaching() {
                           </Card>
                         )}
                         {session.coach_name && (
-                          <p className="text-sm text-muted-foreground text-center">
-                            Coach: <span className="font-medium text-foreground">{session.coach_name}</span>
-                          </p>
+                          <div className="flex items-center justify-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={session.coach_photo_url} alt={session.coach_name} />
+                              <AvatarFallback className="text-xs">{session.coach_name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <p className="text-sm text-muted-foreground">
+                              Coach: <span className="font-medium text-foreground">{session.coach_name}</span>
+                            </p>
+                          </div>
                         )}
                       </div>
                     ))}

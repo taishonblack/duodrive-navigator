@@ -16,7 +16,7 @@ export default function CoachingChat() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
-  const [coachInfo, setCoachInfo] = useState<{ name: string; avatar?: string; bio?: string } | null>(null);
+  const [coachInfo, setCoachInfo] = useState<{ id: string; name: string; avatar?: string; bio?: string } | null>(null);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -60,12 +60,13 @@ export default function CoachingChat() {
         // Get coach info with photo and bio
         const { data: coach } = await supabase
           .from("coaches")
-          .select("display_name, photo_url, bio")
+          .select("id, display_name, photo_url, bio")
           .eq("id", session.coach_id)
           .single();
         
         if (coach) {
           setCoachInfo({ 
+            id: coach.id,
             name: coach.display_name,
             avatar: coach.photo_url || undefined,
             bio: coach.bio || undefined,
@@ -86,6 +87,7 @@ export default function CoachingChat() {
       if (coachData && coachData.id === session.coach_id) {
         setIsCoach(true);
         setCoachInfo({ 
+          id: coachData.id,
           name: coachData.display_name,
           avatar: coachData.photo_url || undefined,
           bio: coachData.bio || undefined,
@@ -220,6 +222,7 @@ export default function CoachingChat() {
         <CoachChatSession
           sessionId={sessionId!}
           isCoach={isCoach}
+          coachId={coachInfo?.id}
           coachName={coachInfo?.name}
           coachAvatar={coachInfo?.avatar}
           coachBio={coachInfo?.bio}

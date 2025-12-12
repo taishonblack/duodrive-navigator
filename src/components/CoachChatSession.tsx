@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Send, Clock, AlertTriangle, MessageSquare, 
-  Loader2, Play, Square 
+  Loader2, Play, Square, Circle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useChatPresence } from "@/hooks/useChatPresence";
+import { SessionRatingDialog } from "@/components/SessionRatingDialog";
 
 interface ChatMessage {
   id: string;
@@ -23,6 +25,7 @@ interface ChatMessage {
 interface CoachChatSessionProps {
   sessionId: string;
   isCoach: boolean;
+  coachId?: string;
   coachName?: string;
   coachAvatar?: string;
   coachBio?: string;
@@ -38,6 +41,7 @@ const WARNING_THRESHOLDS = {
 export function CoachChatSession({
   sessionId,
   isCoach,
+  coachId,
   coachName = "Your Coach",
   coachAvatar,
   coachBio,
@@ -52,8 +56,18 @@ export function CoachChatSession({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [warningLevel, setWarningLevel] = useState<"none" | "warning" | "urgent" | "critical">("none");
   const [hasShownWarning, setHasShownWarning] = useState<Record<string, boolean>>({});
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [partnerId, setPartnerId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get presence info for this chat session
+  const { isPartnerOnline, isPartnerTyping, setTyping } = useChatPresence(
+    sessionId,
+    currentUserId,
+    partnerId
+  );
 
   const totalSeconds = (session?.scheduled_duration_minutes || 10) * 60;
   const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
@@ -62,6 +76,11 @@ export function CoachChatSession({
   // Fetch session and messages
   const fetchSessionData = useCallback(async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+
       const { data: sessionData, error: sessionError } = await supabase
         .from("coach_chat_sessions")
         .select("*")
@@ -70,6 +89,24 @@ export function CoachChatSession({
 
       if (sessionError) throw sessionError;
       setSession(sessionData);
+
+      // Set partner ID for presence tracking
+      if (user) {
+        if (sessionData.customer_id === user.id) {
+          // Current user is customer, partner is coach user
+          const { data: coachData } = await supabase
+            .from("coaches")
+            .select("user_id")
+            .eq("id", sessionData.coach_id)
+            .single();
+          if (coachData) {
+            setPartnerId(coachData.user_id);
+          }
+        } else {
+          // Current user is coach, partner is customer
+          setPartnerId(sessionData.customer_id);
+        }
+      }
 
       // Calculate elapsed time if session is active
       if (sessionData.started_at) {
@@ -133,7 +170,12 @@ export function CoachChatSession({
               title: "Session Ended",
               description: "The coaching session has ended.",
             });
-            onSessionEnd?.();
+            // Show rating dialog for customers
+            if (!isCoach) {
+              setShowRatingDialog(true);
+            } else {
+              onSessionEnd?.();
+            }
           }
         }
       )
@@ -375,15 +417,30 @@ export function CoachChatSession({
 
   if (session?.status === "completed") {
     return (
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="p-8 text-center">
-          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Session Completed</h2>
-          <p className="text-muted-foreground">
-            This coaching session has ended. Thank you for using DuoDrive!
-          </p>
-        </CardContent>
-      </Card>
+      <>
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-8 text-center">
+            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Session Completed</h2>
+            <p className="text-muted-foreground">
+              This coaching session has ended. Thank you for using DuoDrive!
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Rating Dialog for customers */}
+        {!isCoach && coachId && (
+          <SessionRatingDialog
+            open={showRatingDialog}
+            onOpenChange={setShowRatingDialog}
+            sessionId={sessionId}
+            coachId={coachId}
+            coachName={coachName}
+            coachPhotoUrl={coachAvatar}
+            onRatingComplete={onSessionEnd}
+          />
+        )}
+      </>
     );
   }
 
@@ -393,20 +450,39 @@ export function CoachChatSession({
       <CardHeader className="border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12 border-2 border-primary/20">
-              <AvatarImage src={coachAvatar} alt={coachName} />
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {coachName.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-12 w-12 border-2 border-primary/20">
+                <AvatarImage src={coachAvatar} alt={coachName} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {coachName.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Online indicator */}
+              <span
+                className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${
+                  isPartnerOnline ? "bg-green-500" : "bg-muted-foreground"
+                }`}
+                title={isPartnerOnline ? "Online" : "Offline"}
+              />
+            </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg">{coachName}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">{coachName}</CardTitle>
+                {isPartnerTyping && (
+                  <span className="text-xs text-primary animate-pulse">typing...</span>
+                )}
+              </div>
               {coachBio && !isCoach && (
                 <p className="text-xs text-muted-foreground line-clamp-1">{coachBio}</p>
               )}
               {!coachBio && (
                 <p className="text-sm text-muted-foreground">
                   {isCoach ? "Coaching Session" : "Your Coach"}
+                  {!isCoach && (
+                    <span className={`ml-2 text-xs ${isPartnerOnline ? "text-green-500" : "text-muted-foreground"}`}>
+                      • {isPartnerOnline ? "Online" : "Offline"}
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -529,7 +605,16 @@ export function CoachChatSession({
               <Input
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  // Trigger typing indicator
+                  if (e.target.value.trim()) {
+                    setTyping(true);
+                  } else {
+                    setTyping(false);
+                  }
+                }}
+                onBlur={() => setTyping(false)}
                 placeholder="Type your message..."
                 disabled={isSending}
                 className="flex-1"

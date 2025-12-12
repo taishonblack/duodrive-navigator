@@ -35,15 +35,20 @@ export default function Auth() {
     const checkMfaStatus = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        
-        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+        const [{ data: aal }, { data: factors }] = await Promise.all([
+          supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+          supabase.auth.mfa.listFactors(),
+        ]);
+
+        const hasTotpFactor = (factors?.totp?.length ?? 0) > 0;
+
+        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2" && hasTotpFactor) {
           // User has MFA enrolled but hasn't verified yet in this session
           setShowMfaVerify(true);
         } else if (aal?.currentLevel === "aal2") {
           // Already fully authenticated with MFA
           navigate("/deal-room");
-        } else if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal1") {
+        } else if (aal?.currentLevel === "aal1" && !hasTotpFactor) {
           // No MFA enrolled, proceed normally
           navigate("/deal-room");
         }

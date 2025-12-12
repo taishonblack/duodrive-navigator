@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Copy, Check } from "lucide-react";
+import { Loader2, Shield, Copy, Check, AlertCircle } from "lucide-react";
 
 interface TwoFactorSetupProps {
   onComplete: () => void;
@@ -13,14 +13,14 @@ interface TwoFactorSetupProps {
 }
 
 export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
-  const [step, setStep] = useState<"qr" | "verify">("qr");
+  const [step, setStep] = useState<"loading" | "qr" | "verify" | "error">("loading");
   const [qrUri, setQrUri] = useState("");
   const [secret, setSecret] = useState("");
   const [factorId, setFactorId] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isEnrolling, setIsEnrolling] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
 
   // Start enrollment on mount
@@ -29,38 +29,55 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
   }, []);
 
   const enrollFactor = async () => {
-    setIsEnrolling(true);
+    setStep("loading");
+    setErrorMessage("");
+    
     try {
+      // First check if user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        setErrorMessage("You must be logged in to enable 2FA.");
+        setStep("error");
+        return;
+      }
+
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         friendlyName: "DuoDrive Authenticator",
       });
 
       if (error) {
+        console.error("MFA enroll error:", error);
+        setErrorMessage(error.message || "Failed to start 2FA setup. Please try again.");
+        setStep("error");
         toast({
           title: "Setup Failed",
           description: error.message,
           variant: "destructive",
         });
-        onCancel();
         return;
       }
 
-      if (data) {
+      if (data && data.totp) {
         setQrUri(data.totp.uri);
         setSecret(data.totp.secret);
         setFactorId(data.id);
         setStep("qr");
+      } else {
+        setErrorMessage("Invalid response from authentication server.");
+        setStep("error");
       }
     } catch (error) {
+      console.error("MFA setup error:", error);
+      const message = error instanceof Error ? error.message : "Failed to start 2FA setup";
+      setErrorMessage(message);
+      setStep("error");
       toast({
         title: "Error",
-        description: "Failed to start 2FA setup",
+        description: message,
         variant: "destructive",
       });
-      onCancel();
-    } finally {
-      setIsEnrolling(false);
     }
   };
 
@@ -136,11 +153,35 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
     }
   };
 
-  if (isEnrolling) {
+  if (step === "loading") {
     return (
       <div className="flex flex-col items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Setting up 2FA...</p>
+      </div>
+    );
+  }
+
+  if (step === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 space-y-4">
+        <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+          <AlertCircle className="h-6 w-6 text-destructive" />
+        </div>
+        <div className="text-center space-y-2">
+          <h3 className="text-lg font-semibold">Setup Failed</h3>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            {errorMessage || "An error occurred while setting up 2FA."}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={enrollFactor}>
+            Try Again
+          </Button>
+        </div>
       </div>
     );
   }

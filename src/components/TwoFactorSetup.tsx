@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +24,9 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
   const { toast } = useToast();
 
   // Start enrollment on mount
-  useState(() => {
+  useEffect(() => {
     enrollFactor();
-  });
+  }, []);
 
   const enrollFactor = async () => {
     setIsEnrolling(true);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { CoachingCard } from "@/components/CoachingCard";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, Target, MessageCircle, Phone, Users, Video, Upload } from "lucide-react";
+import { Calendar, Target, MessageCircle, Phone, Users, Video, Upload, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SessionTimer } from "@/components/SessionTimer";
 import { format } from "date-fns";
@@ -279,7 +279,15 @@ export default function Coaching() {
       {user && !isLoading && (activeSessions.length > 0 || activeChatSessions.length > 0 || upcomingRequests.length > 0) && (
         <section className="py-6 bg-primary/5 border-b border-primary/10">
           <div className="container mx-auto px-4">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Your Coaching Sessions</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground">Your Coaching Sessions</h2>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/chat-history">
+                  <History className="h-4 w-4 mr-2" />
+                  View History
+                </Link>
+              </Button>
+            </div>
             
             {/* Active Chat Sessions (Quick Text Help) */}
             {activeChatSessions.length > 0 && (

@@ -239,6 +239,19 @@ export function CoachChatSession({
         .eq("id", sessionId);
 
       setElapsedSeconds(0);
+      
+      // Notify coach that customer has started (if customer is starting)
+      if (!isCoach) {
+        try {
+          await supabase.functions.invoke("notify-coach-customer-joined", {
+            body: { chatSessionId: sessionId },
+          });
+        } catch (notifyError) {
+          console.error("Failed to notify coach:", notifyError);
+          // Don't fail the session start if notification fails
+        }
+      }
+      
       toast({
         title: "Session Started",
         description: "Your 10-minute coaching session has begun!",

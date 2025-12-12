@@ -2,12 +2,20 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { isValidUUID, sanitizeForHtml } from "../_shared/validation.ts";
+import { checkRateLimit, getClientIP, rateLimitExceededResponse } from "../_shared/rate-limit.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Rate limit: 10 requests per minute per IP
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 10,
+  windowMs: 60 * 1000,
+  keyPrefix: "notify-coach",
 };
 
 interface NotifyRequest {
@@ -17,6 +25,15 @@ interface NotifyRequest {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Check rate limit
+  const clientIP = getClientIP(req);
+  const rateLimitResult = checkRateLimit(clientIP, RATE_LIMIT_CONFIG);
+  
+  if (!rateLimitResult.allowed) {
+    console.log("Rate limit exceeded for IP:", clientIP);
+    return rateLimitExceededResponse(rateLimitResult, corsHeaders);
   }
 
   try {

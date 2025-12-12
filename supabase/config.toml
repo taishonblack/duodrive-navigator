@@ -24,6 +24,9 @@ verify_jwt = true
 [functions.google-oauth-callback]
 verify_jwt = false
 
+[functions.generate-oauth-state]
+verify_jwt = true
+
 [functions.create-google-meet]
 verify_jwt = true
 

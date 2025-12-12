@@ -31,31 +31,37 @@ export default function Auth() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Check MFA status in a separate function to avoid async issues in callback
+    const checkMfaStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        // Check if MFA verification is needed
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         
         if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
-          // User has MFA enabled but hasn't verified yet
+          // User has MFA enrolled but hasn't verified yet in this session
           setShowMfaVerify(true);
-        } else {
+        } else if (aal?.currentLevel === "aal2") {
+          // Already fully authenticated with MFA
+          navigate("/deal-room");
+        } else if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal1") {
+          // No MFA enrolled, proceed normally
           navigate("/deal-room");
         }
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Don't use async here - defer to avoid deadlock
+      if (session?.user) {
+        // Use setTimeout to defer the async MFA check
+        setTimeout(() => {
+          checkMfaStatus();
+        }, 0);
       }
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        
-        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
-          setShowMfaVerify(true);
-        } else if (aal?.currentLevel === "aal2" || aal?.nextLevel === "aal1") {
-          navigate("/deal-room");
-        }
-      }
-    });
+    // Initial check
+    checkMfaStatus();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -176,12 +182,14 @@ export default function Auth() {
           return;
         }
         
-        // Check if MFA is required
+        // Check if MFA is required immediately after login
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         
         if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+          // User has MFA enrolled - show verification dialog
           setShowMfaVerify(true);
         } else {
+          // No MFA or already verified - proceed to app
           toast({ title: "Welcome back!", description: "You have been logged in." });
           navigate("/deal-room");
         }

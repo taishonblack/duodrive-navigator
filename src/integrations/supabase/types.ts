@@ -50,6 +50,108 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_chat_messages: {
+        Row: {
+          chat_session_id: string
+          content: string
+          created_at: string
+          id: string
+          sender_id: string
+          sender_type: string
+        }
+        Insert: {
+          chat_session_id: string
+          content: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          sender_type: string
+        }
+        Update: {
+          chat_session_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_chat_messages_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "coach_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_chat_sessions: {
+        Row: {
+          actual_duration_minutes: number | null
+          coach_extended: boolean | null
+          coach_id: string
+          created_at: string
+          customer_id: string
+          ended_at: string | null
+          id: string
+          request_id: string
+          scheduled_duration_minutes: number
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_duration_minutes?: number | null
+          coach_extended?: boolean | null
+          coach_id: string
+          created_at?: string
+          customer_id: string
+          ended_at?: string | null
+          id?: string
+          request_id: string
+          scheduled_duration_minutes?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_duration_minutes?: number | null
+          coach_extended?: boolean | null
+          coach_id?: string
+          created_at?: string
+          customer_id?: string
+          ended_at?: string | null
+          id?: string
+          request_id?: string
+          scheduled_duration_minutes?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_chat_sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_chat_sessions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_chat_sessions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_requests_coach_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_integrations: {
         Row: {
           coach_id: string

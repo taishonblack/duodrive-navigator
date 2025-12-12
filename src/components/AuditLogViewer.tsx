@@ -38,6 +38,7 @@ const actionIcons: Record<string, typeof Eye> = {
   view_pending_requests: Eye,
   view_request_details: FileText,
   claim_request: UserCheck,
+  admin_assign: UserCheck,
   start_chat_session: Play,
   end_chat_session: Square,
   view_customer_data: User,
@@ -47,6 +48,7 @@ const actionLabels: Record<string, string> = {
   view_pending_requests: "Viewed Pending Requests",
   view_request_details: "Viewed Request Details",
   claim_request: "Claimed Request",
+  admin_assign: "Admin Assigned Coach",
   start_chat_session: "Started Chat Session",
   end_chat_session: "Ended Chat Session",
   view_customer_data: "Accessed Customer Data",
@@ -56,6 +58,7 @@ const actionColors: Record<string, string> = {
   view_pending_requests: "bg-muted text-muted-foreground",
   view_request_details: "bg-info/10 text-info",
   claim_request: "bg-success/10 text-success",
+  admin_assign: "bg-accent/20 text-accent-foreground",
   start_chat_session: "bg-primary/10 text-primary",
   end_chat_session: "bg-warning/10 text-warning",
   view_customer_data: "bg-destructive/10 text-destructive",
@@ -190,10 +193,16 @@ export function AuditLogViewer() {
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-foreground">{filteredLogs.length}</p>
             <p className="text-xs text-muted-foreground">Total Events</p>
+          </div>
+          <div className="bg-accent/20 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-accent-foreground">
+              {filteredLogs.filter(l => l.action === "admin_assign").length}
+            </p>
+            <p className="text-xs text-muted-foreground">Admin Assigns</p>
           </div>
           <div className="bg-success/10 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-success">

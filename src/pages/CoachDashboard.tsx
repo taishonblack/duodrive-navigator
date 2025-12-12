@@ -9,13 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
   Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer,
-  Send, ExternalLink
+  Send, ExternalLink, User
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
 import { SessionTimer } from "@/components/SessionTimer";
+import { CoachProfileEditor } from "@/components/CoachProfileEditor";
 
 interface CoachingRequest {
   id: string;
@@ -36,6 +37,8 @@ interface Coach {
   display_name: string;
   tier: string;
   is_available: boolean;
+  photo_url?: string;
+  bio?: string;
 }
 
 const sessionTypeIcons = {
@@ -713,10 +716,24 @@ export default function CoachDashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-4">
-            <div className="max-w-2xl">
-              <h3 className="text-lg font-semibold mb-4">Integrations</h3>
-              {coach && <GoogleCalendarConnect coachId={coach.id} />}
+          <TabsContent value="settings" className="space-y-6">
+            <div className="max-w-2xl space-y-6">
+              {/* Profile Editor */}
+              {coach && (
+                <CoachProfileEditor
+                  coachId={coach.id}
+                  displayName={coach.display_name}
+                  initialPhotoUrl={coach.photo_url}
+                  initialBio={coach.bio}
+                  onUpdate={() => checkCoachAccess()}
+                />
+              )}
+
+              {/* Integrations */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Integrations</h3>
+                {coach && <GoogleCalendarConnect coachId={coach.id} />}
+              </div>
             </div>
           </TabsContent>
         </Tabs>

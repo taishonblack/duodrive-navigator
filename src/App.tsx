@@ -12,6 +12,7 @@ import DealRoom from "./pages/DealRoom";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
 import Coaching from "./pages/Coaching";
 import CoachingChat from "./pages/CoachingChat";
+import ChatHistory from "./pages/ChatHistory";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import CoachAuth from "./pages/CoachAuth";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/why-duodrive" element={<WhyDuoDrive />} />
             <Route path="/coaching" element={<Coaching />} />
             <Route path="/coaching-chat/:sessionId" element={<CoachingChat />} />
+            <Route path="/chat-history" element={<ChatHistory />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             <Route path="/coach" element={<CoachAuth />} />

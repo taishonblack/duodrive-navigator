@@ -27,41 +27,72 @@ export default function Auth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [showMfaVerify, setShowMfaVerify] = useState(false);
+  const [isCheckingMfa, setIsCheckingMfa] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     // Check MFA status in a separate function to avoid async issues in callback
     const checkMfaStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        console.log("[Auth] Session check:", { hasSession: !!session, userId: session?.user?.id });
+        
+        if (!session?.user) {
+          setIsCheckingMfa(false);
+          return;
+        }
+
         const [{ data: aal }, { data: factors }] = await Promise.all([
           supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
           supabase.auth.mfa.listFactors(),
         ]);
 
         const hasTotpFactor = (factors?.totp?.length ?? 0) > 0;
+        const verifiedFactors = factors?.totp?.filter(f => f.status === 'verified') ?? [];
+        const hasVerifiedTotp = verifiedFactors.length > 0;
 
-        if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2" && hasTotpFactor) {
-          // User has MFA enrolled but hasn't verified yet in this session
+        console.log("[Auth] MFA status:", {
+          currentLevel: aal?.currentLevel,
+          nextLevel: aal?.nextLevel,
+          hasTotpFactor,
+          hasVerifiedTotp,
+          factorCount: factors?.totp?.length ?? 0,
+          verifiedCount: verifiedFactors.length,
+        });
+
+        // Block access if user has verified TOTP factor but session is only aal1
+        if (hasVerifiedTotp && aal?.currentLevel === "aal1") {
+          console.log("[Auth] MFA required - showing verification dialog");
           setShowMfaVerify(true);
+          setIsCheckingMfa(false);
         } else if (aal?.currentLevel === "aal2") {
-          // Already fully authenticated with MFA
+          console.log("[Auth] MFA verified - redirecting to deal-room");
           navigate("/deal-room");
-        } else if (aal?.currentLevel === "aal1" && !hasTotpFactor) {
-          // No MFA enrolled, proceed normally
+        } else if (!hasVerifiedTotp) {
+          console.log("[Auth] No MFA enrolled - redirecting to deal-room");
           navigate("/deal-room");
+        } else {
+          setIsCheckingMfa(false);
         }
+      } catch (error) {
+        console.error("[Auth] Error checking MFA status:", error);
+        setIsCheckingMfa(false);
       }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Auth] Auth state changed:", { event, hasSession: !!session });
+      
       // Don't use async here - defer to avoid deadlock
       if (session?.user) {
         // Use setTimeout to defer the async MFA check
         setTimeout(() => {
           checkMfaStatus();
         }, 0);
+      } else {
+        setIsCheckingMfa(false);
       }
     });
 
@@ -236,6 +267,19 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking MFA status after OAuth redirect
+  if (isCheckingMfa) {
+    return (
+      <Layout>
+        <SEO title="Sign In" canonical="/auth" noIndex />
+        <div className="container mx-auto px-4 py-16 max-w-md flex flex-col items-center justify-center min-h-[50vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Verifying your session...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

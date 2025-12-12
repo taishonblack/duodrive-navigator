@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScoreRing } from "@/components/ScoreRing";
+import { CustomerCoachUpdates } from "@/components/CustomerCoachUpdates";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -446,6 +447,13 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* Coach Updates - Full Width */}
+          {user && (
+            <div className="lg:col-span-2">
+              <CustomerCoachUpdates userId={user.id} />
+            </div>
+          )}
         </div>
       </div>
     </Layout>

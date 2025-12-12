@@ -827,6 +827,23 @@ export type Database = {
       }
     }
     Functions: {
+      get_coaching_request_safe: {
+        Args: { request_id: string }
+        Returns: {
+          claimed_at: string
+          coach_id: string
+          completed_at: string
+          created_at: string
+          customer_id: string
+          deal_id: string
+          id: string
+          scheduled_date: string
+          scheduled_time: string
+          session_type: Database["public"]["Enums"]["session_type"]
+          status: Database["public"]["Enums"]["request_status"]
+          updated_at: string
+        }[]
+      }
       get_masked_session_phone: {
         Args: {
           phone: string

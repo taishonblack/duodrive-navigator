@@ -49,25 +49,55 @@ export function GoogleCalendarConnect({ coachId }: GoogleCalendarConnectProps) {
     }
   };
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     setIsConnecting(true);
     
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth-callback`;
-    const scope = encodeURIComponent(
-      "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar"
-    );
-    
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&response_type=code` +
-      `&scope=${scope}` +
-      `&access_type=offline` +
-      `&prompt=consent` +
-      `&state=${coachId}`;
+    try {
+      // Get a cryptographically signed state token from the server
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to connect Google Calendar.",
+          variant: "destructive",
+        });
+        setIsConnecting(false);
+        return;
+      }
 
-    window.location.href = authUrl;
+      const response = await supabase.functions.invoke("generate-oauth-state");
+      
+      if (response.error || !response.data?.state) {
+        throw new Error(response.error?.message || "Failed to generate OAuth state");
+      }
+
+      const signedState = response.data.state;
+      
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth-callback`;
+      const scope = encodeURIComponent(
+        "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar"
+      );
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${clientId}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${scope}` +
+        `&access_type=offline` +
+        `&prompt=consent` +
+        `&state=${encodeURIComponent(signedState)}`;
+
+      window.location.href = authUrl;
+    } catch (error: any) {
+      console.error("Error initiating OAuth:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to start Google connection. Please try again.",
+        variant: "destructive",
+      });
+      setIsConnecting(false);
+    }
   };
 
   const handleDisconnect = async () => {

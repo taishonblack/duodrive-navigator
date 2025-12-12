@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { 
   Shield, 
   Users, 
@@ -27,7 +28,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -406,6 +408,10 @@ export default function AdminDashboard() {
           <TabsList>
             <TabsTrigger value="coaches">Coaches</TabsTrigger>
             <TabsTrigger value="requests">All Requests</TabsTrigger>
+            <TabsTrigger value="audit" className="flex items-center gap-1">
+              <FileText className="h-3.5 w-3.5" />
+              Audit Logs
+            </TabsTrigger>
           </TabsList>
 
           {/* Coaches Tab */}
@@ -611,6 +617,11 @@ export default function AdminDashboard() {
                 })
               )}
             </div>
+          </TabsContent>
+
+          {/* Audit Logs Tab */}
+          <TabsContent value="audit">
+            <AuditLogViewer />
           </TabsContent>
         </Tabs>
       </main>

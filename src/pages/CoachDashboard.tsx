@@ -450,6 +450,14 @@ export default function CoachDashboard() {
 
       // Check if chat session already exists
       if (chatSessions[requestId]) {
+        // Log audit event for accessing existing chat
+        logAction({
+          coachId: coach.id,
+          action: "start_chat_session",
+          resourceType: "coach_chat_sessions",
+          resourceId: chatSessions[requestId].id,
+          details: { resumed: true },
+        });
         // Navigate to existing chat
         navigate(`/coaching-chat/${chatSessions[requestId].id}`);
         return;
@@ -469,6 +477,15 @@ export default function CoachDashboard() {
         .single();
 
       if (chatError) throw chatError;
+
+      // Log audit event for starting new chat session
+      logAction({
+        coachId: coach.id,
+        action: "start_chat_session",
+        resourceType: "coach_chat_sessions",
+        resourceId: chatSession.id,
+        details: { customer_id: requestData.customer_id, request_id: requestId },
+      });
 
       // Notify customer via email/SMS (without exposing contact info to coach)
       const { data: { session } } = await supabase.auth.getSession();

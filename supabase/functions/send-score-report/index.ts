@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { sanitizeForHtml } from "../_shared/validation.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -60,6 +61,18 @@ const handler = async (req: Request): Promise<Response> => {
     const scoreColor = getScoreColor(data.overallScore);
     const scoreLabel = getScoreLabel(data.overallScore);
 
+    // Sanitize user-provided strings for safe HTML insertion
+    const safeVehicleInfo = sanitizeForHtml(data.vehicleInfo);
+    const safeRecommendation = sanitizeForHtml(data.recommendation);
+    
+    // Sanitize pillar details
+    const safePillars = Object.fromEntries(
+      Object.entries(data.pillars).map(([name, pillar]) => [
+        name,
+        { ...pillar, details: sanitizeForHtml(pillar.details) }
+      ])
+    ) as typeof data.pillars;
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -72,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 24px;">DuoDrive Score Report</h1>
-            <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 14px;">${data.vehicleInfo}</p>
+            <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 14px;">${safeVehicleInfo}</p>
           </div>
 
           <!-- Score -->
@@ -116,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Pillars -->
           <div style="background: white; padding: 20px 30px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
             <h2 style="color: #1e293b; font-size: 16px; margin: 0 0 15px 0;">Score Breakdown</h2>
-            ${Object.entries(data.pillars).map(([name, pillar]) => `
+            ${Object.entries(safePillars).map(([name, pillar]) => `
               <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f8fafc; border-radius: 8px;">
                 <div style="width: 40px; height: 40px; border-radius: 8px; background-color: ${getScoreColor(pillar.score)}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">${pillar.score}</div>
                 <div style="margin-left: 12px; flex: 1;">
@@ -145,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Recommendation -->
           <div style="background: #fef3c7; padding: 20px 30px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
             <h2 style="color: #92400e; font-size: 14px; margin: 0 0 10px 0;">AI Recommendation</h2>
-            <p style="color: #78350f; font-size: 14px; margin: 0; line-height: 1.5;">${data.recommendation}</p>
+            <p style="color: #78350f; font-size: 14px; margin: 0; line-height: 1.5;">${safeRecommendation}</p>
           </div>
 
           <!-- Footer -->
@@ -161,7 +174,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "DuoDrive <onboarding@resend.dev>",
       to: [data.recipientEmail],
-      subject: `DuoDrive Score Report: ${data.vehicleInfo} - Score ${data.overallScore}`,
+      subject: `DuoDrive Score Report: ${safeVehicleInfo} - Score ${data.overallScore}`,
       html: emailHtml,
     });
 

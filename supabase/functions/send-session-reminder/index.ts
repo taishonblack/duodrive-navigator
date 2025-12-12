@@ -404,6 +404,7 @@ serve(async (req) => {
         throw new Error("Invalid reminder type");
     }
 
+    // Send email notification
     const emailResponse = await resend.emails.send({
       from: "DuoDrive <onboarding@resend.dev>",
       to: [customerEmail],
@@ -413,7 +414,46 @@ serve(async (req) => {
 
     console.log("Email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify({ success: true, emailResponse }), {
+    // Also send push notification if available
+    let pushResult = null;
+    try {
+      // Get customer user ID from profile
+      const { data: customerProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", customerEmail)
+        .single();
+
+      if (customerProfile) {
+        const pushResponse = await fetch(
+          `${supabaseUrl}/functions/v1/send-push-notification`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              userId: customerProfile.id,
+              title: subject.replace(/^[^\s]+ /, ""), // Remove emoji prefix
+              body: reminderType === "session_starting" 
+                ? `Your ${sessionLabel} session is about to begin!`
+                : reminderType === "session_claimed"
+                ? `A coach has been assigned to your ${sessionLabel} session.`
+                : `Your ${sessionLabel} session has been confirmed.`,
+              url: "/coaching",
+            }),
+          }
+        );
+        pushResult = await pushResponse.json();
+        console.log("Push notification result:", pushResult);
+      }
+    } catch (pushError) {
+      console.error("Push notification error (non-fatal):", pushError);
+      // Don't fail the request if push fails
+    }
+
+    return new Response(JSON.stringify({ success: true, emailResponse, pushResult }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

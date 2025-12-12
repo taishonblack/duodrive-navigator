@@ -153,6 +153,18 @@ export function AuditLogViewer() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Quick Filters */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={actionFilter === "admin_assign" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActionFilter(actionFilter === "admin_assign" ? "all" : "admin_assign")}
+          >
+            <UserCheck className="h-4 w-4 mr-1" />
+            Admin Assignments
+          </Button>
+        </div>
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">

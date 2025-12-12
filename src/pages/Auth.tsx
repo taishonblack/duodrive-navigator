@@ -86,7 +86,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/deal-room`,
+          redirectTo: `${window.location.origin}/auth`,
         },
       });
       if (error) {
@@ -106,7 +106,6 @@ export default function Auth() {
       setIsGoogleLoading(false);
     }
   };
-
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});

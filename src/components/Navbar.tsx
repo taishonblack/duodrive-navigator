@@ -95,6 +95,10 @@ export function Navbar() {
     return email.charAt(0).toUpperCase();
   };
 
+  const getDisplayName = (email: string) => {
+    return email.split("@")[0];
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
       <div className="container mx-auto px-4">
@@ -151,11 +155,9 @@ export function Navbar() {
                         {getInitials(user.email || "U")}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <p className="text-sm font-medium truncate max-w-[180px]">
-                        {user.email}
-                      </p>
-                    </div>
+                    <p className="text-sm font-medium">
+                      {getDisplayName(user.email || "User")}
+                    </p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -261,7 +263,7 @@ export function Navbar() {
                           {getInitials(user.email || "U")}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm truncate max-w-[150px]">{user.email}</span>
+                      <span className="text-sm font-medium">{getDisplayName(user.email || "User")}</span>
                     </div>
                     <Button 
                       variant="ghost" 

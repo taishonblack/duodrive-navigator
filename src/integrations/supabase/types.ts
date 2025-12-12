@@ -827,6 +827,14 @@ export type Database = {
       }
     }
     Functions: {
+      get_masked_session_phone: {
+        Args: {
+          phone: string
+          session_coach_id: string
+          session_customer_id: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

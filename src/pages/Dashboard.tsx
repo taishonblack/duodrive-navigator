@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScoreRing } from "@/components/ScoreRing";
 import { CustomerCoachUpdates } from "@/components/CustomerCoachUpdates";
+import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -25,7 +26,7 @@ import {
   AlertCircle,
   Scale
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parse, addMinutes } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { User } from "@supabase/supabase-js";
 
@@ -400,6 +401,21 @@ export default function Dashboard() {
                     const SessionIcon = sessionTypeIcons[request.session_type];
                     const status = statusConfig[request.status];
                     const StatusIcon = status.icon;
+                    const isUpcoming = request.status === "pending" || request.status === "claimed";
+                    
+                    // Parse the scheduled date and time for calendar
+                    const scheduledDateTime = (() => {
+                      try {
+                        const dateStr = request.scheduled_date;
+                        const timeStr = request.scheduled_time;
+                        const dateTime = parse(`${dateStr} ${timeStr}`, "yyyy-MM-dd HH:mm:ss", new Date());
+                        return isNaN(dateTime.getTime()) ? null : dateTime;
+                      } catch {
+                        return null;
+                      }
+                    })();
+                    
+                    const sessionDurations = { text: 10, phone: 30, video: 60 };
                     
                     return (
                       <div 
@@ -420,10 +436,24 @@ export default function Dashboard() {
                             </p>
                           </div>
                         </div>
-                        <Badge variant="outline" className={status.color}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {status.label}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {isUpcoming && scheduledDateTime && (
+                            <AddToCalendarButton
+                              event={{
+                                title: `DuoDrive ${sessionTypeLabels[request.session_type]}`,
+                                description: request.notes || "DuoDrive coaching session - your coach will reach out at the scheduled time.",
+                                startTime: scheduledDateTime,
+                                endTime: addMinutes(scheduledDateTime, sessionDurations[request.session_type]),
+                              }}
+                              size="sm"
+                              variant="ghost"
+                            />
+                          )}
+                          <Badge variant="outline" className={status.color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {status.label}
+                          </Badge>
+                        </div>
                       </div>
                     );
                   })}

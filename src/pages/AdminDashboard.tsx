@@ -300,6 +300,9 @@ export default function AdminDashboard() {
 
   const handleAssignCoach = async (requestId: string, coachId: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const { data, error } = await supabase.rpc("admin_assign_coach_to_request", {
         p_request_id: requestId,
         p_coach_id: coachId,
@@ -307,10 +310,37 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
+      // Create audit log entry for assignment
+      const { error: auditError } = await supabase.from("coach_audit_logs").insert({
+        coach_id: coachId,
+        user_id: session.user.id,
+        action: "admin_assigned_coach",
+        resource_type: "coaching_request",
+        resource_id: requestId,
+        details: {
+          assigned_by_admin: session.user.id,
+          assigned_at: new Date().toISOString(),
+        },
+        user_agent: navigator.userAgent,
+      });
+
+      if (auditError) {
+        console.error("Failed to create audit log:", auditError);
+      }
+
       toast({
         title: "Coach Assigned",
         description: "The request has been assigned to the coach.",
       });
+
+      // Send notification to coach about assignment
+      try {
+        await supabase.functions.invoke("notify-coach-assigned", {
+          body: { requestId, coachId },
+        });
+      } catch (coachEmailError) {
+        console.error("Failed to notify coach:", coachEmailError);
+      }
 
       // Send notification to customer about assignment
       try {
@@ -318,7 +348,7 @@ export default function AdminDashboard() {
           body: { requestId, reminderType: "session_claimed" },
         });
       } catch (emailError) {
-        console.error("Failed to send notification:", emailError);
+        console.error("Failed to send customer notification:", emailError);
       }
 
       fetchData();

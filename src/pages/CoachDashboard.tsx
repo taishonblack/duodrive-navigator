@@ -285,59 +285,8 @@ export default function CoachDashboard() {
     }
   };
 
-  const claimRequest = async (requestId: string) => {
-    if (!coach) return;
-    setActionLoading(requestId);
-
-    try {
-      const { error } = await supabase
-        .from("coaching_requests")
-        .update({
-          coach_id: coach.id,
-          status: "claimed",
-          claimed_at: new Date().toISOString(),
-        })
-        .eq("id", requestId)
-        .eq("status", "pending");
-
-      if (error) throw error;
-
-      // Log audit event for claiming request
-      logAction({
-        coachId: coach.id,
-        action: "claim_request",
-        resourceType: "coaching_requests",
-        resourceId: requestId,
-        details: { status: "claimed" },
-      });
-
-      // Send email notification to customer
-      try {
-        await supabase.functions.invoke("send-session-reminder", {
-          body: { requestId, reminderType: "session_claimed" },
-        });
-      } catch (emailError) {
-        console.error("Failed to send notification email:", emailError);
-        // Don't fail the claim if email fails
-      }
-
-      toast({
-        title: "Request claimed!",
-        description: "This request has been assigned to you.",
-      });
-
-      await fetchRequests(coach.id);
-    } catch (error: any) {
-      console.error("Error claiming:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to claim request.",
-        variant: "destructive",
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  // Removed claimRequest function - coaches can no longer self-claim requests
+  // Requests are now assigned by admins only for security
 
   const updateStatus = async (requestId: string, newStatus: "in_progress" | "completed" | "cancelled") => {
     if (!coach) return;
@@ -651,58 +600,16 @@ export default function CoachDashboard() {
           </TabsList>
 
           <TabsContent value="queue" className="space-y-4">
-            {pendingRequests.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No pending requests in queue.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              pendingRequests.map((request) => {
-                const Icon = sessionTypeIcons[request.session_type];
-                return (
-                  <Card key={request.id}>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                            <Icon className="h-6 w-6 text-primary" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-semibold text-foreground">
-                                {sessionTypeLabels[request.session_type]}
-                              </p>
-                              <Badge variant="outline" className={statusColors.pending}>
-                                Pending
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              <Calendar className="h-3 w-3 inline mr-1" />
-                              {format(new Date(request.scheduled_date), "PPP")} at {request.scheduled_time}
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1 italic">
-                              Contact info hidden until claimed
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={() => claimRequest(request.id)}
-                          disabled={actionLoading === request.id}
-                        >
-                          {actionLoading === request.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Claim Request"
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="py-6 text-center">
+                <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
+                <p className="font-medium text-foreground mb-2">Requests are assigned by admins</p>
+                <p className="text-sm text-muted-foreground">
+                  For security, coaching requests are reviewed and assigned by administrators. 
+                  You'll see new requests appear in "My Requests" when assigned to you.
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="my-requests" className="space-y-4">

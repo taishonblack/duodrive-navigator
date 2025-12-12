@@ -285,9 +285,10 @@ export function CoachChatSession({
       // Notify coach that customer has started (if customer is starting)
       if (!isCoach) {
         try {
-          await supabase.functions.invoke("notify-coach-customer-joined", {
+          const { data } = await supabase.functions.invoke("notify-coach-customer-joined", {
             body: { chatSessionId: sessionId },
           });
+          console.log("Coach notification sent:", data);
         } catch (notifyError) {
           console.error("Failed to notify coach:", notifyError);
           // Don't fail the session start if notification fails
@@ -444,6 +445,10 @@ export function CoachChatSession({
     );
   }
 
+  // Partner display name based on role
+  const partnerDisplayName = isCoach ? "Customer" : coachName;
+  const partnerLabel = isCoach ? "Customer" : "Your Coach";
+
   return (
     <Card className={`max-w-2xl mx-auto border-2 ${getWarningStyles()}`}>
       {/* Header */}
@@ -452,9 +457,9 @@ export function CoachChatSession({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar className="h-12 w-12 border-2 border-primary/20">
-                <AvatarImage src={coachAvatar} alt={coachName} />
+                <AvatarImage src={isCoach ? undefined : coachAvatar} alt={partnerDisplayName} />
                 <AvatarFallback className="bg-primary/10 text-primary">
-                  {coachName.charAt(0)}
+                  {partnerDisplayName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               {/* Online indicator */}
@@ -467,22 +472,27 @@ export function CoachChatSession({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <CardTitle className="text-lg">{coachName}</CardTitle>
+                <CardTitle className="text-lg">{partnerDisplayName}</CardTitle>
                 {isPartnerTyping && (
                   <span className="text-xs text-primary animate-pulse">typing...</span>
                 )}
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    isPartnerOnline 
+                      ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {isPartnerOnline ? "Online" : "Offline"}
+                </Badge>
               </div>
               {coachBio && !isCoach && (
                 <p className="text-xs text-muted-foreground line-clamp-1">{coachBio}</p>
               )}
-              {!coachBio && (
+              {isCoach && (
                 <p className="text-sm text-muted-foreground">
-                  {isCoach ? "Coaching Session" : "Your Coach"}
-                  {!isCoach && (
-                    <span className={`ml-2 text-xs ${isPartnerOnline ? "text-green-500" : "text-muted-foreground"}`}>
-                      • {isPartnerOnline ? "Online" : "Offline"}
-                    </span>
-                  )}
+                  {isPartnerOnline ? "Customer is ready to chat" : "Waiting for customer to join..."}
                 </p>
               )}
             </div>

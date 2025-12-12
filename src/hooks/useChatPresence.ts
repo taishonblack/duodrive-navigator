@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PresenceState {
-  odlineUserIds: string[];
+  onlineUserIds: string[];
   typingUserIds: string[];
   isPartnerOnline: boolean;
   isPartnerTyping: boolean;
@@ -14,7 +14,7 @@ export function useChatPresence(
   partnerId: string
 ) {
   const [presence, setPresence] = useState<PresenceState>({
-    odlineUserIds: [],
+    onlineUserIds: [],
     typingUserIds: [],
     isPartnerOnline: false,
     isPartnerTyping: false,
@@ -46,7 +46,7 @@ export function useChatPresence(
           .map((p: any) => p.user_id);
 
         setPresence({
-          odlineUserIds: onlineUsers,
+          onlineUserIds: onlineUsers,
           typingUserIds: typingUsers,
           isPartnerOnline: onlineUsers.includes(partnerId),
           isPartnerTyping: typingUsers.includes(partnerId),

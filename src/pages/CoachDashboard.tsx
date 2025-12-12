@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
   Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer,
-  Send, ExternalLink, User
+  Send, ExternalLink, User, BarChart3, Bell
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
 import { SessionTimer } from "@/components/SessionTimer";
 import { CoachProfileEditor } from "@/components/CoachProfileEditor";
+import { CoachAnalytics } from "@/components/CoachAnalytics";
 
 interface CoachingRequest {
   id: string;
@@ -71,10 +72,94 @@ export default function CoachDashboard() {
   const [chatSessions, setChatSessions] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+
+  // Check and request push notification permission
+  useEffect(() => {
+    if ("Notification" in window) {
+      setPushEnabled(Notification.permission === "granted");
+    }
+  }, []);
+
+  const enablePushNotifications = async () => {
+    if (!("Notification" in window)) {
+      toast({
+        title: "Not supported",
+        description: "Push notifications are not supported in this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setPushEnabled(true);
+      toast({
+        title: "Notifications enabled",
+        description: "You'll receive alerts when customers join chat sessions.",
+      });
+    } else {
+      toast({
+        title: "Permission denied",
+        description: "Please enable notifications in your browser settings.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     checkCoachAccess();
   }, []);
+
+  // Subscribe to realtime chat session updates for push notifications
+  useEffect(() => {
+    if (!coach?.id || !pushEnabled) return;
+
+    const channel = supabase
+      .channel("coach-session-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "coach_chat_sessions",
+          filter: `coach_id=eq.${coach.id}`,
+        },
+        (payload) => {
+          const newSession = payload.new as any;
+          const oldSession = payload.old as any;
+          
+          // Check if session just became active (customer started it)
+          if (oldSession?.status !== "active" && newSession?.status === "active") {
+            // Show browser push notification
+            if (Notification.permission === "granted") {
+              const notification = new Notification("Customer Ready!", {
+                body: "A customer has joined your chat session. Click to open.",
+                icon: "/favicon.ico",
+                tag: `session-${newSession.id}`,
+              });
+
+              notification.onclick = () => {
+                window.focus();
+                navigate(`/coaching-chat/${newSession.id}`);
+                notification.close();
+              };
+            }
+
+            // Also show a toast
+            toast({
+              title: "🎯 Customer Joined!",
+              description: "A customer is ready to start the chat session.",
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [coach?.id, pushEnabled, navigate, toast]);
 
   const checkCoachAccess = async () => {
     try {
@@ -520,6 +605,10 @@ export default function CoachDashboard() {
             <TabsTrigger value="my-requests">
               My Requests ({myRequests.length})
             </TabsTrigger>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              Analytics
+            </TabsTrigger>
             <TabsTrigger value="settings">
               <Settings className="h-4 w-4 mr-1" />
               Settings
@@ -716,8 +805,38 @@ export default function CoachDashboard() {
             )}
           </TabsContent>
 
+          <TabsContent value="analytics" className="space-y-6">
+            {coach && <CoachAnalytics coachId={coach.id} />}
+          </TabsContent>
+
           <TabsContent value="settings" className="space-y-6">
             <div className="max-w-2xl space-y-6">
+              {/* Push Notifications */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Push Notifications
+                  </CardTitle>
+                  <CardDescription>
+                    Get instant browser alerts when customers join your chat sessions.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pushEnabled ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-5 w-5" />
+                      <span>Push notifications are enabled</span>
+                    </div>
+                  ) : (
+                    <Button onClick={enablePushNotifications}>
+                      <Bell className="h-4 w-4 mr-2" />
+                      Enable Push Notifications
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Profile Editor */}
               {coach && (
                 <CoachProfileEditor

@@ -161,7 +161,16 @@ serve(async (req) => {
     console.log("Coach notification results:", results);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Coach notified" }),
+      JSON.stringify({ 
+        success: true, 
+        message: "Coach notified",
+        notificationData: {
+          title: "Customer Ready!",
+          body: `${customerName} has joined your chat session`,
+          chatUrl,
+          coachUserId: coach.user_id
+        }
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

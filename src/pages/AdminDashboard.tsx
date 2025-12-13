@@ -103,6 +103,7 @@ export default function AdminDashboard() {
   const [newCoachTier, setNewCoachTier] = useState<CoachingTier>("text");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chargingRequestId, setChargingRequestId] = useState<string | null>(null);
+  const [refundingRequestId, setRefundingRequestId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -405,6 +406,41 @@ export default function AdminDashboard() {
       });
     } finally {
       setChargingRequestId(null);
+    }
+  };
+
+  const handleRefund = async (requestId: string) => {
+    setRefundingRequestId(requestId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("process-refund", {
+        body: { requestId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Refund Processed",
+          description: "The payment has been refunded successfully.",
+        });
+        fetchData();
+      } else {
+        throw new Error(data.error || "Refund failed");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Refund Failed",
+        description: error.message || "Failed to process refund",
+        variant: "destructive",
+      });
+    } finally {
+      setRefundingRequestId(null);
     }
   };
 
@@ -767,6 +803,22 @@ export default function AdminDashboard() {
                                   <DollarSign className="h-4 w-4 mr-2" />
                                 )}
                                 Charge Remaining $399.20
+                              </Button>
+                            )}
+                            {/* Refund button for paid requests */}
+                            {["fully_paid", "deposit_paid"].includes(request.payment_status) && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRefund(request.id)}
+                                disabled={refundingRequestId === request.id}
+                              >
+                                {refundingRequestId === request.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                )}
+                                Refund
                               </Button>
                             )}
                           </div>

@@ -77,3 +77,6 @@ verify_jwt = true
 
 [functions.send-payment-notification]
 verify_jwt = false
+
+[functions.list-stripe-transactions]
+verify_jwt = true

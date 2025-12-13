@@ -9,9 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AuditLogViewer } from "@/components/AuditLogViewer";
+import { PaymentHistoryViewer } from "@/components/PaymentHistoryViewer";
 import { 
   Shield, 
   Users, 
@@ -31,7 +33,8 @@ import {
   AlertCircle,
   FileText,
   CreditCard,
-  DollarSign
+  DollarSign,
+  History
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -104,6 +107,8 @@ export default function AdminDashboard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chargingRequestId, setChargingRequestId] = useState<string | null>(null);
   const [refundingRequestId, setRefundingRequestId] = useState<string | null>(null);
+  const [refundConfirmOpen, setRefundConfirmOpen] = useState(false);
+  const [pendingRefundRequest, setPendingRefundRequest] = useState<{ id: string; email: string; sessionType: string } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -409,14 +414,27 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRefund = async (requestId: string) => {
-    setRefundingRequestId(requestId);
+  const initiateRefund = (request: CoachingRequest) => {
+    setPendingRefundRequest({
+      id: request.id,
+      email: request.email,
+      sessionType: request.session_type,
+    });
+    setRefundConfirmOpen(true);
+  };
+
+  const confirmRefund = async () => {
+    if (!pendingRefundRequest) return;
+    
+    setRefundConfirmOpen(false);
+    setRefundingRequestId(pendingRefundRequest.id);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
       const { data, error } = await supabase.functions.invoke("process-refund", {
-        body: { requestId },
+        body: { requestId: pendingRefundRequest.id },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -441,6 +459,7 @@ export default function AdminDashboard() {
       });
     } finally {
       setRefundingRequestId(null);
+      setPendingRefundRequest(null);
     }
   };
 
@@ -554,6 +573,10 @@ export default function AdminDashboard() {
           <TabsList>
             <TabsTrigger value="coaches">Coaches</TabsTrigger>
             <TabsTrigger value="requests">All Requests</TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-1">
+              <History className="h-3.5 w-3.5" />
+              Payments
+            </TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-1">
               <FileText className="h-3.5 w-3.5" />
               Audit Logs
@@ -810,7 +833,7 @@ export default function AdminDashboard() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleRefund(request.id)}
+                                onClick={() => initiateRefund(request)}
                                 disabled={refundingRequestId === request.id}
                               >
                                 {refundingRequestId === request.id ? (
@@ -831,11 +854,40 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
+          {/* Payments Tab */}
+          <TabsContent value="payments">
+            <PaymentHistoryViewer />
+          </TabsContent>
+
           {/* Audit Logs Tab */}
           <TabsContent value="audit">
             <AuditLogViewer />
           </TabsContent>
         </Tabs>
+
+        {/* Refund Confirmation Dialog */}
+        <AlertDialog open={refundConfirmOpen} onOpenChange={setRefundConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to refund this payment? This action cannot be undone.
+                {pendingRefundRequest && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
+                    <p><strong>Customer:</strong> {pendingRefundRequest.email}</p>
+                    <p><strong>Session Type:</strong> {pendingRefundRequest.sessionType.charAt(0).toUpperCase() + pendingRefundRequest.sessionType.slice(1)}</p>
+                  </div>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPendingRefundRequest(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmRefund} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Process Refund
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
       </div>
     </>

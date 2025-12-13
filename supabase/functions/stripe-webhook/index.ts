@@ -7,6 +7,36 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+// Helper to send payment notification emails
+const sendPaymentNotification = async (
+  supabaseUrl: string,
+  supabaseKey: string,
+  requestId: string,
+  notificationType: "payment_received" | "payment_failed" | "refund_processed",
+  amount?: number,
+  sessionType?: string
+) => {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ requestId, notificationType, amount, sessionType }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      logStep("Failed to send notification", { error: errorText });
+    } else {
+      logStep("Notification sent", { type: notificationType });
+    }
+  } catch (error) {
+    logStep("Error sending notification", { error: String(error) });
+  }
+};
+
 serve(async (req) => {
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -75,6 +105,16 @@ serve(async (req) => {
             logStep("Failed to update request", { error: error.message });
           } else {
             logStep("Updated request payment status", { requestId, paymentStatus });
+            
+            // Send payment received email
+            await sendPaymentNotification(
+              Deno.env.get("SUPABASE_URL") ?? "",
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+              requestId,
+              "payment_received",
+              session.amount_total ?? undefined,
+              sessionType
+            );
           }
         }
         break;
@@ -119,6 +159,14 @@ serve(async (req) => {
 
           if (error) {
             logStep("Failed to update failed status", { error: error.message });
+          } else {
+            // Send payment failed email
+            await sendPaymentNotification(
+              Deno.env.get("SUPABASE_URL") ?? "",
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+              requestId,
+              "payment_failed"
+            );
           }
         }
         break;
@@ -131,6 +179,13 @@ serve(async (req) => {
         logStep("Charge refunded", { paymentIntentId });
 
         if (paymentIntentId) {
+          // First get the request to send notification
+          const { data: requestData } = await supabaseClient
+            .from("coaching_requests")
+            .select("id, session_type")
+            .eq("stripe_payment_intent_id", paymentIntentId)
+            .single();
+
           const { error } = await supabaseClient
             .from("coaching_requests")
             .update({ payment_status: "refunded" })
@@ -138,6 +193,16 @@ serve(async (req) => {
 
           if (error) {
             logStep("Failed to update refund status", { error: error.message });
+          } else if (requestData) {
+            // Send refund processed email
+            await sendPaymentNotification(
+              Deno.env.get("SUPABASE_URL") ?? "",
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+              requestData.id,
+              "refund_processed",
+              charge.amount_refunded,
+              requestData.session_type
+            );
           }
         }
         break;

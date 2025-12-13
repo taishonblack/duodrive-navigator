@@ -81,7 +81,7 @@ serve(async (req) => {
     // Get coaching requests scheduled for today that haven't been reminded yet
     const { data: requests, error: requestsError } = await supabaseClient
       .from("coaching_requests")
-      .select("id, email, phone_number, session_type, scheduled_date, scheduled_time, coach_id, coaches(display_name)")
+      .select("id, email, phone_number, customer_id, session_type, scheduled_date, scheduled_time, coach_id, coaches(display_name)")
       .eq("scheduled_date", todayDate)
       .in("status", ["claimed", "in_progress"])
       .in("payment_status", ["fully_paid", "deposit_paid"]);
@@ -162,12 +162,25 @@ serve(async (req) => {
             logStep("Email reminder sent", { requestId: request.id, email: request.email });
           }
 
-          // Send SMS if phone number exists
-          if (request.phone_number) {
-            const smsBody = `DuoDrive: Your ${sessionName} session starts in 15 minutes at ${formattedTime}. Go to https://duodrive.app/coaching to join.`;
-            const smsSent = await sendSMS(request.phone_number, smsBody);
-            if (smsSent) {
-              logStep("SMS reminder sent", { requestId: request.id });
+          // Send SMS if phone number exists and user has SMS enabled
+          if (request.phone_number && request.customer_id) {
+            // Check user's SMS preference
+            const { data: prefs } = await supabaseClient
+              .from("notification_preferences")
+              .select("sms_reminders")
+              .eq("user_id", request.customer_id)
+              .single();
+
+            const smsEnabled = prefs?.sms_reminders ?? true;
+            
+            if (smsEnabled) {
+              const smsBody = `DuoDrive: Your ${sessionName} session starts in 15 minutes at ${formattedTime}. Go to https://duodrive.app/coaching to join.`;
+              const smsSent = await sendSMS(request.phone_number, smsBody);
+              if (smsSent) {
+                logStep("SMS reminder sent", { requestId: request.id });
+              }
+            } else {
+              logStep("SMS skipped - user opted out", { requestId: request.id });
             }
           }
 

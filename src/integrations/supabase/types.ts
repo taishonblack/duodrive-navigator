@@ -659,6 +659,7 @@ export type Database = {
           id: string
           product_news: boolean
           score_updates: boolean
+          sms_reminders: boolean
           updated_at: string
           user_id: string
         }
@@ -669,6 +670,7 @@ export type Database = {
           id?: string
           product_news?: boolean
           score_updates?: boolean
+          sms_reminders?: boolean
           updated_at?: string
           user_id: string
         }
@@ -679,6 +681,7 @@ export type Database = {
           id?: string
           product_news?: boolean
           score_updates?: boolean
+          sms_reminders?: boolean
           updated_at?: string
           user_id?: string
         }

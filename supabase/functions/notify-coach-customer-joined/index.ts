@@ -168,15 +168,25 @@ serve(async (req) => {
       })
     );
 
-    // Get coach's phone from coaching_requests if we want to send SMS
-    const { data: request } = await supabase
+    // Send SMS to coach if they have phone number in their profile
+    // First, check if coach has a phone number stored (we need to add this capability)
+    const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+    // Get coach's phone from coaching_requests (where coach claimed a request that had their phone)
+    // Or we could store coach phone separately - for now use request phone as fallback
+    const { data: coachRequest } = await supabase
       .from("coaching_requests")
       .select("phone_number")
+      .eq("coach_id", coach.id)
       .eq("id", chatSession.request_id)
       .single();
 
-    // We could also notify coach via SMS if they have a phone registered
-    // For now, focusing on email notification
+    // Note: This gets customer phone, not coach phone. 
+    // For coach SMS, we'd need coaches table to have phone_number column
+    // For now, we'll skip coach SMS and rely on email + push notifications
+    // TODO: Add phone_number to coaches table for coach SMS notifications
 
     const results = await Promise.allSettled(emailPromises);
     console.log("Coach notification results:", results);

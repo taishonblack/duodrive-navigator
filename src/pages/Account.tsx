@@ -29,6 +29,7 @@ interface NotificationPreferences {
   score_updates: boolean;
   coaching_offers: boolean;
   product_news: boolean;
+  sms_reminders: boolean;
 }
 
 const defaultPreferences: NotificationPreferences = {
@@ -36,6 +37,7 @@ const defaultPreferences: NotificationPreferences = {
   score_updates: true,
   coaching_offers: true,
   product_news: false,
+  sms_reminders: true,
 };
 
 export default function Account() {
@@ -84,7 +86,7 @@ export default function Account() {
     try {
       const { data, error } = await supabase
         .from("notification_preferences")
-        .select("deal_reminders, score_updates, coaching_offers, product_news")
+        .select("deal_reminders, score_updates, coaching_offers, product_news, sms_reminders")
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -99,6 +101,7 @@ export default function Account() {
           score_updates: data.score_updates,
           coaching_offers: data.coaching_offers,
           product_news: data.product_news,
+          sms_reminders: data.sms_reminders ?? true,
         });
       } else {
         // Create default preferences if they don't exist
@@ -474,6 +477,12 @@ export default function Account() {
       icon: Newspaper,
       title: "Product News",
       description: "New features and updates from DuoDrive",
+    },
+    {
+      key: "sms_reminders" as const,
+      icon: MessageSquare,
+      title: "SMS Notifications",
+      description: "Receive text message reminders for coaching sessions",
     },
   ];
 

@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.charge-concierge-remaining]
 verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false

@@ -380,14 +380,19 @@ export type Database = {
           created_at: string
           customer_id: string
           deal_id: string | null
+          deposit_paid_at: string | null
           email: string
           id: string
           notes: string | null
+          payment_status: string
           phone_number: string
+          remaining_charged_at: string | null
           scheduled_date: string
           scheduled_time: string
           session_type: Database["public"]["Enums"]["session_type"]
           status: Database["public"]["Enums"]["request_status"]
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
           updated_at: string
         }
         Insert: {
@@ -397,14 +402,19 @@ export type Database = {
           created_at?: string
           customer_id: string
           deal_id?: string | null
+          deposit_paid_at?: string | null
           email: string
           id?: string
           notes?: string | null
+          payment_status?: string
           phone_number: string
+          remaining_charged_at?: string | null
           scheduled_date: string
           scheduled_time: string
           session_type: Database["public"]["Enums"]["session_type"]
           status?: Database["public"]["Enums"]["request_status"]
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -414,14 +424,19 @@ export type Database = {
           created_at?: string
           customer_id?: string
           deal_id?: string | null
+          deposit_paid_at?: string | null
           email?: string
           id?: string
           notes?: string | null
+          payment_status?: string
           phone_number?: string
+          remaining_charged_at?: string | null
           scheduled_date?: string
           scheduled_time?: string
           session_type?: Database["public"]["Enums"]["session_type"]
           status?: Database["public"]["Enums"]["request_status"]
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Relationships: [

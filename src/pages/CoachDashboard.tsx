@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, MessageSquare, Phone, Video, Clock, Calendar, 
   Loader2, CheckCircle, XCircle, LogOut, RefreshCw, Settings, Timer,
-  Send, ExternalLink, User, BarChart3, Bell, UserCircle
+  Send, ExternalLink, User, BarChart3, Bell, UserCircle, CreditCard
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,7 @@ interface CoachingRequest {
   created_at: string;
   claimed_at: string | null;
   deal_id: string | null;
+  payment_status?: string;
 }
 
 interface Coach {
@@ -63,6 +64,14 @@ const statusColors = {
   in_progress: "bg-purple-500/10 text-purple-600 border-purple-500/20",
   completed: "bg-green-500/10 text-green-600 border-green-500/20",
   cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
+};
+
+const paymentStatusColors: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground",
+  deposit_paid: "bg-warning/10 text-warning border-warning/20",
+  fully_paid: "bg-success/10 text-success border-success/20",
+  failed: "bg-destructive/10 text-destructive border-destructive/20",
+  refunded: "bg-info/10 text-info border-info/20",
 };
 
 export default function CoachDashboard() {
@@ -632,13 +641,19 @@ export default function CoachDashboard() {
                             <Icon className="h-6 w-6 text-primary" />
                           </div>
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="font-semibold text-foreground">
                                 {sessionTypeLabels[request.session_type]}
                               </p>
                               <Badge variant="outline" className={statusColors[request.status]}>
                                 {request.status.replace("_", " ")}
                               </Badge>
+                              {request.payment_status && (
+                                <Badge className={paymentStatusColors[request.payment_status] || paymentStatusColors.pending}>
+                                  <CreditCard className="h-3 w-3 mr-1" />
+                                  {request.payment_status.replace("_", " ")}
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-muted-foreground">
                               <Calendar className="h-3 w-3 inline mr-1" />

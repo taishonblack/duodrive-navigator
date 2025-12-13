@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.list-stripe-transactions]
 verify_jwt = true
+
+[functions.check-session-reminders]
+verify_jwt = false

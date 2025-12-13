@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { PaymentHistoryViewer } from "@/components/PaymentHistoryViewer";
+import { RevenueAnalytics } from "@/components/RevenueAnalytics";
 import { 
   Shield, 
   Users, 
@@ -34,7 +35,8 @@ import {
   FileText,
   CreditCard,
   DollarSign,
-  History
+  History,
+  BarChart3
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -570,9 +572,13 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="coaches" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="coaches">Coaches</TabsTrigger>
             <TabsTrigger value="requests">All Requests</TabsTrigger>
+            <TabsTrigger value="revenue" className="flex items-center gap-1">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Revenue
+            </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-1">
               <History className="h-3.5 w-3.5" />
               Payments
@@ -852,6 +858,11 @@ export default function AdminDashboard() {
                 })
               )}
             </div>
+          </TabsContent>
+
+          {/* Revenue Tab */}
+          <TabsContent value="revenue">
+            <RevenueAnalytics />
           </TabsContent>
 
           {/* Payments Tab */}

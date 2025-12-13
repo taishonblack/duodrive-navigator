@@ -29,7 +29,9 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  FileText
+  FileText,
+  CreditCard,
+  DollarSign
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -59,6 +61,7 @@ interface CoachingRequest {
   phone_number: string;
   notes: string | null;
   created_at: string;
+  payment_status: string;
   coaches?: { display_name: string } | null;
 }
 
@@ -82,6 +85,14 @@ const tierColors: Record<CoachingTier, string> = {
   concierge: "bg-primary/10 text-primary",
 };
 
+const paymentStatusColors: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground",
+  deposit_paid: "bg-warning/10 text-warning border-warning/20",
+  fully_paid: "bg-success/10 text-success border-success/20",
+  failed: "bg-destructive/10 text-destructive border-destructive/20",
+  refunded: "bg-info/10 text-info border-info/20",
+};
+
 export default function AdminDashboard() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [requests, setRequests] = useState<CoachingRequest[]>([]);
@@ -91,6 +102,7 @@ export default function AdminDashboard() {
   const [newCoachName, setNewCoachName] = useState("");
   const [newCoachTier, setNewCoachTier] = useState<CoachingTier>("text");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [chargingRequestId, setChargingRequestId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -358,6 +370,41 @@ export default function AdminDashboard() {
         description: error.message || "Failed to assign coach",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleChargeRemaining = async (requestId: string, customerId: string) => {
+    setChargingRequestId(requestId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("charge-concierge-remaining", {
+        body: { requestId, customerId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Payment Charged",
+          description: `Successfully charged $399.20 remaining balance.`,
+        });
+        fetchData();
+      } else {
+        throw new Error(data.error || "Payment failed");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Payment Failed",
+        description: error.message || "Failed to charge remaining balance",
+        variant: "destructive",
+      });
+    } finally {
+      setChargingRequestId(null);
     }
   };
 
@@ -637,12 +684,16 @@ export default function AdminDashboard() {
                               <Icon className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-medium text-foreground">
                                   {request.session_type.charAt(0).toUpperCase() + request.session_type.slice(1)} Session
                                 </p>
                                 <Badge className={statusColors[request.status]}>
                                   {request.status.replace("_", " ")}
+                                </Badge>
+                                <Badge className={paymentStatusColors[request.payment_status] || paymentStatusColors.pending}>
+                                  <CreditCard className="h-3 w-3 mr-1" />
+                                  {request.payment_status?.replace("_", " ") || "pending"}
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground mt-1">
@@ -671,33 +722,53 @@ export default function AdminDashboard() {
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            {request.status === "pending" && (
-                              <div className="flex items-center gap-2">
-                                <Label className="text-sm text-muted-foreground whitespace-nowrap">Assign to:</Label>
-                                <Select
-                                  onValueChange={(coachId) => handleAssignCoach(request.id, coachId)}
-                                >
-                                  <SelectTrigger className="w-40">
-                                    <SelectValue placeholder="Select coach" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {availableCoaches.length === 0 ? (
-                                      <SelectItem value="none" disabled>No coaches available</SelectItem>
-                                    ) : (
-                                      availableCoaches.map((coach) => (
-                                        <SelectItem key={coach.id} value={coach.id}>
-                                          {coach.display_name}
-                                        </SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-3">
+                              {request.status === "pending" && (
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Assign to:</Label>
+                                  <Select
+                                    onValueChange={(coachId) => handleAssignCoach(request.id, coachId)}
+                                  >
+                                    <SelectTrigger className="w-40">
+                                      <SelectValue placeholder="Select coach" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {availableCoaches.length === 0 ? (
+                                        <SelectItem value="none" disabled>No coaches available</SelectItem>
+                                      ) : (
+                                        availableCoaches.map((coach) => (
+                                          <SelectItem key={coach.id} value={coach.id}>
+                                            {coach.display_name}
+                                          </SelectItem>
+                                        ))
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                {new Date(request.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                            {/* Charge remaining button for Full Concierge with deposit paid */}
+                            {request.session_type === "video" && 
+                             request.payment_status === "deposit_paid" && 
+                             request.status === "completed" && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleChargeRemaining(request.id, request.customer_id)}
+                                disabled={chargingRequestId === request.id}
+                              >
+                                {chargingRequestId === request.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <DollarSign className="h-4 w-4 mr-2" />
+                                )}
+                                Charge Remaining $399.20
+                              </Button>
                             )}
-                            <p className="text-xs text-muted-foreground whitespace-nowrap">
-                              {new Date(request.created_at).toLocaleString()}
-                            </p>
                           </div>
                         </div>
                       </CardContent>

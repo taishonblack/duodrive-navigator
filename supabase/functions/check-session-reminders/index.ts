@@ -12,6 +12,48 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CHECK-SESSION-REMINDERS] ${step}${detailsStr}`);
 };
 
+// Send SMS via Twilio
+async function sendSMS(to: string, body: string): Promise<boolean> {
+  const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const fromNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+  if (!accountSid || !authToken || !fromNumber) {
+    logStep("Twilio credentials not configured");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+        },
+        body: new URLSearchParams({
+          To: to,
+          From: fromNumber,
+          Body: body,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      logStep("Twilio SMS failed", { error });
+      return false;
+    }
+
+    logStep("SMS sent successfully", { to });
+    return true;
+  } catch (error) {
+    logStep("SMS send error", { error: String(error) });
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,15 +68,7 @@ serve(async (req) => {
     logStep("Checking for upcoming sessions");
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendKey) {
-      logStep("RESEND_API_KEY not configured");
-      return new Response(JSON.stringify({ success: true, message: "Email not configured" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    const resend = new Resend(resendKey);
+    const resend = resendKey ? new Resend(resendKey) : null;
 
     // Get current time and 15 minutes from now
     const now = new Date();
@@ -47,7 +81,7 @@ serve(async (req) => {
     // Get coaching requests scheduled for today that haven't been reminded yet
     const { data: requests, error: requestsError } = await supabaseClient
       .from("coaching_requests")
-      .select("id, email, session_type, scheduled_date, scheduled_time, coach_id, coaches(display_name)")
+      .select("id, email, phone_number, session_type, scheduled_date, scheduled_time, coach_id, coaches(display_name)")
       .eq("scheduled_date", todayDate)
       .in("status", ["claimed", "in_progress"])
       .in("payment_status", ["fully_paid", "deposit_paid"]);
@@ -94,40 +128,52 @@ serve(async (req) => {
         const coachName = (request.coaches as any)?.display_name || null;
 
         try {
-          await resend.emails.send({
-            from: "DuoDrive <onboarding@resend.dev>",
-            to: [request.email],
-            subject: `⏰ Your Coaching Session Starts in 15 Minutes!`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #f97316; margin-bottom: 24px;">Session Starting Soon!</h1>
-                <p style="color: #555; font-size: 16px; line-height: 1.6;">
-                  Your <strong>${sessionName}</strong> coaching session is starting in approximately <strong>15 minutes</strong>.
-                </p>
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin: 24px 0; border-left: 4px solid #f97316;">
-                  <p style="margin: 0; color: #333;"><strong>Session Time:</strong> ${formattedTime}</p>
-                  <p style="margin: 8px 0 0 0; color: #333;"><strong>Session Type:</strong> ${sessionName}</p>
-                  ${coachName ? `<p style="margin: 8px 0 0 0; color: #333;"><strong>Coach:</strong> ${coachName}</p>` : ''}
+          // Send email if Resend is configured
+          if (resend) {
+            await resend.emails.send({
+              from: "DuoDrive <onboarding@resend.dev>",
+              to: [request.email],
+              subject: `⏰ Your Coaching Session Starts in 15 Minutes!`,
+              html: `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h1 style="color: #f97316; margin-bottom: 24px;">Session Starting Soon!</h1>
+                  <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                    Your <strong>${sessionName}</strong> coaching session is starting in approximately <strong>15 minutes</strong>.
+                  </p>
+                  <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin: 24px 0; border-left: 4px solid #f97316;">
+                    <p style="margin: 0; color: #333;"><strong>Session Time:</strong> ${formattedTime}</p>
+                    <p style="margin: 8px 0 0 0; color: #333;"><strong>Session Type:</strong> ${sessionName}</p>
+                    ${coachName ? `<p style="margin: 8px 0 0 0; color: #333;"><strong>Coach:</strong> ${coachName}</p>` : ''}
+                  </div>
+                  <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                    Please make sure you're ready and have a stable internet connection.
+                  </p>
+                  <div style="margin: 24px 0;">
+                    <a href="https://duodrive.app/coaching" style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
+                      Go to DuoDrive
+                    </a>
+                  </div>
+                  <p style="color: #888; font-size: 14px; margin-top: 32px;">
+                    — The DuoDrive Team
+                  </p>
                 </div>
-                <p style="color: #555; font-size: 16px; line-height: 1.6;">
-                  Please make sure you're ready and have a stable internet connection.
-                </p>
-                <div style="margin: 24px 0;">
-                  <a href="https://duodrive.app/coaching" style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
-                    Go to DuoDrive
-                  </a>
-                </div>
-                <p style="color: #888; font-size: 14px; margin-top: 32px;">
-                  — The DuoDrive Team
-                </p>
-              </div>
-            `,
-          });
+              `,
+            });
+            logStep("Email reminder sent", { requestId: request.id, email: request.email });
+          }
+
+          // Send SMS if phone number exists
+          if (request.phone_number) {
+            const smsBody = `DuoDrive: Your ${sessionName} session starts in 15 minutes at ${formattedTime}. Go to https://duodrive.app/coaching to join.`;
+            const smsSent = await sendSMS(request.phone_number, smsBody);
+            if (smsSent) {
+              logStep("SMS reminder sent", { requestId: request.id });
+            }
+          }
 
           sentCount++;
-          logStep("Reminder sent", { requestId: request.id, email: request.email });
         } catch (emailError) {
-          logStep("Failed to send reminder email", { 
+          logStep("Failed to send reminder", { 
             requestId: request.id, 
             error: String(emailError) 
           });

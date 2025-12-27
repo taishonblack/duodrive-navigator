@@ -2320,7 +2320,14 @@ TTL & fees $2,800`}
                           scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
                           'text-red-600 dark:text-red-400'
                         }`} />
-                        <span className="text-xs font-medium text-muted-foreground">DPG</span>
+                        <span className="text-xs font-medium text-muted-foreground flex items-center">
+                          DPG
+                          <TermTooltip 
+                            term="Deal Price Gap (DPG)" 
+                            definition="The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal; a positive gap means you're paying above market value."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </span>
                       </div>
                       <p className={`text-xl font-bold ${
                         scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
@@ -2347,7 +2354,14 @@ TTL & fees $2,800`}
                           scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
                           'text-red-600 dark:text-red-400'
                         }`} />
-                        <span className="text-xs font-medium text-muted-foreground">CMSP</span>
+                        <span className="text-xs font-medium text-muted-foreground flex items-center">
+                          CMSP
+                          <TermTooltip 
+                            term="Customer Max Safe Price (CMSP)" 
+                            definition="The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </span>
                       </div>
                       <p className="text-xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground mt-1">Max Safe Price</p>
@@ -2367,7 +2381,14 @@ TTL & fees $2,800`}
                           scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
                           'text-red-600 dark:text-red-400'
                         }`} />
-                        <span className="text-xs font-medium text-muted-foreground">CFG</span>
+                        <span className="text-xs font-medium text-muted-foreground flex items-center">
+                          CFG
+                          <TermTooltip 
+                            term="Customer Fit Gap (CFG)" 
+                            definition="The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </span>
                       </div>
                       <p className={`text-xl font-bold ${
                         scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :

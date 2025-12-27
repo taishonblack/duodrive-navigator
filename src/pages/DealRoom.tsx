@@ -14,6 +14,7 @@ import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw } from "lucide-react";
+import { TermTooltip } from "@/components/TermTooltip";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -1593,7 +1594,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                         }`} />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Deal Price Gap (DPG)</p>
+                        <p className="text-sm text-muted-foreground flex items-center">
+                          Deal Price Gap (DPG)
+                          <TermTooltip 
+                            term="Deal Price Gap (DPG)" 
+                            definition="The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal; a positive gap means you're paying above market value."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </p>
                         <p className={`text-2xl font-bold ${
                           scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
                           scoreResult.dealPriceGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
@@ -1618,7 +1626,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                         <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Your Safe Max Price (CMSP)</p>
+                        <p className="text-sm text-muted-foreground flex items-center">
+                          Your Safe Max Price (CMSP)
+                          <TermTooltip 
+                            term="Customer Max Safe Price (CMSP)" 
+                            definition="The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </p>
                         <p className="text-2xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
                       </div>
                     </div>
@@ -1642,7 +1657,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                         }`} />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Budget Fit Gap (CFG)</p>
+                        <p className="text-sm text-muted-foreground flex items-center">
+                          Budget Fit Gap (CFG)
+                          <TermTooltip 
+                            term="Customer Fit Gap (CFG)" 
+                            definition="The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </p>
                         <p className={`text-2xl font-bold ${
                           scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
                           scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
@@ -1691,7 +1713,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="p-4 rounded-xl bg-muted">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Payment Burden</span>
+                        <span className="text-sm text-muted-foreground flex items-center">
+                          Payment Burden
+                          <TermTooltip 
+                            term="Payment Burden" 
+                            definition="The percentage of your monthly income that goes toward your car payment. Financial experts recommend keeping this under 12% to maintain healthy finances."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </span>
                         <span className={`text-lg font-bold ${
                           scoreResult.paymentBurdenPercent <= 10 ? 'text-green-600' :
                           scoreResult.paymentBurdenPercent <= 15 ? 'text-yellow-600' :
@@ -1703,7 +1732,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     </div>
                     <div className="p-4 rounded-xl bg-muted">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Total Operating Cost</span>
+                        <span className="text-sm text-muted-foreground flex items-center">
+                          Total Operating Cost
+                          <TermTooltip 
+                            term="Total Operating Cost" 
+                            definition="The total percentage of your monthly income spent on all car-related expenses: payment, insurance, fuel, and maintenance. Financial experts recommend keeping this under 20% of your income."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </span>
                         <span className={`text-lg font-bold ${
                           scoreResult.operatingCostBurden <= 15 ? 'text-green-600' :
                           scoreResult.operatingCostBurden <= 20 ? 'text-yellow-600' :

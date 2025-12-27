@@ -31,6 +31,7 @@ const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
 const glossaryCategories = [
   { id: "all", label: "All Terms" },
+  { id: "duodrive", label: "DuoDrive Score" },
   { id: "pricing", label: "Pricing & Costs" },
   { id: "financing", label: "Financing" },
   { id: "fees", label: "Fees & Add-Ons" },
@@ -43,6 +44,16 @@ const glossaryCategories = [
 ];
 
 const glossaryTerms = [
+  // DuoDrive Score Terms
+  { term: "DuoDrive Score", definition: "A comprehensive 0-100 score that evaluates your car deal across five pillars: depreciation, reliability, safety, deal health, and affordability. Higher scores indicate better deals.", category: "duodrive", tip: "Aim for a score of 70+ for a good deal, 80+ for a great deal." },
+  { term: "Deal Price Gap (DPG)", definition: "The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal below market value; a positive gap means you're paying above market value.", category: "duodrive", tip: "Aim for a DPG of 0% or lower - that means you're at or below market value." },
+  { term: "Customer Max Safe Price (CMSP)", definition: "The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income.", category: "duodrive", tip: "Stay at or below your CMSP to avoid financial strain." },
+  { term: "Customer Fit Gap (CFG)", definition: "The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit.", category: "duodrive", tip: "A negative CFG is ideal - it means the car fits your budget." },
+  { term: "True Market Price (TMP)", definition: "The estimated fair market value of a vehicle based on its year, mileage, condition, and comparable sales data. This is what the car is actually worth, not what the dealer is asking.", category: "duodrive", tip: "Compare TMP to asking price to see if you're overpaying." },
+  { term: "Payment Burden", definition: "The percentage of your monthly income that goes toward your car payment alone. Financial experts recommend keeping this under 12% to maintain healthy finances.", category: "duodrive", tip: "Keep payment burden under 12% of your gross monthly income." },
+  { term: "Total Operating Cost", definition: "The total percentage of your monthly income spent on all car-related expenses including payment, insurance, fuel, and maintenance. A comprehensive measure of affordability.", category: "duodrive", tip: "Keep total operating cost under 20% of your gross monthly income." },
+  { term: "Interest Ratio", definition: "The percentage of your total loan payments that goes toward interest rather than principal. A higher ratio means you're paying more for the privilege of borrowing.", category: "duodrive", tip: "Lower interest ratios mean more of your payment builds equity." },
+  
   // Pricing & Costs
   { term: "MSRP", definition: "Manufacturer's Suggested Retail Price - the sticker price set by the manufacturer. This is the starting point for negotiations, not what you should pay.", category: "pricing", tip: "Always negotiate below MSRP on non-luxury vehicles." },
   { term: "Invoice Price", definition: "The price the dealer pays the manufacturer for the vehicle. Dealers often receive additional incentives below this price.", category: "pricing", tip: "A fair deal is typically $500-$1,500 above invoice." },
@@ -1702,7 +1713,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     </div>
                     <div className="text-center p-4 rounded-xl bg-muted">
                       <p className="text-2xl font-bold text-foreground">{scoreResult.interestRatio}%</p>
-                      <p className="text-sm text-muted-foreground">Interest Ratio</p>
+                      <p className="text-sm text-muted-foreground flex items-center justify-center">
+                        Interest Ratio
+                        <TermTooltip 
+                          term="Interest Ratio" 
+                          definition="The percentage of your total loan payments that goes toward interest rather than principal. A higher ratio means you're paying more for the privilege of borrowing."
+                          onGlossaryClick={() => setActiveTab("glossary")}
+                        />
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2300,7 +2318,14 @@ TTL & fees $2,800`}
                           scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
                           'text-red-600 dark:text-red-400'
                         }`} />
-                        <span className="text-xs font-medium text-muted-foreground">TMP</span>
+                        <span className="text-xs font-medium text-muted-foreground flex items-center">
+                          TMP
+                          <TermTooltip 
+                            term="True Market Price (TMP)" 
+                            definition="The estimated fair market value of a vehicle based on its year, mileage, condition, and comparable sales data. This is what the car is actually worth, not what the dealer is asking."
+                            onGlossaryClick={() => setActiveTab("glossary")}
+                          />
+                        </span>
                       </div>
                       <p className="text-xl font-bold text-foreground">${scoreResult.trueMarketPrice.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground mt-1">True Market Price</p>

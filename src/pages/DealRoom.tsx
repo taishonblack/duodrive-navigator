@@ -13,7 +13,7 @@ import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle } from "lucide-react";
 import { TermTooltip } from "@/components/TermTooltip";
 import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -1544,6 +1544,82 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               </div>
             ) : (
               <div className="max-w-4xl mx-auto space-y-6">
+                {/* Learn More Section */}
+                <details className="group p-5 rounded-2xl bg-accent/50 border border-primary/20">
+                  <summary className="flex items-center justify-between cursor-pointer list-none">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">How is the DuoDrive Score calculated?</h3>
+                        <p className="text-sm text-muted-foreground">Learn what goes into your score</p>
+                      </div>
+                    </div>
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center group-open:rotate-180 transition-transform">
+                      <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </summary>
+                  <div className="mt-4 pt-4 border-t border-border space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      The DuoDrive Score (0-100) evaluates your car deal across five weighted pillars to give you a complete picture of whether it's a good buy:
+                    </p>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="p-3 rounded-lg bg-background border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingDown className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm font-medium text-foreground">Depreciation (20%)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">How much value the car has already lost and will continue to lose</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Wrench className="h-4 w-4 text-orange-500" />
+                          <span className="text-sm font-medium text-foreground">Reliability (20%)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Historical reliability of the make and expected repair costs</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Shield className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium text-foreground">Safety (15%)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Safety ratings and modern safety features for the vehicle</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <DollarSign className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm font-medium text-foreground">Deal Health (25%)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Price vs market value, fees, APR relative to your credit score</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Heart className="h-4 w-4 text-pink-500" />
+                          <span className="text-sm font-medium text-foreground">Affordability (20%)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">How well the car fits your budget and income level</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background border border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Target className="h-4 w-4 text-purple-500" />
+                          <span className="text-sm font-medium text-foreground">Key Metrics</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">DPG, CFG, CMSP, and payment burden calculations</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 pt-2">
+                      <Button variant="outline" size="sm" onClick={() => setActiveTab("glossary")}>
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        View Full Glossary
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Tap any <span className="inline-flex items-center"><HelpCircle className="h-3 w-3 mx-0.5" /></span> icon for quick definitions
+                      </p>
+                    </div>
+                  </div>
+                </details>
+
                 {/* Fairness Meter */}
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-elevated">
                   <div className="flex items-center justify-between mb-4">

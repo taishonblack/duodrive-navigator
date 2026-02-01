@@ -1,0 +1,161 @@
+export const glossaryCategories = [
+  { id: "all", label: "All Terms" },
+  { id: "duodrive", label: "DuoDrive Score" },
+  { id: "pricing", label: "Pricing & Costs" },
+  { id: "financing", label: "Financing" },
+  { id: "fees", label: "Fees & Add-Ons" },
+  { id: "vehicle", label: "Vehicle Info" },
+  { id: "insurance", label: "Insurance" },
+  { id: "negotiation", label: "Negotiation" },
+  { id: "tactics", label: "Dealer Tactics" },
+  { id: "maintenance", label: "Maintenance" },
+  { id: "features", label: "Vehicle Features" },
+];
+
+export interface GlossaryTerm {
+  term: string;
+  definition: string;
+  category: string;
+  tip: string;
+}
+
+export const glossaryTerms: GlossaryTerm[] = [
+  // DuoDrive Score Terms
+  { term: "DuoDrive Score", definition: "A comprehensive 0-100 score that evaluates your car deal across five pillars: depreciation, reliability, safety, deal health, and affordability. Higher scores indicate better deals.", category: "duodrive", tip: "Aim for a score of 70+ for a good deal, 80+ for a great deal." },
+  { term: "Deal Price Gap (DPG)", definition: "The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal below market value; a positive gap means you're paying above market value.", category: "duodrive", tip: "Aim for a DPG of 0% or lower - that means you're at or below market value." },
+  { term: "Customer Max Safe Price (CMSP)", definition: "The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income.", category: "duodrive", tip: "Stay at or below your CMSP to avoid financial strain." },
+  { term: "Customer Fit Gap (CFG)", definition: "The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit.", category: "duodrive", tip: "A negative CFG is ideal - it means the car fits your budget." },
+  { term: "True Market Price (TMP)", definition: "The estimated fair market value of a vehicle based on its year, mileage, condition, and comparable sales data. This is what the car is actually worth, not what the dealer is asking.", category: "duodrive", tip: "Compare TMP to asking price to see if you're overpaying." },
+  { term: "Payment Burden", definition: "The percentage of your monthly income that goes toward your car payment alone. Financial experts recommend keeping this under 12% to maintain healthy finances.", category: "duodrive", tip: "Keep payment burden under 12% of your gross monthly income." },
+  { term: "Total Operating Cost", definition: "The total percentage of your monthly income spent on all car-related expenses including payment, insurance, fuel, and maintenance. A comprehensive measure of affordability.", category: "duodrive", tip: "Keep total operating cost under 20% of your gross monthly income." },
+  { term: "Interest Ratio", definition: "The percentage of your total loan payments that goes toward interest rather than principal. A higher ratio means you're paying more for the privilege of borrowing.", category: "duodrive", tip: "Lower interest ratios mean more of your payment builds equity." },
+  
+  // Pricing & Costs
+  { term: "MSRP", definition: "Manufacturer's Suggested Retail Price - the sticker price set by the manufacturer. This is the starting point for negotiations, not what you should pay.", category: "pricing", tip: "Always negotiate below MSRP on non-luxury vehicles." },
+  { term: "Invoice Price", definition: "The price the dealer pays the manufacturer for the vehicle. Dealers often receive additional incentives below this price.", category: "pricing", tip: "A fair deal is typically $500-$1,500 above invoice." },
+  { term: "Out-the-Door Price", definition: "The total amount you'll pay including all taxes, fees, and add-ons. This is the only number that matters.", category: "pricing", tip: "Always negotiate based on OTD price, not monthly payment." },
+  { term: "Market Adjustment", definition: "An additional markup dealers add above MSRP during high demand. Completely negotiable and often avoidable.", category: "pricing", tip: "Walk away from market adjustments - shop other dealers." },
+  { term: "Destination Charge", definition: "The fee to transport the vehicle from the factory to the dealership. This is legitimate and typically non-negotiable ($900-$1,800).", category: "pricing", tip: "This fee is the same at every dealer for the same vehicle." },
+  { term: "Trade-In Value", definition: "What a dealer offers for your current vehicle toward a new purchase. Often undervalued by dealers.", category: "pricing", tip: "Get quotes from Carmax, Carvana, and KBB before visiting dealers." },
+  { term: "Negative Equity", definition: "When you owe more on your current car than it's worth. This amount gets rolled into your new loan.", category: "pricing", tip: "Avoid rolling negative equity - it's a debt trap." },
+  { term: "Capitalized Cost", definition: "The negotiated price of the vehicle in a lease, equivalent to purchase price. The starting point for calculating lease payments.", category: "pricing", tip: "Negotiate cap cost down just like you would a purchase price." },
+  { term: "Cap Cost Reduction", definition: "A down payment on a lease that reduces the capitalized cost. Lowers monthly payments but lost if car is totaled.", category: "pricing", tip: "Don't put large amounts down on leases - risk losing it all." },
+  { term: "Money Factor", definition: "The interest rate used in lease calculations. Multiply by 2,400 to get the approximate APR equivalent.", category: "pricing", tip: "A money factor of 0.00125 equals roughly 3% APR." },
+  { term: "Acquisition Fee", definition: "A fee charged by the leasing company to set up the lease. Typically $595-$1,095 and usually non-negotiable.", category: "pricing", tip: "This fee is standard but sometimes can be rolled into payments." },
+  { term: "Disposition Fee", definition: "A fee charged at the end of a lease if you don't buy or lease another vehicle. Usually $300-$500.", category: "pricing", tip: "Sometimes waived if you lease another vehicle from same brand." },
+  { term: "True Market Value", definition: "Edmunds' estimate of what others are actually paying for a vehicle in your area. More accurate than MSRP.", category: "pricing", tip: "Use TMV as your target price when negotiating." },
+  { term: "Dealer Cost", definition: "The actual cost to the dealer including invoice, holdback, and incentives. Lower than invoice price.", category: "pricing", tip: "True dealer cost is 2-3% below invoice on most vehicles." },
+  
+  // Financing
+  { term: "APR", definition: "Annual Percentage Rate - the yearly interest rate charged on borrowed money, including fees. Lower is better.", category: "financing", tip: "Get pre-approved from your bank/credit union before visiting dealers." },
+  { term: "Loan Term", definition: "The length of time you have to repay the loan, typically 36-84 months. Longer terms mean more interest paid.", category: "financing", tip: "Keep terms at 60 months or less to avoid being underwater." },
+  { term: "Down Payment", definition: "The upfront cash you put toward the purchase. Reduces your loan amount and monthly payment.", category: "financing", tip: "Aim for at least 20% down to avoid negative equity." },
+  { term: "Principal", definition: "The actual amount borrowed, not including interest. This is what you're paying down each month.", category: "financing", tip: "Extra payments toward principal save you money on interest." },
+  { term: "Pre-Approval", definition: "Getting approved for financing before shopping. Gives you negotiating power and a rate to beat.", category: "financing", tip: "Always get pre-approved - it's your strongest negotiating tool." },
+  { term: "Subprime Loan", definition: "High-interest loans for buyers with poor credit (below 620). Rates can exceed 15-20%.", category: "financing", tip: "Work on improving credit before buying if possible." },
+  { term: "Buy Rate", definition: "The actual interest rate you qualify for. Dealers often mark this up for profit.", category: "financing", tip: "Ask what the buy rate is vs. the rate they're offering." },
+  { term: "Dealer Reserve", definition: "Extra profit dealers make by marking up your interest rate. Can add thousands to your loan.", category: "financing", tip: "Compare dealer financing to your pre-approved rate." },
+  { term: "Residual Value", definition: "The predicted value of a vehicle at the end of a lease term. Higher residual means lower lease payments.", category: "financing", tip: "Research residual values before leasing - they vary by brand." },
+  { term: "Simple Interest", definition: "Interest calculated only on the remaining principal balance. Most auto loans use simple interest.", category: "financing", tip: "Paying early or extra reduces total interest with simple interest loans." },
+  { term: "Amortization", definition: "How your loan payments are split between principal and interest over time. Early payments are mostly interest.", category: "financing", tip: "Request an amortization schedule to see where your money goes." },
+  { term: "Balloon Payment", definition: "A large final payment due at the end of some loans. Reduces monthly payments but creates end-of-term burden.", category: "financing", tip: "Avoid balloon payments unless you have a plan to refinance." },
+  { term: "Refinancing", definition: "Replacing your current auto loan with a new one, usually at a lower rate. Can save thousands over time.", category: "financing", tip: "Refinance after 6-12 months of on-time payments to get better rates." },
+  { term: "Credit Score", definition: "A number (300-850) representing your creditworthiness. Higher scores get lower interest rates.", category: "financing", tip: "Check your score free at CreditKarma before shopping." },
+  { term: "Debt-to-Income Ratio", definition: "Your monthly debt payments divided by gross income. Lenders prefer under 36% total.", category: "financing", tip: "Lower DTI means better loan terms and higher approval chances." },
+  { term: "Co-Signer", definition: "Someone who agrees to be responsible for your loan if you default. Helps those with poor/no credit.", category: "financing", tip: "Co-signers take on real risk - don't damage their credit." },
+  { term: "0% APR Financing", definition: "Manufacturer-subsidized loans with no interest. Often requires excellent credit and forgoing rebates.", category: "financing", tip: "Compare 0% to rebate + bank financing - rebate often wins." },
+  
+  // Fees & Add-Ons
+  { term: "Doc Fee", definition: "Documentation fee charged by dealers for processing paperwork. Varies by state ($0-$1,000+).", category: "fees", tip: "Know your state's cap - some states limit doc fees." },
+  { term: "Dealer Fee", definition: "A catch-all fee dealers charge for overhead. Often negotiable despite what they claim.", category: "fees", tip: "Ask for an itemized breakdown and negotiate." },
+  { term: "Dealer Add-Ons", definition: "Extra products like window tint, paint protection, or nitrogen tires. Usually overpriced by 300-500%.", category: "fees", tip: "Decline all add-ons - buy aftermarket if you want them." },
+  { term: "VIN Etching", definition: "Etching the VIN into windows as theft protection. Costs dealers $30 but charged at $300-$500.", category: "fees", tip: "Always decline - you can DIY for under $25." },
+  { term: "Paint Protection Film", definition: "Clear protective film applied to bumpers and hoods. Dealer price is 3-4x independent shop pricing.", category: "fees", tip: "Get quotes from detailers - same product for much less." },
+  { term: "Fabric Protection", definition: "Spray-on fabric guard for seats. Essentially Scotchgard charged at $200-$400.", category: "fees", tip: "Buy a $15 can of Scotchgard and do it yourself." },
+  { term: "Nitrogen Tires", definition: "Filling tires with nitrogen instead of air. Provides minimal benefit for $100-$300.", category: "fees", tip: "Regular air is fine - Costco offers free nitrogen." },
+  { term: "Extended Warranty", definition: "Additional coverage beyond the factory warranty. Highly marked up at dealers.", category: "fees", tip: "Buy from third parties for 50% less if you want coverage." },
+  { term: "Rustproofing", definition: "Undercoating or spray applied to prevent rust. Modern cars don't need it - a dealer profit center.", category: "fees", tip: "Cars today have galvanized steel - rustproofing is unnecessary." },
+  { term: "Undercoating", definition: "A rubberized spray applied to the undercarriage. Often redundant with factory protection.", category: "fees", tip: "Decline - factory undercoating is sufficient on modern vehicles." },
+  { term: "Pinstriping", definition: "Decorative lines added to the car's exterior. Cheap vinyl charged at $200-$400.", category: "fees", tip: "If you want it, any detail shop will do it for $50." },
+  { term: "Wheel Locks", definition: "Special lug nuts requiring a key to remove. Cost dealers $20, charged at $150+.", category: "fees", tip: "Buy them on Amazon for $25 if you want them." },
+  { term: "All-Weather Floor Mats", definition: "Rubber mats protecting the carpet. Marked up 100-200% at dealers.", category: "fees", tip: "Buy from WeatherTech directly - same quality, half price." },
+  { term: "Window Tint", definition: "Film applied to windows for privacy and heat reduction. Dealer pricing is typically 2-3x market rate.", category: "fees", tip: "Get tint installed independently for significant savings." },
+  { term: "Ceramic Coating", definition: "A liquid polymer that bonds with paint for long-term protection. Dealer price: $1,500+. Real cost: $500-800.", category: "fees", tip: "Find a reputable detailer for professional-grade ceramic coating." },
+  { term: "LoJack", definition: "A stolen vehicle recovery system. Being replaced by smartphone tracking in modern cars.", category: "fees", tip: "Many cars have built-in tracking - LoJack may be redundant." },
+  { term: "Key Replacement Insurance", definition: "Coverage for lost or stolen key fobs. Costs dealers little but charged at $300-$500.", category: "fees", tip: "Check if your auto insurance or credit card covers this." },
+  { term: "Tire and Wheel Protection", definition: "Insurance covering damage to tires and wheels. Rarely pays out enough to justify cost.", category: "fees", tip: "The math rarely works - fix issues as they occur instead." },
+  { term: "Prepaid Maintenance", definition: "Paying upfront for scheduled maintenance. Sounds good but usually costs more than paying as you go.", category: "fees", tip: "Calculate the actual cost per service - it's usually a bad deal." },
+  { term: "Dealer Prep Fee", definition: "A fee for 'preparing' the car for sale. This is already in the invoice price - it's double-dipping.", category: "fees", tip: "Always refuse - this is part of their normal process." },
+  { term: "ADM", definition: "Additional Dealer Markup - extra profit added to high-demand vehicles. Same as market adjustment.", category: "fees", tip: "Never pay ADM - find another dealer or wait." },
+  
+  // Vehicle Info
+  { term: "VIN", definition: "Vehicle Identification Number - a unique 17-character code identifying every vehicle. Used for history reports.", category: "vehicle", tip: "Always run a VIN check before buying any used vehicle." },
+  { term: "Trim Level", definition: "Different versions of the same model with varying features (e.g., LX, EX, Touring). Higher trims cost more.", category: "vehicle", tip: "Mid-level trims often offer the best value." },
+  { term: "CPO", definition: "Certified Pre-Owned - used vehicles that meet manufacturer standards with extended warranty.", category: "vehicle", tip: "CPO provides peace of mind but verify the inspection report." },
+  { term: "Clean Title", definition: "A vehicle with no major damage, flood, or salvage history on record.", category: "vehicle", tip: "Never buy without a clean title unless you're an expert." },
+  { term: "Salvage Title", definition: "A vehicle that was totaled by insurance and repaired. Significantly reduces value.", category: "vehicle", tip: "Avoid salvage titles - financing and insurance are difficult." },
+  { term: "Carfax", definition: "A vehicle history report showing accidents, ownership, and service records.", category: "vehicle", tip: "Always get a Carfax AND a pre-purchase inspection." },
+  { term: "Depreciation", definition: "The decrease in a vehicle's value over time. New cars lose 20-30% in year one.", category: "vehicle", tip: "Buy 2-3 year old cars to avoid the steepest depreciation." },
+  { term: "Powertrain", definition: "The engine, transmission, and drivetrain components. Powertrain warranties cover these.", category: "vehicle", tip: "Powertrain issues are the most expensive to repair." },
+  { term: "Drivetrain", definition: "Components that deliver power to the wheels: FWD, RWD, AWD, or 4WD.", category: "vehicle", tip: "AWD adds cost and complexity - only get it if you need it." },
+  { term: "Mileage", definition: "Total miles driven. Average is 12,000-15,000 per year. Higher mileage means lower value.", category: "vehicle", tip: "Calculate miles per year - highway miles are gentler than city." },
+  { term: "Title Washing", definition: "Moving a salvage vehicle to a state with looser title laws to get a clean title. Illegal but happens.", category: "vehicle", tip: "Get a Carfax and check all 50 states for title history." },
+  { term: "Lemon", definition: "A vehicle with significant defects that can't be fixed after multiple attempts.", category: "vehicle", tip: "Check if your state has lemon laws and know your rights." },
+  { term: "Odometer Rollback", definition: "Illegally reducing the displayed mileage. A federal crime that still happens.", category: "vehicle", tip: "Compare Carfax mileage to the odometer reading." },
+  { term: "Pre-Purchase Inspection", definition: "Having a mechanic inspect a used car before buying. Worth every penny.", category: "vehicle", tip: "Never skip the PPI - it costs $100-200 and saves thousands." },
+  { term: "Recalls", definition: "Manufacturer notices for safety-related defects. Repairs are always free.", category: "vehicle", tip: "Check NHTSA.gov for open recalls on any vehicle." },
+  { term: "TSB", definition: "Technical Service Bulletin - manufacturer guidance on known issues. Not a recall but helpful.", category: "vehicle", tip: "Search for TSBs to understand common problems with a model." },
+  
+  // Insurance
+  { term: "Liability Insurance", definition: "Coverage for damage you cause to others. Required in most states.", category: "insurance", tip: "Get more than the minimum - medical bills can exceed limits." },
+  { term: "Comprehensive Insurance", definition: "Covers non-collision damage: theft, weather, animals, vandalism.", category: "insurance", tip: "Required if you have a loan; optional once you own outright." },
+  { term: "Collision Insurance", definition: "Covers damage to your vehicle from accidents, regardless of fault.", category: "insurance", tip: "May not be worth it on older, lower-value vehicles." },
+  { term: "Deductible", definition: "The amount you pay out of pocket before insurance kicks in. Higher deductible = lower premium.", category: "insurance", tip: "$500-$1,000 deductible is usually the sweet spot." },
+  { term: "Gap Insurance", definition: "Covers the difference between your car's value and what you owe if totaled. Critical for new cars.", category: "insurance", tip: "Buy from your insurance company, not the dealer." },
+  { term: "Uninsured Motorist Coverage", definition: "Protects you if hit by someone without insurance. More common than you'd think.", category: "insurance", tip: "Worth having - 13% of drivers are uninsured." },
+  { term: "Premium", definition: "The amount you pay for insurance coverage, usually monthly or annually.", category: "insurance", tip: "Shop around annually - loyalty doesn't pay in insurance." },
+  { term: "Full Coverage", definition: "Comprehensive + collision + liability. Required by lenders until the loan is paid.", category: "insurance", tip: "Get quotes before buying - some cars cost much more to insure." },
+  
+  // Negotiation
+  { term: "Holdback", definition: "A hidden 2-3% rebate dealers receive from manufacturers. Padding for dealer profit.", category: "negotiation", tip: "Dealers can sell at invoice and still profit from holdback." },
+  { term: "Four-Square", definition: "A deceptive worksheet dealers use to confuse buyers by mixing trade, price, down, and payment.", category: "negotiation", tip: "Never negotiate using the four-square - negotiate one thing at a time." },
+  { term: "Monthly Payment Focus", definition: "A tactic where dealers focus on payment instead of total price. Leads to overpaying.", category: "negotiation", tip: "Always negotiate on out-the-door price, not monthly payment." },
+  { term: "Bump", definition: "A technique where the sales manager tries to increase price or add products.", category: "negotiation", tip: "Be prepared for the bump and say no firmly." },
+  { term: "Turnover", definition: "When your salesperson brings in a manager to close the deal. Classic pressure tactic.", category: "negotiation", tip: "Stay calm - the manager's job is to extract more profit." },
+  { term: "Be-Back Bus", definition: "Dealers bet you won't return to negotiate further. They're often wrong.", category: "negotiation", tip: "Walking away is your most powerful tool." },
+  { term: "Internet Price", definition: "The price listed online, often lower than the in-store price. Your starting point.", category: "negotiation", tip: "Always get an internet quote before visiting in person." },
+  { term: "OTD Quote", definition: "An out-the-door quote with all taxes and fees included. The only quote that matters.", category: "negotiation", tip: "Get OTD quotes in writing from multiple dealers." },
+  { term: "Cross-Shopping", definition: "Getting quotes from multiple dealers for the same or similar vehicles.", category: "negotiation", tip: "Always cross-shop - it's your best leverage." },
+  
+  // Dealer Tactics
+  { term: "Dealer Tactics", definition: "Common strategies dealers use to maximize profit. Awareness is your best defense.", category: "tactics", tip: "Knowing these tactics helps you avoid falling for them." },
+  { term: "The Closer", definition: "A specialist brought in to overcome objections and close reluctant buyers.", category: "tactics", tip: "You're never obligated to buy - walk away if pressured." },
+  { term: "Good Cop/Bad Cop", definition: "One person plays tough while another seems to be on your side. Classic manipulation.", category: "tactics", tip: "Recognize this tactic - both are working against you." },
+  { term: "Artificial Scarcity", definition: "Creating urgency by claiming high demand or limited availability.", category: "tactics", tip: "Unless it's a truly rare car, there are always more." },
+  { term: "The Grind", definition: "Wearing you down with long waits and incremental concessions.", category: "tactics", tip: "Set time limits and be prepared to leave." },
+  { term: "Lowballing Trade", definition: "Offering far below market value for your trade-in.", category: "tactics", tip: "Get independent offers first - never accept dealer's first offer." },
+  { term: "Payment Packing", definition: "Sneaking in extra products or fees into your monthly payment.", category: "tactics", tip: "Always review the final contract line by line." },
+  { term: "Spot Delivery", definition: "Letting you drive home before financing is finalized. Can lead to problems.", category: "tactics", tip: "Don't take delivery until everything is signed and final." },
+  { term: "Yo-Yo Financing", definition: "Calling you back claiming financing fell through to get worse terms.", category: "tactics", tip: "Ensure financing is final before taking the car." },
+  { term: "Add-On Ambush", definition: "Waiting until you're in the finance office to push expensive add-ons.", category: "tactics", tip: "Decline everything in F&I - buy third-party if needed." },
+  
+  // Maintenance
+  { term: "Scheduled Maintenance", definition: "Regular service intervals recommended by the manufacturer to keep the car running.", category: "maintenance", tip: "Following the schedule maintains warranty and resale value." },
+  { term: "Synthetic Oil", definition: "Engineered oil that lasts longer and protects better than conventional. Often required.", category: "maintenance", tip: "Use what the manufacturer recommends - not more, not less." },
+  { term: "Timing Belt", definition: "A critical component that can cause major damage if it breaks. Replace on schedule.", category: "maintenance", tip: "Timing belt replacement is expensive but skipping it is catastrophic." },
+  { term: "Brake Pads", definition: "Friction material that wears down with use. Replacement typically needed every 30-70k miles.", category: "maintenance", tip: "Listen for squealing - that's the wear indicator." },
+  { term: "Transmission Fluid", definition: "Lubricant for the transmission. Check your owner's manual for service intervals.", category: "maintenance", tip: "Neglecting transmission service leads to expensive repairs." },
+  { term: "Coolant Flush", definition: "Replacing the antifreeze that keeps the engine from overheating or freezing.", category: "maintenance", tip: "Follow manufacturer schedule - typically every 30,000-50,000 miles." },
+  
+  // Vehicle Features
+  { term: "Adaptive Cruise Control", definition: "Cruise control that automatically adjusts speed to maintain distance from cars ahead.", category: "features", tip: "One of the most useful safety features - worth having." },
+  { term: "Blind Spot Monitoring", definition: "System that alerts you when vehicles are in your blind spots.", category: "features", tip: "Helpful but don't rely on it - always check mirrors." },
+  { term: "Lane Departure Warning", definition: "Alerts you when you unintentionally drift out of your lane.", category: "features", tip: "Can be annoying on winding roads - learn to disable temporarily." },
+  { term: "Automatic Emergency Braking", definition: "System that applies brakes automatically if a collision is imminent.", category: "features", tip: "Proven to reduce accidents - prioritize this feature." },
+  { term: "Apple CarPlay", definition: "Integration that displays iPhone apps on the car's screen.", category: "features", tip: "Very useful for navigation and music - standard on most new cars." },
+  { term: "Android Auto", definition: "Integration that displays Android phone apps on the car's screen.", category: "features", tip: "Similar to CarPlay for Android users." },
+  { term: "Heads-Up Display", definition: "Projects speed and navigation info onto the windshield. Reduces eyes-off-road time.", category: "features", tip: "Nice luxury feature but not essential." },
+  { term: "Ventilated Seats", definition: "Seats with built-in fans to keep you cool. Great for hot climates.", category: "features", tip: "If you live somewhere hot, you'll love this feature." },
+  { term: "Panoramic Sunroof", definition: "Large glass roof spanning most of the cabin. Adds light and openness.", category: "features", tip: "Can add heat in summer and may leak over time." },
+  { term: "Wireless Charging", definition: "Pad that charges compatible phones without cables.", category: "features", tip: "Convenient but can overheat phones - use sparingly." },
+];

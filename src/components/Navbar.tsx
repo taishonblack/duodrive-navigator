@@ -7,6 +7,7 @@ import { Menu, X, Car, User, Settings, LogOut, LayoutDashboard } from "lucide-re
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
+import { GlossarySearch } from "@/components/GlossarySearch";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -131,6 +132,7 @@ export function Navbar() {
 
           {/* CTA + Auth */}
           <div className="hidden md:flex items-center gap-3">
+            <GlossarySearch />
             <Button asChild>
               <Link to="/deal-room">Analyze My Deal</Link>
             </Button>

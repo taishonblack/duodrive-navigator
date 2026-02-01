@@ -13,9 +13,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2, Bell, Car, BarChart3, GraduationCap, Newspaper, AlertTriangle, MessageSquare } from "lucide-react";
+import { Loader2, User, Lock, Shield, LogOut, ShieldCheck, ShieldOff, Camera, Trash2, Bell, Car, BarChart3, GraduationCap, Newspaper, AlertTriangle, MessageSquare, Unlock } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { ChatTranscripts } from "@/components/ChatTranscripts";
+import { UnlockedDeals } from "@/components/UnlockedDeals";
 
 interface MFAFactor {
   id: string;
@@ -614,6 +615,22 @@ export default function Account() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Unlocked Deals / Purchases */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Unlock className="h-5 w-5" />
+                My Deal Analyses
+              </CardTitle>
+              <CardDescription>
+                View your unlocked deals and payment history
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UnlockedDeals />
             </CardContent>
           </Card>
 

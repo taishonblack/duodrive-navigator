@@ -40,11 +40,12 @@ const App = () => (
             <Route path="/score" element={<DuoDriveScore />} />
             <Route path="/deal-room" element={<DealRoom />} />
             <Route path="/why-duodrive" element={<WhyDuoDrive />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/account" element={<Account />} />
+            {/* Coaching routes hidden but preserved for potential $49 escalation feature */}
             <Route path="/coaching" element={<Coaching />} />
             <Route path="/coaching-chat/:sessionId" element={<CoachingChat />} />
             <Route path="/chat-history" element={<ChatHistory />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/account" element={<Account />} />
             <Route path="/coach" element={<CoachAuth />} />
             <Route path="/coach/dashboard" element={<CoachDashboard />} />
             <Route path="/admin" element={<AdminAuth />} />

@@ -10,10 +10,9 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/score", label: "DuoDrive Score" },
-  { href: "/deal-room", label: "Deal Room" },
+  { href: "/deal-room", label: "Analyze Deal" },
+  { href: "/score", label: "How It Works" },
   { href: "/why-duodrive", label: "Why DuoDrive" },
-  { href: "/coaching", label: "Coaching" },
 ];
 
 export function Navbar() {
@@ -132,7 +131,7 @@ export function Navbar() {
           {/* CTA + Auth */}
           <div className="hidden md:flex items-center gap-3">
             <Button asChild>
-              <Link to="/deal-room">Check My Deal</Link>
+              <Link to="/deal-room">Analyze My Deal</Link>
             </Button>
             
             {user ? (
@@ -250,7 +249,7 @@ export function Navbar() {
               <div className="pt-2 space-y-2">
                 <Button asChild className="w-full">
                   <Link to="/deal-room" onClick={() => setIsOpen(false)}>
-                    Check My Deal
+                    Analyze My Deal
                   </Link>
                 </Button>
                 

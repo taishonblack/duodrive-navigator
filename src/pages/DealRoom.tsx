@@ -23,7 +23,9 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCopilotChat, ChatMessage } from "@/hooks/useCopilotChat";
-import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreResult } from "@/lib/duodriveScore";
+import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreResult, AffordabilityStatus } from "@/lib/duodriveScore";
+import { analyzeAffordability, isLuxuryBrand } from "@/lib/affordabilityRules";
+import { AffordabilityWarning } from "@/components/AffordabilityWarning";
 import { Progress } from "@/components/ui/progress";
 import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
@@ -58,6 +60,7 @@ export default function DealRoom() {
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isSmartFilling, setIsSmartFilling] = useState(false);
   const [feeContext, setFeeContext] = useState<FeeContext | null>(null);
+  const [affordabilityAcknowledged, setAffordabilityAcknowledged] = useState(false);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(() => {
     try {
       const saved = localStorage.getItem(SIDE_PANEL_KEY);
@@ -1597,13 +1600,13 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   <div className="p-5 rounded-xl bg-card border border-border shadow-card">
                     <div className="flex items-center gap-3 mb-3">
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        scoreResult.customerFitGapPercent <= 0 ? 'bg-green-100 dark:bg-green-900/30' :
+                        scoreResult.customerFitGap >= 0 ? 'bg-green-100 dark:bg-green-900/30' :
                         scoreResult.customerFitGapPercent <= 10 ? 'bg-yellow-100 dark:bg-yellow-900/30' :
                         scoreResult.customerFitGapPercent <= 25 ? 'bg-orange-100 dark:bg-orange-900/30' :
                         'bg-red-100 dark:bg-red-900/30'
                       }`}>
                         <Heart className={`h-5 w-5 ${
-                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.customerFitGap >= 0 ? 'text-green-600 dark:text-green-400' :
                           scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
                           scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
                           'text-red-600 dark:text-red-400'
@@ -1614,21 +1617,21 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           Budget Fit Gap (CFG)
                           <TermTooltip 
                             term="Customer Fit Gap (CFG)" 
-                            definition="The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit."
+                            definition="The difference between your max safe price (CMSP) and the asking price. Positive = under budget, negative = over budget."
                           />
                         </p>
                         <p className={`text-2xl font-bold ${
-                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.customerFitGap >= 0 ? 'text-green-600 dark:text-green-400' :
                           scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
                           scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
                           'text-red-600 dark:text-red-400'
                         }`}>
-                          {scoreResult.customerFitGap >= 0 ? '+' : ''}${scoreResult.customerFitGap.toLocaleString()} ({scoreResult.customerFitGapPercent}%)
+                          {scoreResult.customerFitGap >= 0 ? `$${scoreResult.customerFitGap.toLocaleString()} under budget` : `$${Math.abs(scoreResult.customerFitGap).toLocaleString()} over budget`}
                         </p>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {scoreResult.customerFitGapPercent <= 0 ? 'Fits within your safe budget!' :
+                      {scoreResult.customerFitGap >= 0 ? 'Fits within your safe budget!' :
                        scoreResult.customerFitGapPercent <= 10 ? 'Slightly above safe range.' :
                        scoreResult.customerFitGapPercent <= 25 ? 'Risky stretch for your budget.' :
                        'Far above what you can safely afford.'}
@@ -1667,8 +1670,28 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
                 {/* Monthly Burden Analysis */}
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Monthly Cost Burden</h3>
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Affordability Analysis</h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Price-to-Income Ratio - NEW from Rules A-D */}
+                    <div className="p-4 rounded-xl bg-muted">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-muted-foreground flex items-center">
+                          Price-to-Income
+                          <TermTooltip 
+                            term="Price-to-Income Ratio" 
+                            definition="The vehicle price as a percentage of your annual income. Financial experts recommend keeping this under 50-60% for healthy finances. Above 70% is a red flag."
+                          />
+                        </span>
+                        <span className={`text-lg font-bold ${
+                          scoreResult.priceToIncomeRatio <= 50 ? 'text-green-600' :
+                          scoreResult.priceToIncomeRatio <= 60 ? 'text-yellow-600' :
+                          scoreResult.priceToIncomeRatio <= 70 ? 'text-orange-600' :
+                          'text-red-600'
+                        }`}>{scoreResult.priceToIncomeRatio}%</span>
+                      </div>
+                      <Progress value={Math.min(scoreResult.priceToIncomeRatio * 1.25, 100)} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">Target: under 50-60% of annual income</p>
+                    </div>
                     <div className="p-4 rounded-xl bg-muted">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground flex items-center">
@@ -1713,6 +1736,39 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                       <p className="text-xs text-muted-foreground mt-3">Payment + insurance + fuel + maintenance</p>
                     </div>
                   </div>
+                  
+                  {/* Affordability Status Banner */}
+                  {scoreResult.affordabilityStatus !== 'fits_budget' && (
+                    <div className={`mt-4 p-4 rounded-xl border ${
+                      scoreResult.affordabilityStatus === 'stretch_warning' 
+                        ? 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800' 
+                        : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className={`h-5 w-5 shrink-0 mt-0.5 ${
+                          scoreResult.affordabilityStatus === 'stretch_warning'
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`} />
+                        <div>
+                          <p className={`font-medium ${
+                            scoreResult.affordabilityStatus === 'stretch_warning'
+                              ? 'text-yellow-700 dark:text-yellow-300'
+                              : 'text-red-700 dark:text-red-300'
+                          }`}>
+                            {scoreResult.affordabilityStatus === 'stretch_warning' 
+                              ? 'Budget Stretch Detected' 
+                              : 'This Vehicle May Be Outside Your Budget'}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {scoreResult.affordabilityStatus === 'stretch_warning'
+                              ? 'This deal is close to your budget limit. Proceed carefully.'
+                              : 'Based on your income, this vehicle exceeds recommended affordability thresholds. See the "What To Say" tab for guidance.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Fee Breakdown Analysis */}
@@ -2084,23 +2140,96 @@ TTL & fees $2,800`}
                 />
               ) : (
                 <>
-                  {/* Fee Breakdown for context */}
-                  <FeeBreakdown
-                    docFee={parseNumber(dealData.docFee)}
-                    dealerFee={parseNumber(dealData.dealerFee)}
-                    addOns={parseNumber(dealData.addOns)}
-                    taxes={parseNumber(dealData.taxes)}
-                    registration={parseNumber(dealData.registration)}
-                    askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
-                    onFeeContextChange={setFeeContext}
-                  />
-                  
-                  {/* Negotiation Scripts */}
-                  <WhatToSayNext 
-                    dealData={dealData} 
-                    scoreResult={scoreResult}
-                    feeContext={feeContext || undefined}
-                  />
+                  {/* Affordability Warning - shows when deal is outside budget */}
+                  {(() => {
+                    const vehiclePrice = parseNumber(dealData.negotiatedPrice) || parseNumber(dealData.askingPrice);
+                    const monthlyIncome = parseNumber(dealData.monthlyIncome);
+                    const downPayment = parseNumber(dealData.downPayment);
+                    const apr = parseNumber(dealData.apr) || 7;
+                    const termMonths = parseInt(dealData.term) || 60;
+                    
+                    if (vehiclePrice > 0 && monthlyIncome > 0) {
+                      const affordabilityResult = analyzeAffordability({
+                        grossAnnualIncome: monthlyIncome * 12,
+                        downPayment,
+                        vehiclePrice,
+                        apr,
+                        termMonths,
+                        insurance: parseNumber(dealData.insurance) || 150,
+                        fuelCost: parseNumber(dealData.fuelCost) || 200,
+                        maintenance: parseNumber(dealData.maintenance) || 50,
+                        isLuxuryVehicle: isLuxuryBrand(dealData.make || ''),
+                      });
+                      
+                      const isBlocking = affordabilityResult.overallStatus === 'outside_budget' || 
+                                         affordabilityResult.overallStatus === 'blocked';
+                      
+                      // If blocking and not acknowledged, show warning instead of scripts
+                      if (isBlocking && !affordabilityAcknowledged) {
+                        return (
+                          <AffordabilityWarning 
+                            result={affordabilityResult}
+                            onAcknowledge={() => setAffordabilityAcknowledged(true)}
+                            isAcknowledged={affordabilityAcknowledged}
+                          />
+                        );
+                      }
+                      
+                      // If there are any warnings (even acknowledged), show a smaller notice
+                      if (affordabilityResult.overallStatus !== 'fits_budget') {
+                        return (
+                          <>
+                            <AffordabilityWarning 
+                              result={affordabilityResult}
+                              onAcknowledge={() => setAffordabilityAcknowledged(true)}
+                              isAcknowledged={affordabilityAcknowledged}
+                            />
+                            
+                            {/* Fee Breakdown for context */}
+                            <FeeBreakdown
+                              docFee={parseNumber(dealData.docFee)}
+                              dealerFee={parseNumber(dealData.dealerFee)}
+                              addOns={parseNumber(dealData.addOns)}
+                              taxes={parseNumber(dealData.taxes)}
+                              registration={parseNumber(dealData.registration)}
+                              askingPrice={vehiclePrice || 25000}
+                              onFeeContextChange={setFeeContext}
+                            />
+                            
+                            {/* Negotiation Scripts */}
+                            <WhatToSayNext 
+                              dealData={dealData} 
+                              scoreResult={scoreResult}
+                              feeContext={feeContext || undefined}
+                            />
+                          </>
+                        );
+                      }
+                    }
+                    
+                    // Default: show scripts normally
+                    return (
+                      <>
+                        {/* Fee Breakdown for context */}
+                        <FeeBreakdown
+                          docFee={parseNumber(dealData.docFee)}
+                          dealerFee={parseNumber(dealData.dealerFee)}
+                          addOns={parseNumber(dealData.addOns)}
+                          taxes={parseNumber(dealData.taxes)}
+                          registration={parseNumber(dealData.registration)}
+                          askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
+                          onFeeContextChange={setFeeContext}
+                        />
+                        
+                        {/* Negotiation Scripts */}
+                        <WhatToSayNext 
+                          dealData={dealData} 
+                          scoreResult={scoreResult}
+                          feeContext={feeContext || undefined}
+                        />
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>

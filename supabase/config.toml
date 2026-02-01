@@ -89,3 +89,9 @@ verify_jwt = false
 
 [functions.pricing-confidence]
 verify_jwt = false
+
+[functions.create-deal-analysis-checkout]
+verify_jwt = true
+
+[functions.check-deal-entitlement]
+verify_jwt = true

@@ -84,9 +84,33 @@ serve(async (req) => {
         const requestId = session.metadata?.request_id;
         const sessionType = session.metadata?.session_type;
         const customerId = session.customer as string;
+        const dealId = session.metadata?.deal_id;
+        const paymentType = session.metadata?.type;
         
-        logStep("Checkout completed", { requestId, sessionType, customerId });
+        logStep("Checkout completed", { requestId, sessionType, customerId, dealId, paymentType });
 
+        // Handle deal analysis unlock payment
+        if (dealId && paymentType === "deal_analysis") {
+          logStep("Processing deal analysis unlock", { dealId });
+          
+          const { error } = await supabaseClient
+            .from("deal_entitlements")
+            .update({
+              status: "unlocked",
+              stripe_payment_intent_id: session.payment_intent as string,
+              unlocked_at: new Date().toISOString(),
+            })
+            .eq("deal_id", dealId);
+
+          if (error) {
+            logStep("Failed to unlock deal entitlement", { error: error.message });
+          } else {
+            logStep("Deal entitlement unlocked", { dealId });
+          }
+          break;
+        }
+
+        // Handle coaching request payment
         if (requestId) {
           // Determine payment status based on session type
           const paymentStatus = sessionType === "video" ? "deposit_paid" : "fully_paid";

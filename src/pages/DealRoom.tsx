@@ -2219,7 +2219,19 @@ TTL & fees $2,800`}
 
           {/* WHAT TO SAY NEXT TAB */}
           <TabsContent value="scripts" className="animate-fade-in">
-            <div className="max-w-4xl mx-auto py-4">
+            <div className="max-w-4xl mx-auto py-4 space-y-6">
+              {/* Fee Breakdown for context */}
+              <FeeBreakdown
+                docFee={parseNumber(dealData.docFee)}
+                dealerFee={parseNumber(dealData.dealerFee)}
+                addOns={parseNumber(dealData.addOns)}
+                taxes={parseNumber(dealData.taxes)}
+                registration={parseNumber(dealData.registration)}
+                askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
+                onGlossaryClick={() => setActiveTab("glossary")}
+              />
+              
+              {/* Negotiation Scripts */}
               <WhatToSayNext 
                 dealData={dealData} 
                 scoreResult={scoreResult} 

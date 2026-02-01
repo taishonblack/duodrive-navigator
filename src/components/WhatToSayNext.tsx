@@ -95,7 +95,9 @@ const scriptOptions = [
 export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNextProps) {
   const [loadingType, setLoadingType] = useState<ScriptType | null>(null);
   const [generatedScript, setGeneratedScript] = useState<GeneratedScript | null>(null);
+  const [generatedScripts, setGeneratedScripts] = useState<Map<ScriptType, GeneratedScript>>(new Map());
   const [copiedScript, setCopiedScript] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
   const { toast } = useToast();
 
   const vehicleInfo = [dealData.year, dealData.make, dealData.model, dealData.trim]
@@ -123,13 +125,16 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
       tips.push("Stay calm and polite - firmness works better than aggression");
       tips.push("If they refuse, ask to speak with the sales manager");
       
-      setGeneratedScript({
+      const feeScript: GeneratedScript = {
         type: "fees",
         title: "Remove Fees",
         script: feeContext.prebuiltScript,
         tips,
         isPrebuilt: true,
-      });
+      };
+      
+      setGeneratedScript(feeScript);
+      setGeneratedScripts(prev => new Map(prev).set("fees", feeScript));
     }
   }, [feeContext?.prebuiltScript]);
 
@@ -203,12 +208,15 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
       const data = await response.json();
       
       const option = scriptOptions.find(o => o.type === type);
-      setGeneratedScript({
+      const newScript: GeneratedScript = {
         type,
         title: option?.title || "Script",
         script: data.script,
         tips: data.tips || [],
-      });
+      };
+      
+      setGeneratedScript(newScript);
+      setGeneratedScripts(prev => new Map(prev).set(type, newScript));
 
       toast({
         title: "Script Ready!",
@@ -237,6 +245,42 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
         description: "Script copied to clipboard",
       });
       setTimeout(() => setCopiedScript(false), 2000);
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Please select and copy manually",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyAllScripts = async () => {
+    const allScripts: string[] = [];
+    
+    // Collect all generated scripts
+    generatedScripts.forEach((script, type) => {
+      allScripts.push(`--- ${script.title.toUpperCase()} SCRIPT ---\n\n"${script.script}"`);
+    });
+    
+    if (allScripts.length === 0) {
+      toast({
+        title: "No scripts to copy",
+        description: "Generate at least one script first",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const combinedText = allScripts.join("\n\n\n");
+    
+    try {
+      await navigator.clipboard.writeText(combinedText);
+      setCopiedAll(true);
+      toast({
+        title: "All Scripts Copied!",
+        description: `${allScripts.length} script(s) copied to clipboard`,
+      });
+      setTimeout(() => setCopiedAll(false), 2000);
     } catch {
       toast({
         title: "Copy failed",
@@ -381,6 +425,30 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
           );
         })}
       </div>
+
+      {/* Copy All Scripts Button */}
+      {generatedScripts.size > 0 && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={copyAllScripts}
+            className="gap-2"
+          >
+            {copiedAll ? (
+              <>
+                <Check className="h-4 w-4" />
+                All Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Copy All Scripts ({generatedScripts.size})
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Generated Script Display */}
       {generatedScript && (

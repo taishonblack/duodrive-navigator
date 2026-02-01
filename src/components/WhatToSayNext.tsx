@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, DollarSign, XCircle, Percent, LogOut, Copy, Check, Sparkles, AlertTriangle } from "lucide-react";
+import { Loader2, DollarSign, XCircle, Percent, LogOut, Copy, Check, Sparkles, AlertTriangle, Printer, List, LayoutGrid } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import jsPDF from "jspdf";
 
 interface DealData {
   year?: string;
@@ -99,6 +101,7 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
   const [generatedScripts, setGeneratedScripts] = useState<Map<ScriptType, GeneratedScript>>(new Map());
   const [copiedScript, setCopiedScript] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [viewMode, setViewMode] = useState<"single" | "all">("single");
   const { toast } = useToast();
 
   const vehicleInfo = [dealData.year, dealData.make, dealData.model, dealData.trim]
@@ -289,6 +292,124 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
         variant: "destructive",
       });
     }
+  };
+
+  const printAllScripts = () => {
+    if (generatedScripts.size === 0) {
+      toast({
+        title: "No scripts to print",
+        description: "Generate at least one script first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxWidth = pageWidth - margin * 2;
+    let yPos = 20;
+
+    // Title
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("Negotiation Scripts", pageWidth / 2, yPos, { align: "center" });
+    yPos += 10;
+
+    // Vehicle info
+    if (vehicleInfo) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(vehicleInfo, pageWidth / 2, yPos, { align: "center" });
+      yPos += 5;
+    }
+
+    // Date
+    doc.setFontSize(10);
+    doc.setTextColor(128, 128, 128);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: "center" });
+    doc.setTextColor(0, 0, 0);
+    yPos += 15;
+
+    // Scripts
+    const orderedTypes: ScriptType[] = ["counter", "fees", "buyrate", "walkaway"];
+    
+    orderedTypes.forEach((type) => {
+      const script = generatedScripts.get(type);
+      if (!script) return;
+
+      // Check if we need a new page
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      // Script title
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(script.title.toUpperCase(), margin, yPos);
+      yPos += 8;
+
+      // Script content
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      const scriptLines = doc.splitTextToSize(`"${script.script}"`, maxWidth);
+      
+      scriptLines.forEach((line: string) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(line, margin, yPos);
+        yPos += 6;
+      });
+
+      yPos += 5;
+
+      // Tips
+      if (script.tips.length > 0) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(100, 100, 100);
+        
+        script.tips.slice(0, 3).forEach((tip) => {
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+          const tipLines = doc.splitTextToSize(`• ${tip}`, maxWidth);
+          tipLines.forEach((line: string) => {
+            doc.text(line, margin, yPos);
+            yPos += 5;
+          });
+        });
+        
+        doc.setTextColor(0, 0, 0);
+      }
+
+      yPos += 10;
+    });
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        "DuoDrive Deal Guardian - Your negotiation partner",
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: "center" }
+      );
+    }
+
+    doc.save(`negotiation-scripts-${new Date().toISOString().split("T")[0]}.pdf`);
+
+    toast({
+      title: "PDF Downloaded!",
+      description: "Your negotiation scripts are ready to print.",
+    });
   };
 
   const generateAllScripts = async () => {
@@ -573,30 +694,132 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
           )}
         </Button>
         
-        {generatedScripts.size > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={copyAllScripts}
-            className="gap-2"
-          >
-            {copiedAll ? (
-              <>
-                <Check className="h-4 w-4" />
-                All Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4" />
-                Copy All Scripts ({generatedScripts.size})
-              </>
-            )}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {generatedScripts.size > 1 && (
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <Button
+                variant={viewMode === "single" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("single")}
+                className="rounded-none gap-1.5 px-3"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline">Single</span>
+              </Button>
+              <Button
+                variant={viewMode === "all" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("all")}
+                className="rounded-none gap-1.5 px-3"
+              >
+                <List className="h-4 w-4" />
+                <span className="hidden sm:inline">All</span>
+              </Button>
+            </div>
+          )}
+          
+          {generatedScripts.size > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={printAllScripts}
+              className="gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              <span className="hidden sm:inline">Print PDF</span>
+            </Button>
+          )}
+          
+          {generatedScripts.size > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyAllScripts}
+              className="gap-2"
+            >
+              {copiedAll ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  <span className="hidden sm:inline">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  <span className="hidden sm:inline">Copy All ({generatedScripts.size})</span>
+                  <span className="sm:hidden">{generatedScripts.size}</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Generated Script Display */}
-      {generatedScript && (
+      {/* All Scripts View */}
+      {viewMode === "all" && generatedScripts.size > 0 && (
+        <ScrollArea className="h-[600px] rounded-lg border border-border">
+          <div className="p-4 space-y-4">
+            {scriptOptions.map((option) => {
+              const script = generatedScripts.get(option.type);
+              if (!script) return null;
+              
+              const Icon = option.icon;
+              
+              return (
+                <Card key={option.type} className={`border-2 ${option.borderColor} ${option.bgColor}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Icon className={`h-5 w-5 ${option.color}`} />
+                        {script.title}
+                        {script.isPrebuilt && (
+                          <span className="text-xs font-normal text-muted-foreground ml-2">
+                            (from fee analysis)
+                          </span>
+                        )}
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(script.script);
+                          toast({ title: "Copied!", description: `${script.title} script copied` });
+                        }}
+                        className="gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="p-4 rounded-lg bg-card border border-border">
+                      <p className="text-foreground whitespace-pre-wrap leading-relaxed text-sm">
+                        "{script.script}"
+                      </p>
+                    </div>
+                    {script.tips.length > 0 && (
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-medium text-muted-foreground">Tips:</h4>
+                        <ul className="space-y-0.5">
+                          {script.tips.slice(0, 2).map((tip, idx) => (
+                            <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <span className="text-primary">•</span>
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
+
+      {/* Single Script Display */}
+      {viewMode === "single" && generatedScript && (
         <Card className="border-2 border-primary/20 bg-accent/30 animate-fade-in">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -683,7 +906,7 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
       )}
 
       {/* Empty State */}
-      {!generatedScript && !loadingType && (
+      {!generatedScript && !loadingType && !loadingAll && (
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-sm">
             {hasMinimumData 

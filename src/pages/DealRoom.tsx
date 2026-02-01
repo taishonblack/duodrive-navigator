@@ -15,7 +15,7 @@ import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import DealAnalysisPaywall from "@/components/DealAnalysisPaywall";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock } from "lucide-react";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
 import { FeeBreakdown } from "@/components/FeeBreakdown";
@@ -1146,9 +1146,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               <Calculator className="h-4 w-4" />
               <span className="hidden sm:inline">Calculator</span>
             </TabsTrigger>
-            <TabsTrigger value="scripts" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
+            <TabsTrigger value="scripts" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg relative">
               <MessageCircle className="h-4 w-4" />
               <span className="hidden sm:inline">What To Say</span>
+              {dealEntitlementStatus === "locked" && (
+                <span className="flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white ml-1">
+                  <Lock className="h-2.5 w-2.5" />
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="overview" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <BarChart3 className="h-4 w-4" />

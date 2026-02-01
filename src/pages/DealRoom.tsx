@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +14,7 @@ import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle } from "lucide-react";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
 import { FeeBreakdown } from "@/components/FeeBreakdown";
@@ -31,204 +32,9 @@ const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
 const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
-const glossaryCategories = [
-  { id: "all", label: "All Terms" },
-  { id: "duodrive", label: "DuoDrive Score" },
-  { id: "pricing", label: "Pricing & Costs" },
-  { id: "financing", label: "Financing" },
-  { id: "fees", label: "Fees & Add-Ons" },
-  { id: "vehicle", label: "Vehicle Info" },
-  { id: "insurance", label: "Insurance" },
-  { id: "negotiation", label: "Negotiation" },
-  { id: "tactics", label: "Dealer Tactics" },
-  { id: "maintenance", label: "Maintenance" },
-  { id: "features", label: "Vehicle Features" },
-];
-
-const glossaryTerms = [
-  // DuoDrive Score Terms
-  { term: "DuoDrive Score", definition: "A comprehensive 0-100 score that evaluates your car deal across five pillars: depreciation, reliability, safety, deal health, and affordability. Higher scores indicate better deals.", category: "duodrive", tip: "Aim for a score of 70+ for a good deal, 80+ for a great deal." },
-  { term: "Deal Price Gap (DPG)", definition: "The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal below market value; a positive gap means you're paying above market value.", category: "duodrive", tip: "Aim for a DPG of 0% or lower - that means you're at or below market value." },
-  { term: "Customer Max Safe Price (CMSP)", definition: "The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income.", category: "duodrive", tip: "Stay at or below your CMSP to avoid financial strain." },
-  { term: "Customer Fit Gap (CFG)", definition: "The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit.", category: "duodrive", tip: "A negative CFG is ideal - it means the car fits your budget." },
-  { term: "True Market Price (TMP)", definition: "The estimated fair market value of a vehicle based on its year, mileage, condition, and comparable sales data. This is what the car is actually worth, not what the dealer is asking.", category: "duodrive", tip: "Compare TMP to asking price to see if you're overpaying." },
-  { term: "Payment Burden", definition: "The percentage of your monthly income that goes toward your car payment alone. Financial experts recommend keeping this under 12% to maintain healthy finances.", category: "duodrive", tip: "Keep payment burden under 12% of your gross monthly income." },
-  { term: "Total Operating Cost", definition: "The total percentage of your monthly income spent on all car-related expenses including payment, insurance, fuel, and maintenance. A comprehensive measure of affordability.", category: "duodrive", tip: "Keep total operating cost under 20% of your gross monthly income." },
-  { term: "Interest Ratio", definition: "The percentage of your total loan payments that goes toward interest rather than principal. A higher ratio means you're paying more for the privilege of borrowing.", category: "duodrive", tip: "Lower interest ratios mean more of your payment builds equity." },
-  
-  // Pricing & Costs
-  { term: "MSRP", definition: "Manufacturer's Suggested Retail Price - the sticker price set by the manufacturer. This is the starting point for negotiations, not what you should pay.", category: "pricing", tip: "Always negotiate below MSRP on non-luxury vehicles." },
-  { term: "Invoice Price", definition: "The price the dealer pays the manufacturer for the vehicle. Dealers often receive additional incentives below this price.", category: "pricing", tip: "A fair deal is typically $500-$1,500 above invoice." },
-  { term: "Out-the-Door Price", definition: "The total amount you'll pay including all taxes, fees, and add-ons. This is the only number that matters.", category: "pricing", tip: "Always negotiate based on OTD price, not monthly payment." },
-  { term: "Market Adjustment", definition: "An additional markup dealers add above MSRP during high demand. Completely negotiable and often avoidable.", category: "pricing", tip: "Walk away from market adjustments - shop other dealers." },
-  { term: "Destination Charge", definition: "The fee to transport the vehicle from the factory to the dealership. This is legitimate and typically non-negotiable ($900-$1,800).", category: "pricing", tip: "This fee is the same at every dealer for the same vehicle." },
-  { term: "Trade-In Value", definition: "What a dealer offers for your current vehicle toward a new purchase. Often undervalued by dealers.", category: "pricing", tip: "Get quotes from Carmax, Carvana, and KBB before visiting dealers." },
-  { term: "Negative Equity", definition: "When you owe more on your current car than it's worth. This amount gets rolled into your new loan.", category: "pricing", tip: "Avoid rolling negative equity - it's a debt trap." },
-  { term: "Capitalized Cost", definition: "The negotiated price of the vehicle in a lease, equivalent to purchase price. The starting point for calculating lease payments.", category: "pricing", tip: "Negotiate cap cost down just like you would a purchase price." },
-  { term: "Cap Cost Reduction", definition: "A down payment on a lease that reduces the capitalized cost. Lowers monthly payments but lost if car is totaled.", category: "pricing", tip: "Don't put large amounts down on leases - risk losing it all." },
-  { term: "Money Factor", definition: "The interest rate used in lease calculations. Multiply by 2,400 to get the approximate APR equivalent.", category: "pricing", tip: "A money factor of 0.00125 equals roughly 3% APR." },
-  { term: "Acquisition Fee", definition: "A fee charged by the leasing company to set up the lease. Typically $595-$1,095 and usually non-negotiable.", category: "pricing", tip: "This fee is standard but sometimes can be rolled into payments." },
-  { term: "Disposition Fee", definition: "A fee charged at the end of a lease if you don't buy or lease another vehicle. Usually $300-$500.", category: "pricing", tip: "Sometimes waived if you lease another vehicle from same brand." },
-  { term: "True Market Value", definition: "Edmunds' estimate of what others are actually paying for a vehicle in your area. More accurate than MSRP.", category: "pricing", tip: "Use TMV as your target price when negotiating." },
-  { term: "Dealer Cost", definition: "The actual cost to the dealer including invoice, holdback, and incentives. Lower than invoice price.", category: "pricing", tip: "True dealer cost is 2-3% below invoice on most vehicles." },
-  
-  // Financing
-  { term: "APR", definition: "Annual Percentage Rate - the yearly interest rate charged on borrowed money, including fees. Lower is better.", category: "financing", tip: "Get pre-approved from your bank/credit union before visiting dealers." },
-  { term: "Loan Term", definition: "The length of time you have to repay the loan, typically 36-84 months. Longer terms mean more interest paid.", category: "financing", tip: "Keep terms at 60 months or less to avoid being underwater." },
-  { term: "Down Payment", definition: "The upfront cash you put toward the purchase. Reduces your loan amount and monthly payment.", category: "financing", tip: "Aim for at least 20% down to avoid negative equity." },
-  { term: "Principal", definition: "The actual amount borrowed, not including interest. This is what you're paying down each month.", category: "financing", tip: "Extra payments toward principal save you money on interest." },
-  { term: "Pre-Approval", definition: "Getting approved for financing before shopping. Gives you negotiating power and a rate to beat.", category: "financing", tip: "Always get pre-approved - it's your strongest negotiating tool." },
-  { term: "Subprime Loan", definition: "High-interest loans for buyers with poor credit (below 620). Rates can exceed 15-20%.", category: "financing", tip: "Work on improving credit before buying if possible." },
-  { term: "Buy Rate", definition: "The actual interest rate you qualify for. Dealers often mark this up for profit.", category: "financing", tip: "Ask what the buy rate is vs. the rate they're offering." },
-  { term: "Dealer Reserve", definition: "Extra profit dealers make by marking up your interest rate. Can add thousands to your loan.", category: "financing", tip: "Compare dealer financing to your pre-approved rate." },
-  { term: "Residual Value", definition: "The predicted value of a vehicle at the end of a lease term. Higher residual means lower lease payments.", category: "financing", tip: "Research residual values before leasing - they vary by brand." },
-  { term: "Simple Interest", definition: "Interest calculated only on the remaining principal balance. Most auto loans use simple interest.", category: "financing", tip: "Paying early or extra reduces total interest with simple interest loans." },
-  { term: "Amortization", definition: "How your loan payments are split between principal and interest over time. Early payments are mostly interest.", category: "financing", tip: "Request an amortization schedule to see where your money goes." },
-  { term: "Balloon Payment", definition: "A large final payment due at the end of some loans. Reduces monthly payments but creates end-of-term burden.", category: "financing", tip: "Avoid balloon payments unless you have a plan to refinance." },
-  { term: "Refinancing", definition: "Replacing your current auto loan with a new one, usually at a lower rate. Can save thousands over time.", category: "financing", tip: "Refinance after 6-12 months of on-time payments to get better rates." },
-  { term: "Credit Score", definition: "A number (300-850) representing your creditworthiness. Higher scores get lower interest rates.", category: "financing", tip: "Check your score free at CreditKarma before shopping." },
-  { term: "Debt-to-Income Ratio", definition: "Your monthly debt payments divided by gross income. Lenders prefer under 36% total.", category: "financing", tip: "Lower DTI means better loan terms and higher approval chances." },
-  { term: "Co-Signer", definition: "Someone who agrees to be responsible for your loan if you default. Helps those with poor/no credit.", category: "financing", tip: "Co-signers take on real risk - don't damage their credit." },
-  { term: "0% APR Financing", definition: "Manufacturer-subsidized loans with no interest. Often requires excellent credit and forgoing rebates.", category: "financing", tip: "Compare 0% to rebate + bank financing - rebate often wins." },
-  
-  // Fees & Add-Ons
-  { term: "Doc Fee", definition: "Documentation fee charged by dealers for processing paperwork. Varies by state ($0-$1,000+).", category: "fees", tip: "Know your state's cap - some states limit doc fees." },
-  { term: "Dealer Fee", definition: "A catch-all fee dealers charge for overhead. Often negotiable despite what they claim.", category: "fees", tip: "Ask for an itemized breakdown and negotiate." },
-  { term: "Dealer Add-Ons", definition: "Extra products like window tint, paint protection, or nitrogen tires. Usually overpriced by 300-500%.", category: "fees", tip: "Decline all add-ons - buy aftermarket if you want them." },
-  { term: "VIN Etching", definition: "Etching the VIN into windows as theft protection. Costs dealers $30 but charged at $300-$500.", category: "fees", tip: "Always decline - you can DIY for under $25." },
-  { term: "Paint Protection Film", definition: "Clear protective film applied to bumpers and hoods. Dealer price is 3-4x independent shop pricing.", category: "fees", tip: "Get quotes from detailers - same product for much less." },
-  { term: "Fabric Protection", definition: "Spray-on fabric guard for seats. Essentially Scotchgard charged at $200-$400.", category: "fees", tip: "Buy a $15 can of Scotchgard and do it yourself." },
-  { term: "Nitrogen Tires", definition: "Filling tires with nitrogen instead of air. Provides minimal benefit for $100-$300.", category: "fees", tip: "Regular air is fine - Costco offers free nitrogen." },
-  { term: "Extended Warranty", definition: "Additional coverage beyond the factory warranty. Highly marked up at dealers.", category: "fees", tip: "Buy from third parties for 50% less if you want coverage." },
-  { term: "Rustproofing", definition: "Undercoating or spray applied to prevent rust. Modern cars don't need it - a dealer profit center.", category: "fees", tip: "Cars today have galvanized steel - rustproofing is unnecessary." },
-  { term: "Undercoating", definition: "A rubberized spray applied to the undercarriage. Often redundant with factory protection.", category: "fees", tip: "Decline - factory undercoating is sufficient on modern vehicles." },
-  { term: "Pinstriping", definition: "Decorative lines added to the car's exterior. Cheap vinyl charged at $200-$400.", category: "fees", tip: "If you want it, any detail shop will do it for $50." },
-  { term: "Wheel Locks", definition: "Special lug nuts requiring a key to remove. Cost dealers $20, charged at $150+.", category: "fees", tip: "Buy them on Amazon for $25 if you want them." },
-  { term: "All-Weather Floor Mats", definition: "Rubber mats protecting the carpet. Marked up 100-200% at dealers.", category: "fees", tip: "Buy from WeatherTech directly - same quality, half price." },
-  { term: "Window Tint", definition: "Film applied to windows for privacy and heat reduction. Dealer pricing is typically 2-3x market rate.", category: "fees", tip: "Get tint installed independently for significant savings." },
-  { term: "Ceramic Coating", definition: "A liquid polymer that bonds with paint for long-term protection. Dealer price: $1,500+. Real cost: $500-800.", category: "fees", tip: "Find a reputable detailer for professional-grade ceramic coating." },
-  { term: "LoJack", definition: "A stolen vehicle recovery system. Being replaced by smartphone tracking in modern cars.", category: "fees", tip: "Many cars have built-in tracking - LoJack may be redundant." },
-  { term: "Key Replacement Insurance", definition: "Coverage for lost or stolen key fobs. Costs dealers little but charged at $300-$500.", category: "fees", tip: "Check if your auto insurance or credit card covers this." },
-  { term: "Tire and Wheel Protection", definition: "Insurance covering damage to tires and wheels. Rarely pays out enough to justify cost.", category: "fees", tip: "The math rarely works - fix issues as they occur instead." },
-  { term: "Prepaid Maintenance", definition: "Paying upfront for scheduled maintenance. Sounds good but usually costs more than paying as you go.", category: "fees", tip: "Calculate the actual cost per service - it's usually a bad deal." },
-  { term: "Dealer Prep Fee", definition: "A fee for 'preparing' the car for sale. This is already in the invoice price - it's double-dipping.", category: "fees", tip: "Always refuse - this is part of their normal process." },
-  { term: "ADM", definition: "Additional Dealer Markup - extra profit added to high-demand vehicles. Same as market adjustment.", category: "fees", tip: "Never pay ADM - find another dealer or wait." },
-  
-  // Vehicle Info
-  { term: "VIN", definition: "Vehicle Identification Number - a unique 17-character code identifying every vehicle. Used for history reports.", category: "vehicle", tip: "Always run a VIN check before buying any used vehicle." },
-  { term: "Trim Level", definition: "Different versions of the same model with varying features (e.g., LX, EX, Touring). Higher trims cost more.", category: "vehicle", tip: "Mid-level trims often offer the best value." },
-  { term: "CPO", definition: "Certified Pre-Owned - used vehicles that meet manufacturer standards with extended warranty.", category: "vehicle", tip: "CPO provides peace of mind but verify the inspection report." },
-  { term: "Clean Title", definition: "A vehicle with no major damage, flood, or salvage history on record.", category: "vehicle", tip: "Never buy without a clean title unless you're an expert." },
-  { term: "Salvage Title", definition: "A vehicle that was totaled by insurance and repaired. Significantly reduces value.", category: "vehicle", tip: "Avoid salvage titles - financing and insurance are difficult." },
-  { term: "Carfax", definition: "A vehicle history report showing accidents, ownership, and service records.", category: "vehicle", tip: "Always get a Carfax AND a pre-purchase inspection." },
-  { term: "Depreciation", definition: "The decrease in a vehicle's value over time. New cars lose 20-30% in year one.", category: "vehicle", tip: "Buy 2-3 year old cars to avoid the steepest depreciation." },
-  { term: "Powertrain", definition: "The engine, transmission, and drivetrain components. Powertrain warranties cover these.", category: "vehicle", tip: "Powertrain issues are the most expensive to repair." },
-  { term: "Odometer Rollback", definition: "Illegal tampering to show lower mileage than actual. Check Carfax for mileage discrepancies.", category: "vehicle", tip: "Compare Carfax mileage history to current odometer reading." },
-  { term: "Lemon", definition: "A vehicle with recurring defects that can't be fixed. Lemon laws protect buyers of defective new cars.", category: "vehicle", tip: "Document all repair visits - they're evidence for lemon law claims." },
-  { term: "Lemon Law", definition: "State laws protecting buyers of defective new vehicles. Requirements vary by state.", category: "vehicle", tip: "Check your state's specific requirements - usually 3-4 repair attempts." },
-  { term: "As-Is", definition: "Sold without warranty - buyer assumes all risk. Common with used cars from private sellers.", category: "vehicle", tip: "Always get a pre-purchase inspection before buying as-is." },
-  { term: "Buyer's Guide", definition: "A federally required window sticker on used cars showing warranty status and known issues.", category: "vehicle", tip: "Read this carefully - it's a legal disclosure of the car's condition." },
-  { term: "Pre-Purchase Inspection", definition: "Having a mechanic inspect a used car before buying. Costs $100-200 but can save thousands.", category: "vehicle", tip: "Never skip this step - it's the best money you'll spend." },
-  { term: "Window Sticker", definition: "The manufacturer's label showing MSRP, features, and fuel economy. Also called the Monroney sticker.", category: "vehicle", tip: "Request the original window sticker for used cars to verify features." },
-  { term: "Monroney Sticker", definition: "The official name for the window sticker, required by federal law since 1958.", category: "vehicle", tip: "Use this to compare vehicles and verify installed options." },
-  { term: "Demo Vehicle", definition: "A car that's been driven by dealership employees or loaner customers. Should be significantly discounted.", category: "vehicle", tip: "Demos should be priced 10-15% below MSRP at minimum." },
-  { term: "Program Car", definition: "A vehicle previously used as a rental or fleet car. Higher miles but usually well-maintained.", category: "vehicle", tip: "Program cars can be great deals - maintenance is typically documented." },
-  { term: "Flood Damage", definition: "Vehicles damaged by water/flooding. Can cause long-term electrical and mechanical issues.", category: "vehicle", tip: "Check VIN history and look for water stains, musty smells, rust." },
-  { term: "Frame Damage", definition: "Structural damage to the vehicle's frame from an accident. Compromises safety and reduces value.", category: "vehicle", tip: "Have a body shop inspect for frame damage before buying used." },
-  
-  // Insurance
-  { term: "GAP Insurance", definition: "Guaranteed Asset Protection - pays the difference between your car's value and loan balance if totaled.", category: "insurance", tip: "Essential if you have less than 20% down payment." },
-  { term: "Comprehensive Coverage", definition: "Insurance covering non-collision damage like theft, weather, and vandalism.", category: "insurance", tip: "Required for financed vehicles." },
-  { term: "Collision Coverage", definition: "Insurance covering damage from accidents, regardless of fault.", category: "insurance", tip: "Required for financed vehicles." },
-  { term: "Liability Coverage", definition: "Insurance covering damage you cause to others. The legal minimum requirement.", category: "insurance", tip: "Higher limits protect your assets - don't go minimum." },
-  { term: "Deductible", definition: "The amount you pay out of pocket before insurance kicks in. Higher deductible = lower premium.", category: "insurance", tip: "Choose a deductible you can comfortably afford to pay." },
-  { term: "Full Coverage", definition: "Not a real term - typically means liability + collision + comprehensive. Ask exactly what's included.", category: "insurance", tip: "Always ask for itemized coverage - 'full' means different things." },
-  { term: "Uninsured Motorist", definition: "Coverage protecting you if hit by a driver without insurance. Critical in some states.", category: "insurance", tip: "Around 13% of drivers are uninsured - this coverage is important." },
-  { term: "Personal Injury Protection", definition: "Coverage for medical expenses regardless of fault. Required in no-fault states.", category: "insurance", tip: "PIP covers you even if the accident was your fault." },
-  { term: "Declared Value", definition: "The value you state your vehicle is worth for insurance purposes. Affects premiums and payouts.", category: "insurance", tip: "Be accurate - undervaluing means less payout if totaled." },
-  { term: "Actual Cash Value", definition: "What your car is worth at the time of a claim, accounting for depreciation.", category: "insurance", tip: "ACV decreases over time - GAP insurance covers the difference." },
-  
-  // Negotiation
-  { term: "Four Square", definition: "A dealer tactic using a four-box worksheet to confuse buyers and hide profit. A major red flag.", category: "negotiation", tip: "Refuse to negotiate using the four square - focus on OTD price." },
-  { term: "Payment Packing", definition: "Hiding fees in your monthly payment without disclosure. Illegal but common.", category: "negotiation", tip: "Always verify line items match your agreed OTD price." },
-  { term: "Bump", definition: "When a manager claims your deal wasn't approved and asks for more money. Often a bluff.", category: "negotiation", tip: "Be prepared to walk away - your deal was likely approved." },
-  { term: "Lowball Offer", definition: "An intentionally low offer to start negotiations. Part of the game.", category: "negotiation", tip: "Start 10-15% below your target to leave room for negotiation." },
-  { term: "Walk Away", definition: "Leaving the dealership without buying. Your most powerful negotiating tool.", category: "negotiation", tip: "Be willing to walk - dealers often call back with better offers." },
-  { term: "F&I Office", definition: "Finance and Insurance office where you sign paperwork. Where most profit is made on add-ons.", category: "negotiation", tip: "Be prepared to say no repeatedly in F&I." },
-  { term: "Dealer Holdback", definition: "A percentage of MSRP manufacturers pay dealers after sale. Hidden profit margin.", category: "negotiation", tip: "Dealers can profit even selling at invoice due to holdback." },
-  { term: "Negotiate the Out-the-Door Price", definition: "The strategy of negotiating the total price including all fees, taxes, and add-ons rather than just the vehicle price.", category: "negotiation", tip: "This is the ONLY way to negotiate - never focus on monthly payment." },
-  { term: "Best Price Guarantee", definition: "A dealer promise to beat competitors' prices. Often has fine print exceptions.", category: "negotiation", tip: "Get competitor quotes in writing before using price guarantees." },
-  { term: "Internet Price", definition: "The price listed on dealer websites, often lower than lot price. Use this as your starting point.", category: "negotiation", tip: "Email multiple dealers for quotes - use the lowest as leverage." },
-  { term: "Pencil", definition: "Dealer slang for the written offer sheet. They'll 'sharpen the pencil' to improve the deal.", category: "negotiation", tip: "Get everything in writing before celebrating any deal." },
-  { term: "T.O.", definition: "Turn Over - when a salesperson brings in a manager to close the deal. Expect more pressure.", category: "negotiation", tip: "Stay calm during T.O. - it means they want to sell." },
-  { term: "Be-Back Bus", definition: "Dealer slang for customers who say they'll return but never do. Used to pressure immediate decisions.", category: "negotiation", tip: "Being on the 'be-back bus' is fine - take your time." },
-  { term: "Grinder", definition: "A buyer who negotiates hard on every detail. Dealers dislike but respect grinders.", category: "negotiation", tip: "Be a grinder - negotiate every line item on the bill of sale." },
-  { term: "Laydown", definition: "Dealer term for a buyer who accepts the first offer without negotiating. Don't be a laydown.", category: "negotiation", tip: "Never accept the first offer - there's always room to negotiate." },
-  { term: "Mini Deal", definition: "A sale with minimal profit for the dealer. They'll try to make it up in F&I.", category: "negotiation", tip: "Mini deals are wins for you - stay strong in F&I." },
-  { term: "Spiff", definition: "A bonus paid to salespeople for selling certain vehicles or add-ons. Motivates pushy behavior.", category: "negotiation", tip: "Know that salespeople have financial incentives to upsell you." },
-  
-  // Dealer Tactics
-  { term: "Bait and Switch", definition: "Advertising a car at a low price that's 'just sold' to get you in the door. Illegal but common.", category: "tactics", tip: "Confirm vehicle availability before visiting any dealer." },
-  { term: "Spot Delivery", definition: "Taking the car home before financing is finalized. Dealer may call demanding more money later.", category: "tactics", tip: "Wait for final financing approval before driving off the lot." },
-  { term: "Yo-Yo Financing", definition: "When a dealer calls after purchase claiming financing fell through and demands new terms.", category: "tactics", tip: "Get all financing finalized before taking delivery." },
-  { term: "Payment Focus", definition: "A tactic where dealers negotiate monthly payment instead of total price to hide true cost.", category: "tactics", tip: "Never answer 'What monthly payment do you want?' - focus on OTD." },
-  { term: "Trade-In Lowball", definition: "Offering below-market value for your trade, then making up the difference elsewhere in the deal.", category: "tactics", tip: "Know your trade's value from multiple sources before negotiating." },
-  { term: "Good Cop Bad Cop", definition: "Salesperson acts friendly while manager plays hardball. Classic pressure technique.", category: "tactics", tip: "Recognize the game - both are working to maximize dealer profit." },
-  { term: "The Grind", definition: "Wearing buyers down with hours of back-and-forth to get them to agree to anything.", category: "tactics", tip: "Set time limits - leave if negotiations drag on too long." },
-  { term: "Limited Time Offer", definition: "Creating artificial urgency with 'today only' deals. Almost always available tomorrow.", category: "tactics", tip: "Real deals don't expire - take your time." },
-  { term: "Manager Special", definition: "A price supposedly authorized only by the manager. Usually just a negotiating tactic.", category: "tactics", tip: "Every price is a 'manager special' - keep negotiating." },
-  { term: "Packed Payment", definition: "A quoted monthly payment that includes hidden products like warranties or insurance.", category: "tactics", tip: "Always ask for a line-item breakdown of your payment." },
-  { term: "The Puppy Dog Close", definition: "Letting you take the car home overnight hoping you'll emotionally commit.", category: "tactics", tip: "Stay objective - don't let a test drive turn into ownership." },
-  { term: "Fear Close", definition: "Creating fear that another buyer is interested or the deal won't last.", category: "tactics", tip: "Call the bluff - good deals don't disappear that fast." },
-  { term: "Assumed Close", definition: "Acting like you've already agreed to buy and moving straight to paperwork.", category: "tactics", tip: "Slow down and explicitly agree to terms before signing anything." },
-  { term: "If I Could, Would You", definition: "A technique where dealers propose hypothetical terms to gauge your commitment level.", category: "tactics", tip: "Don't commit to hypotheticals - get real numbers first." },
-  { term: "The Take Away", definition: "Threatening to withdraw a deal to pressure you into accepting quickly.", category: "tactics", tip: "Call their bluff - if they take it away, find another dealer." },
-  
-  // Maintenance
-  { term: "Scheduled Maintenance", definition: "Regular service intervals recommended by the manufacturer (oil changes, inspections, etc.).", category: "maintenance", tip: "Follow the owner's manual, not dealer 'recommendations.'" },
-  { term: "Severe Service Schedule", definition: "More frequent maintenance for cars driven in extreme conditions, towing, or stop-and-go traffic.", category: "maintenance", tip: "Most drivers qualify for normal schedule - don't over-maintain." },
-  { term: "Timing Belt", definition: "A critical engine component that should be replaced at specific intervals (60-100k miles).", category: "maintenance", tip: "Factor timing belt replacement into used car buying decisions." },
-  { term: "Timing Chain", definition: "A more durable alternative to timing belts that typically lasts the life of the engine.", category: "maintenance", tip: "Check if a vehicle has a chain vs belt - chains need less maintenance." },
-  { term: "Transmission Flush", definition: "Replacing all transmission fluid. Often unnecessary and potentially harmful on older vehicles.", category: "maintenance", tip: "Many mechanics recommend drain-and-fill instead of full flush." },
-  { term: "Brake Pad Replacement", definition: "Replacing worn friction material on brakes. Typical life is 25,000-65,000 miles.", category: "maintenance", tip: "Get brakes inspected at every oil change to avoid surprises." },
-  { term: "Brake Rotor", definition: "The disc that brake pads clamp onto. May need resurfacing or replacement with pads.", category: "maintenance", tip: "Rotors don't always need replacement - ask for measurements." },
-  { term: "Alignment", definition: "Adjusting wheel angles for proper tire wear and handling. Needed after hitting curbs or potholes.", category: "maintenance", tip: "Get alignment checked if you notice uneven tire wear or pulling." },
-  { term: "Tire Rotation", definition: "Moving tires between positions to ensure even wear. Recommended every 5,000-7,500 miles.", category: "maintenance", tip: "Many tire shops offer free rotations with purchase." },
-  { term: "Cabin Air Filter", definition: "Filters air entering the passenger compartment. Easy DIY replacement for $15-30.", category: "maintenance", tip: "Dealers charge $50-80 for a 5-minute DIY job." },
-  { term: "Engine Air Filter", definition: "Filters air entering the engine. Simple replacement, often overpriced at dealers.", category: "maintenance", tip: "Check YouTube for your car - usually a 2-minute DIY job." },
-  { term: "Coolant Flush", definition: "Replacing the engine's cooling fluid. Needed every 30,000-60,000 miles depending on type.", category: "maintenance", tip: "Use the correct coolant type - mixing can cause problems." },
-  { term: "Spark Plug Replacement", definition: "Replacing ignition components. Modern plugs last 60,000-100,000 miles.", category: "maintenance", tip: "Check owner's manual - don't replace earlier than needed." },
-  { term: "Battery Life", definition: "Car batteries typically last 3-5 years. Hot climates shorten lifespan.", category: "maintenance", tip: "Have battery tested annually after year 3." },
-  { term: "Check Engine Light", definition: "Dashboard indicator for engine or emissions issues. Requires diagnostic scan to identify.", category: "maintenance", tip: "Auto parts stores will scan codes for free." },
-  
-  // Vehicle Features
-  { term: "AWD", definition: "All-Wheel Drive - power goes to all four wheels automatically. Good for varied conditions.", category: "features", tip: "AWD adds cost and reduces fuel economy - consider if you need it." },
-  { term: "4WD", definition: "Four-Wheel Drive - selectable system for off-road or severe weather. Common on trucks/SUVs.", category: "features", tip: "4WD is for off-road; AWD is better for daily driving in weather." },
-  { term: "FWD", definition: "Front-Wheel Drive - power goes to front wheels only. Most efficient and affordable.", category: "features", tip: "FWD with good tires handles well in most conditions." },
-  { term: "RWD", definition: "Rear-Wheel Drive - power goes to rear wheels. Better for performance but worse in snow.", category: "features", tip: "RWD cars need extra caution (and weight) in winter conditions." },
-  { term: "CVT", definition: "Continuously Variable Transmission - seamless gear changes. More fuel efficient but different feel.", category: "features", tip: "CVTs are reliable in most brands - avoid early Nissan CVTs." },
-  { term: "DSG", definition: "Direct-Shift Gearbox - an automated manual transmission. Quick shifts but can be expensive to repair.", category: "features", tip: "DSGs need fluid changes every 40k miles - factor this in." },
-  { term: "Turbocharger", definition: "A device that increases engine power using exhaust gases. More power from smaller engines.", category: "features", tip: "Turbos require premium fuel and more maintenance in some cars." },
-  { term: "Supercharger", definition: "An engine-driven compressor that increases power. Instant response but reduces fuel economy.", category: "features", tip: "Superchargers are mechanically simpler than turbos." },
-  { term: "Adaptive Cruise Control", definition: "Cruise control that automatically adjusts speed based on traffic ahead.", category: "features", tip: "One of the most useful driver assistance features available." },
-  { term: "Lane Keep Assist", definition: "A system that helps keep the vehicle centered in its lane.", category: "features", tip: "Helpful but not a substitute for attentive driving." },
-  { term: "Blind Spot Monitoring", definition: "Sensors that alert you to vehicles in your blind spot. Reduces lane-change accidents.", category: "features", tip: "One of the most valuable safety features - highly recommended." },
-  { term: "Automatic Emergency Braking", definition: "System that automatically applies brakes if a collision is imminent.", category: "features", tip: "Now standard on most new vehicles - don't buy without it." },
-  { term: "Apple CarPlay", definition: "System allowing iPhone integration with car's display for maps, music, and messaging.", category: "features", tip: "Check wireless vs wired CarPlay - wireless is more convenient." },
-  { term: "Android Auto", definition: "Google's system for Android phone integration with car displays.", category: "features", tip: "Similar to CarPlay - choose based on your phone preference." },
-  { term: "Heads-Up Display", definition: "Projects speed and navigation info onto the windshield. Reduces eyes-off-road time.", category: "features", tip: "Once you try HUD, you'll miss it in cars without it." },
-  { term: "Panoramic Sunroof", definition: "A large glass roof panel, often extending over rear seats. Adds openness but weight and leak risk.", category: "features", tip: "Pano roofs can develop leaks - check used car headliners for stains." },
-  { term: "Run-Flat Tires", definition: "Tires that can drive short distances after puncture. Eliminates spare tire but ride is harsher.", category: "features", tip: "Run-flats cost more to replace and can't always be repaired." },
-  { term: "Towing Capacity", definition: "Maximum weight a vehicle can safely pull. Exceeding it is dangerous and voids warranty.", category: "features", tip: "Include trailer tongue weight in your calculations." },
-  { term: "Payload Capacity", definition: "Maximum weight that can be carried inside or in the bed of a vehicle.", category: "features", tip: "Passengers + cargo + tongue weight must stay under payload limit." },
-  { term: "Ground Clearance", definition: "Distance between the lowest point of the vehicle and the ground. Important for off-road.", category: "features", tip: "Higher clearance helps with snow and rough roads but hurts fuel economy." },
-];
 
 export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("copilot");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
   
@@ -358,19 +164,6 @@ export default function DealRoom() {
       console.error("Failed to sync extracted deal:", e);
     }
   }, []); // Run only on mount
-
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-  const filteredTerms = glossaryTerms
-    .filter((item) => {
-      const matchesSearch = 
-        item.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.definition.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-      const matchesLetter = !selectedLetter || item.term.toUpperCase().startsWith(selectedLetter);
-      return matchesSearch && matchesCategory && matchesLetter;
-    })
-    .sort((a, b) => a.term.localeCompare(b.term));
 
   const handleInputChange = (field: string, value: string) => {
     setDealData((prev) => ({ ...prev, [field]: value }));
@@ -1297,10 +1090,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               <MessageCircle className="h-4 w-4" />
               <span className="hidden sm:inline">What To Say</span>
             </TabsTrigger>
-            <TabsTrigger value="glossary" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Glossary</span>
-            </TabsTrigger>
             <TabsTrigger value="overview" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -1621,9 +1410,11 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                       </div>
                     </div>
                     <div className="flex items-center gap-4 pt-2">
-                      <Button variant="outline" size="sm" onClick={() => setActiveTab("glossary")}>
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        View Full Glossary
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/glossary">
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          View Full Glossary
+                        </Link>
                       </Button>
                       <p className="text-xs text-muted-foreground">
                         Tap any <span className="inline-flex items-center"><HelpCircle className="h-3 w-3 mx-0.5" /></span> icon for quick definitions
@@ -1698,7 +1489,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           <TermTooltip 
                             term="Deal Price Gap (DPG)" 
                             definition="The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal; a positive gap means you're paying above market value."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </p>
                         <p className={`text-2xl font-bold ${
@@ -1730,7 +1520,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           <TermTooltip 
                             term="Customer Max Safe Price (CMSP)" 
                             definition="The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </p>
                         <p className="text-2xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
@@ -1761,7 +1550,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           <TermTooltip 
                             term="Customer Fit Gap (CFG)" 
                             definition="The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </p>
                         <p className={`text-2xl font-bold ${
@@ -1806,7 +1594,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                         <TermTooltip 
                           term="Interest Ratio" 
                           definition="The percentage of your total loan payments that goes toward interest rather than principal. A higher ratio means you're paying more for the privilege of borrowing."
-                          onGlossaryClick={() => setActiveTab("glossary")}
                         />
                       </p>
                     </div>
@@ -1824,7 +1611,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           <TermTooltip 
                             term="Payment Burden" 
                             definition="The percentage of your monthly income that goes toward your car payment. Financial experts recommend keeping this under 12% to maintain healthy finances."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </span>
                         <span className={`text-lg font-bold ${
@@ -1843,7 +1629,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           <TermTooltip 
                             term="Total Operating Cost" 
                             definition="The total percentage of your monthly income spent on all car-related expenses: payment, insurance, fuel, and maintenance. Financial experts recommend keeping this under 20% of your income."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </span>
                         <span className={`text-lg font-bold ${
@@ -1873,7 +1658,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   taxes={parseNumber(dealData.taxes)}
                   registration={parseNumber(dealData.registration)}
                   askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
-                  onGlossaryClick={() => setActiveTab("glossary")}
                 />
 
                 {/* View Full Score Button */}
@@ -2229,7 +2013,6 @@ TTL & fees $2,800`}
                 taxes={parseNumber(dealData.taxes)}
                 registration={parseNumber(dealData.registration)}
                 askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
-                onGlossaryClick={() => setActiveTab("glossary")}
                 onFeeContextChange={setFeeContext}
               />
               
@@ -2239,128 +2022,6 @@ TTL & fees $2,800`}
                 scoreResult={scoreResult}
                 feeContext={feeContext || undefined}
               />
-            </div>
-          </TabsContent>
-
-          {/* GLOSSARY TAB */}
-          <TabsContent value="glossary" className="animate-fade-in">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-foreground mb-2">Learn the Lingo</h2>
-                <p className="text-muted-foreground">Master car-buying terminology to negotiate like a pro</p>
-              </div>
-
-              {/* Search and Filter */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search terms, definitions, or tips..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {glossaryCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Category Pills */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {glossaryCategories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      selectedCategory === cat.id
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* A-Z Letter Filter */}
-              <div className="flex flex-wrap gap-1 mb-6 p-3 rounded-xl bg-muted/50 border border-border">
-                <button
-                  onClick={() => setSelectedLetter(null)}
-                  className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
-                    selectedLetter === null
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-background text-muted-foreground hover:bg-background/80 hover:text-foreground"
-                  }`}
-                >
-                  All
-                </button>
-                {alphabet.map((letter) => {
-                  const hasTerms = glossaryTerms.some(t => t.term.toUpperCase().startsWith(letter));
-                  return (
-                    <button
-                      key={letter}
-                      onClick={() => setSelectedLetter(letter)}
-                      disabled={!hasTerms}
-                      className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
-                        selectedLetter === letter
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : hasTerms
-                            ? "bg-background text-muted-foreground hover:bg-background/80 hover:text-foreground"
-                            : "bg-background/50 text-muted-foreground/30 cursor-not-allowed"
-                      }`}
-                    >
-                      {letter}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Results Count */}
-              <p className="text-sm text-muted-foreground mb-4">
-                Showing {filteredTerms.length} of {glossaryTerms.length} terms
-              </p>
-
-              {/* Terms Grid */}
-              <div className="grid md:grid-cols-2 gap-4">
-                {filteredTerms.map((item) => (
-                  <div 
-                    key={item.term} 
-                    className="p-5 rounded-2xl bg-card border border-border shadow-card hover:shadow-elevated transition-shadow"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-bold text-foreground text-lg">{item.term}</h3>
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground capitalize whitespace-nowrap">
-                        {glossaryCategories.find(c => c.id === item.category)?.label || item.category}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">{item.definition}</p>
-                    {item.tip && (
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                        <span className="text-primary font-bold text-xs mt-0.5">TIP</span>
-                        <p className="text-xs text-foreground">{item.tip}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {filteredTerms.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No terms found matching your search.</p>
-                  <Button variant="ghost" className="mt-2" onClick={() => { setSearchTerm(""); setSelectedCategory("all"); setSelectedLetter(null); }}>
-                    Clear filters
-                  </Button>
-                </div>
-              )}
             </div>
           </TabsContent>
 
@@ -2446,7 +2107,6 @@ TTL & fees $2,800`}
                           <TermTooltip 
                             term="True Market Price (TMP)" 
                             definition="The estimated fair market value of a vehicle based on its year, mileage, condition, and comparable sales data. This is what the car is actually worth, not what the dealer is asking."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </span>
                       </div>
@@ -2473,7 +2133,6 @@ TTL & fees $2,800`}
                           <TermTooltip 
                             term="Deal Price Gap (DPG)" 
                             definition="The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal; a positive gap means you're paying above market value."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </span>
                       </div>
@@ -2507,7 +2166,6 @@ TTL & fees $2,800`}
                           <TermTooltip 
                             term="Customer Max Safe Price (CMSP)" 
                             definition="The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </span>
                       </div>
@@ -2534,7 +2192,6 @@ TTL & fees $2,800`}
                           <TermTooltip 
                             term="Customer Fit Gap (CFG)" 
                             definition="The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit."
-                            onGlossaryClick={() => setActiveTab("glossary")}
                           />
                         </span>
                       </div>

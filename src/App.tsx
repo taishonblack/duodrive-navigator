@@ -10,6 +10,7 @@ import DealComparison from "./pages/DealComparison";
 import DuoDriveScore from "./pages/DuoDriveScore";
 import DealRoom from "./pages/DealRoom";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
+import Glossary from "./pages/Glossary";
 import Coaching from "./pages/Coaching";
 import CoachingChat from "./pages/CoachingChat";
 import ChatHistory from "./pages/ChatHistory";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/score" element={<DuoDriveScore />} />
             <Route path="/deal-room" element={<DealRoom />} />
             <Route path="/why-duodrive" element={<WhyDuoDrive />} />
+            <Route path="/glossary" element={<Glossary />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             {/* Coaching routes hidden but preserved for potential $49 escalation feature */}

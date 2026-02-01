@@ -46,7 +46,6 @@ interface FeeBreakdownProps {
   registration: number;
   askingPrice: number;
   className?: string;
-  onGlossaryClick?: () => void;
   onFeeContextChange?: (context: FeeContext) => void;
 }
 
@@ -109,7 +108,6 @@ export function FeeBreakdown({
   registration,
   askingPrice,
   className,
-  onGlossaryClick,
   onFeeContextChange,
 }: FeeBreakdownProps) {
   const result = useMemo((): FeeBreakdownResult => {
@@ -326,7 +324,6 @@ export function FeeBreakdown({
               <TermTooltip
                 term="Fee Analysis"
                 definition="Breakdown of all fees into three categories: Legit (required by law), Negotiable (can be reduced), and Junk (should be removed)."
-                onGlossaryClick={onGlossaryClick}
               />
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">

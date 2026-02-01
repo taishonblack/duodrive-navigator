@@ -1,4 +1,5 @@
 import { HelpCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +15,16 @@ interface TermTooltipProps {
 }
 
 export function TermTooltip({ term, definition, onGlossaryClick }: TermTooltipProps) {
+  const navigate = useNavigate();
+
+  const handleGlossaryClick = () => {
+    if (onGlossaryClick) {
+      onGlossaryClick();
+    } else {
+      navigate("/glossary");
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={100}>
       <Tooltip>
@@ -32,19 +43,17 @@ export function TermTooltip({ term, definition, onGlossaryClick }: TermTooltipPr
         >
           <p className="text-sm font-medium mb-1">{term}</p>
           <p className="text-xs text-muted-foreground mb-2">{definition}</p>
-          {onGlossaryClick && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0 text-xs text-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                onGlossaryClick();
-              }}
-            >
-              View in Glossary →
-            </Button>
-          )}
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-xs text-primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGlossaryClick();
+            }}
+          >
+            View in Glossary →
+          </Button>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

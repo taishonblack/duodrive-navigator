@@ -13,9 +13,8 @@ import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare } from "lucide-react";
 import { TermTooltip } from "@/components/TermTooltip";
-import { CoachSchedulingForm } from "@/components/CoachSchedulingForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCopilotChat, ChatMessage } from "@/hooks/useCopilotChat";
@@ -2558,9 +2557,18 @@ TTL & fees $2,800`}
                   </div>
                 </div>
 
-                {/* Coach Scheduling */}
-                <div className="lg:col-span-3">
-                  <CoachSchedulingForm />
+                {/* Export / Share section instead of coaching */}
+                <div className="lg:col-span-3 p-6 rounded-2xl bg-muted/50 border border-border">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Ready to Negotiate?</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Use the AI Copilot to get personalized negotiation scripts based on your deal analysis.
+                    </p>
+                    <Button onClick={() => setActiveTab("copilot")}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Get Negotiation Scripts
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

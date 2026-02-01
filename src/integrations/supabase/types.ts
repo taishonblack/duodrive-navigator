@@ -544,6 +544,47 @@ export type Database = {
           },
         ]
       }
+      deal_entitlements: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          status: string
+          stripe_payment_intent_id: string | null
+          unlocked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          unlocked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          unlocked_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_entitlements_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           add_ons: string | null

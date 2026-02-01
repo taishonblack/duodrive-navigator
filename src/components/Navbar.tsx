@@ -11,6 +11,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/deal-room", label: "Analyze Deal" },
+  { href: "/glossary", label: "Glossary" },
   { href: "/score", label: "How It Works" },
   { href: "/why-duodrive", label: "Why DuoDrive" },
 ];

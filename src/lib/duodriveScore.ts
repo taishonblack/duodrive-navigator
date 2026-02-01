@@ -34,6 +34,8 @@ export interface DealInput {
   estimatedMarketValue?: number;
 }
 
+export type AffordabilityStatus = 'fits_budget' | 'stretch_warning' | 'outside_budget' | 'blocked';
+
 export interface ScoreResult {
   overall: number;
   pillars: {
@@ -62,6 +64,10 @@ export interface ScoreResult {
   paymentBurdenPercent: number;
   operatingCostBurden: number;
   totalMonthlyCost: number;
+  
+  // V4 Affordability Rules A-D
+  priceToIncomeRatio: number;
+  affordabilityStatus: AffordabilityStatus;
   
   // V4 Sanity flags
   sanityFlags: string[];
@@ -172,27 +178,55 @@ export function computeDPG(askingPrice: number, TMP: number): {
 }
 
 // V4 FORMULA 4: Customer Max Safety Price (CMSP)
-// Based on 12% of take-home income rule
-export function computeCMSP(monthlyIncome: number, termMonths: number = 60): number {
-  const maxMonthlyPayment = monthlyIncome * 0.12;
-  return maxMonthlyPayment * termMonths; // 5-year equivalent
+// CORRECTED FORMULA:
+// Max Monthly Payment = Gross Monthly Income × 0.12 (12% rule)
+// Loan Amount = Max Monthly Payment / LoanFactor(APR, Term)
+// CMSP = Loan Amount + Down Payment
+//
+// This gives the actual max vehicle price, NOT an inflated number.
+function calculateLoanFactor(apr: number, termMonths: number): number {
+  if (apr === 0) return 1 / termMonths;
+  const monthlyRate = apr / 100 / 12;
+  return (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
+         (Math.pow(1 + monthlyRate, termMonths) - 1);
+}
+
+export function computeCMSP(
+  monthlyIncome: number, 
+  downPayment: number = 0,
+  apr: number = 7,
+  termMonths: number = 60
+): number {
+  const maxMonthlyPayment = monthlyIncome * 0.12; // 12% of gross monthly income
+  const loanFactor = calculateLoanFactor(apr, termMonths);
+  const maxLoanAmount = loanFactor > 0 ? maxMonthlyPayment / loanFactor : 0;
+  const cmsp = maxLoanAmount + downPayment;
+  return Math.round(cmsp);
 }
 
 // V4 FORMULA 5: Customer Fit Gap (CFG)
+// CORRECTED FORMULA:
+// CFG = CMSP - Actual Vehicle Price (plain dollars)
+// CFG < 0 → Outside Budget
+// CFG > 0 → Fits Budget
 export function computeCFG(askingPrice: number, CMSP: number): {
   gap: number;
   gapPercent: number;
   score: number;
 } {
-  const gap = askingPrice - CMSP;
+  // CFG is CMSP minus price (positive = under budget, negative = over budget)
+  const gap = CMSP - askingPrice;
+  // For display, show how much over/under budget as percent of CMSP
   const gapPercent = CMSP > 0 ? ((askingPrice - CMSP) / CMSP) * 100 : 999;
 
+  // Score based on how well the price fits within CMSP
   let score: number;
-  if (askingPrice <= CMSP) score = 90;
-  else if (askingPrice <= CMSP * 1.2) score = 70;
-  else if (askingPrice <= CMSP * 1.5) score = 40;
-  else if (askingPrice <= CMSP * 2.0) score = 20;
-  else score = 5; // Financially unsafe
+  if (askingPrice <= CMSP * 0.8) score = 95;  // Well under budget - great
+  else if (askingPrice <= CMSP) score = 85;   // Under or at budget - good
+  else if (askingPrice <= CMSP * 1.1) score = 65; // Slightly over - caution
+  else if (askingPrice <= CMSP * 1.3) score = 40; // Moderately over - warning
+  else if (askingPrice <= CMSP * 1.5) score = 20; // Significantly over - danger
+  else score = 5; // Way over budget - blocked
 
   return { gap, gapPercent, score };
 }
@@ -377,6 +411,7 @@ function calcDealHealth(
 }
 
 // V4 Affordability score - uses CFG, interest, and down payment
+// Now incorporates Rules A-D from the affordability spec
 function calcAffordability(
   cfgScore: number,
   interestScore: number,
@@ -384,27 +419,70 @@ function calcAffordability(
   monthlyPayment: number,
   totalMonthlyCost: number,
   monthlyIncome: number,
-  cfgPercent: number
+  cfgPercent: number,
+  askingPrice: number,
+  annualIncome: number
 ): PillarResult {
   const paymentBurden = (monthlyPayment / monthlyIncome) * 100;
   const totalBurden = (totalMonthlyCost / monthlyIncome) * 100;
+  const priceToIncomeRatio = (askingPrice / annualIncome) * 100;
   
-  // V4 Final Affordability Weighting:
-  // CFG: 40%, Interest: 30%, Down Payment: 30%
-  const score = Math.round(
+  // Rule penalties
+  let rulePenalty = 0;
+  const violations: string[] = [];
+  
+  // Rule A: Price-to-Income (recommended max 50-60%, hard stop at 70%)
+  if (priceToIncomeRatio > 70) {
+    rulePenalty += 40; // Severe penalty
+    violations.push(`price is ${priceToIncomeRatio.toFixed(0)}% of annual income (max: 60%)`);
+  } else if (priceToIncomeRatio > 60) {
+    rulePenalty += 20;
+    violations.push(`price is ${priceToIncomeRatio.toFixed(0)}% of annual income`);
+  }
+  
+  // Rule B: Monthly Payment Burden (target ≤12%, warning 12-15%, unsafe >15%)
+  if (paymentBurden > 15) {
+    rulePenalty += 25;
+    violations.push(`payment is ${paymentBurden.toFixed(0)}% of monthly income (max: 12%)`);
+  } else if (paymentBurden > 12) {
+    rulePenalty += 10;
+  }
+  
+  // Rule C: Total Transportation Burden (target ≤20%)
+  if (totalBurden > 25) {
+    rulePenalty += 20;
+    violations.push(`total costs are ${totalBurden.toFixed(0)}% of income`);
+  } else if (totalBurden > 20) {
+    rulePenalty += 10;
+  }
+  
+  // Base score from CFG, interest, down payment
+  let baseScore = Math.round(
     cfgScore * 0.40 +
     interestScore * 0.30 +
     downPaymentScore * 0.30
   );
   
+  // Apply rule penalties
+  const score = Math.max(5, baseScore - rulePenalty);
+  
+  // Generate details message based on violations
   let details = "";
-  if (cfgScore <= 5) details = `DANGER: This car is far above your safe buying range. It could severely strain your finances.`;
-  else if (cfgScore <= 20) details = `This car is ${cfgPercent.toFixed(0)}% above your maximum safe budget. Consider a much less expensive option.`;
-  else if (cfgScore < 40) details = `This car exceeds your safe budget significantly. Consider a less expensive option.`;
-  else if (totalBurden > 25) details = `Total car costs (${totalBurden.toFixed(0)}% of income) are dangerously high.`;
-  else if (paymentBurden > 15) details = `Payment alone is ${paymentBurden.toFixed(0)}% of income. This is higher than recommended.`;
-  else if (score >= 80) details = `Car fits comfortably within your budget. Total cost is ${totalBurden.toFixed(0)}% of income.`;
-  else details = `At ${totalBurden.toFixed(0)}% of income, this is manageable but be mindful of other expenses.`;
+  if (violations.length > 0) {
+    if (priceToIncomeRatio > 70) {
+      details = `This vehicle may be outside a comfortable budget range. The ${violations[0]} which is significantly higher than recommended.`;
+    } else if (violations.length >= 2) {
+      details = `Multiple affordability concerns: ${violations.join("; ")}. Consider a less expensive option.`;
+    } else {
+      details = `Affordability concern: ${violations[0]}. This may strain your finances.`;
+    }
+  } else if (score >= 80) {
+    details = `Car fits comfortably within your budget. Total cost is ${totalBurden.toFixed(0)}% of income.`;
+  } else if (score >= 60) {
+    details = `At ${totalBurden.toFixed(0)}% of income, this is manageable but be mindful of other expenses.`;
+  } else {
+    details = `This car exceeds recommended affordability thresholds. Consider alternatives.`;
+  }
   
   return { score, details };
 }
@@ -462,8 +540,9 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
   // V4: Calculate DPG (Deal Price Gap)
   const dpg = computeDPG(askingPrice, trueMarketPrice);
   
-  // V4: Calculate CMSP and CFG
-  const customerMaxSafePrice = computeCMSP(input.monthlyIncome, input.term);
+  // V4: Calculate CMSP and CFG with CORRECTED formula
+  // CMSP now uses: maxPayment / loanFactor + downPayment (gives actual max price, not inflated)
+  const customerMaxSafePrice = computeCMSP(input.monthlyIncome, input.downPayment, input.apr, input.term);
   const cfg = computeCFG(askingPrice, customerMaxSafePrice);
   
   // Calculate loan details
@@ -502,7 +581,7 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
     dpg.gapPercent
   );
   
-  // V4: Updated affordability using CFG, interest, and down payment
+  // V4: Updated affordability using CFG, interest, down payment, and Rules A-D
   const affordability = calcAffordability(
     cfg.score,
     loanImpact.interestScore,
@@ -510,7 +589,9 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
     monthlyPayment,
     totalMonthlyCost,
     input.monthlyIncome,
-    cfg.gapPercent
+    cfg.gapPercent,
+    askingPrice,
+    input.monthlyIncome * 12 // annual income
   );
   
   const pillars = {
@@ -520,6 +601,24 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
     dealHealth,
     affordability,
   };
+  
+  // Calculate price-to-income ratio for Rules A-D
+  const annualIncome = input.monthlyIncome * 12;
+  const priceToIncomeRatio = annualIncome > 0 ? (askingPrice / annualIncome) * 100 : 999;
+  
+  // Determine affordability status based on Rules A-D
+  function determineAffordabilityStatus(): AffordabilityStatus {
+    // Rule A violation (price > 70% of annual income) = blocked
+    if (priceToIncomeRatio > 70) return 'blocked';
+    // Price > 60% or CFG negative by more than 15% = outside budget
+    if (priceToIncomeRatio > 60 || cfg.gapPercent > 15) return 'outside_budget';
+    // Payment burden > 15% or CFG negative = stretch warning
+    if (paymentBurdenPercent > 15 || cfg.gap < 0) return 'stretch_warning';
+    // All good
+    return 'fits_budget';
+  }
+  
+  const affordabilityStatus = determineAffordabilityStatus();
   
   // V4: If sanity checks failed, override score
   if (sanity.autoFail) {
@@ -547,6 +646,8 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
       paymentBurdenPercent: Math.round(paymentBurdenPercent * 10) / 10,
       operatingCostBurden: Math.round(operatingCostBurden * 10) / 10,
       totalMonthlyCost: Math.round(totalMonthlyCost),
+      priceToIncomeRatio: Math.round(priceToIncomeRatio * 10) / 10,
+      affordabilityStatus: 'blocked',
       sanityFlags: sanity.errors,
       autoFail: true,
     };
@@ -582,6 +683,8 @@ export function calculateDuoDriveScore(input: DealInput): ScoreResult {
     paymentBurdenPercent: Math.round(paymentBurdenPercent * 10) / 10,
     operatingCostBurden: Math.round(operatingCostBurden * 10) / 10,
     totalMonthlyCost: Math.round(totalMonthlyCost),
+    priceToIncomeRatio: Math.round(priceToIncomeRatio * 10) / 10,
+    affordabilityStatus,
     sanityFlags: sanity.errors,
     autoFail: false,
   };

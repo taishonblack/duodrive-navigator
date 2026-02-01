@@ -16,6 +16,7 @@ import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle } from "lucide-react";
 import { WhatToSayNext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
+import { FeeBreakdown } from "@/components/FeeBreakdown";
 import { TermTooltip } from "@/components/TermTooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -1862,6 +1863,17 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     </div>
                   </div>
                 </div>
+
+                {/* Fee Breakdown Analysis */}
+                <FeeBreakdown
+                  docFee={parseNumber(dealData.docFee)}
+                  dealerFee={parseNumber(dealData.dealerFee)}
+                  addOns={parseNumber(dealData.addOns)}
+                  taxes={parseNumber(dealData.taxes)}
+                  registration={parseNumber(dealData.registration)}
+                  askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
+                  onGlossaryClick={() => setActiveTab("glossary")}
+                />
 
                 {/* View Full Score Button */}
                 <div className="text-center">

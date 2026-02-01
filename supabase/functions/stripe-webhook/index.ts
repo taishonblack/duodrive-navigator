@@ -37,6 +37,37 @@ const sendPaymentNotification = async (
   }
 };
 
+// Helper to send deal unlock confirmation email
+const sendDealUnlockEmail = async (
+  supabaseUrl: string,
+  supabaseKey: string,
+  dealId: string,
+  userEmail: string,
+  dealName: string,
+  paymentIntentId: string,
+  amount: number
+) => {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-deal-unlock-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ dealId, userEmail, dealName, paymentIntentId, amount }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      logStep("Failed to send deal unlock email", { error: errorText });
+    } else {
+      logStep("Deal unlock email sent", { dealId, userEmail });
+    }
+  } catch (error) {
+    logStep("Error sending deal unlock email", { error: String(error) });
+  }
+};
+
 serve(async (req) => {
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -93,6 +124,13 @@ serve(async (req) => {
         if (dealId && paymentType === "deal_analysis") {
           logStep("Processing deal analysis unlock", { dealId });
           
+          // Get deal and user info for email
+          const { data: dealData } = await supabaseClient
+            .from("deals")
+            .select("id, name, year, make, model, user_id")
+            .eq("id", dealId)
+            .single();
+          
           const { error } = await supabaseClient
             .from("deal_entitlements")
             .update({
@@ -106,6 +144,32 @@ serve(async (req) => {
             logStep("Failed to unlock deal entitlement", { error: error.message });
           } else {
             logStep("Deal entitlement unlocked", { dealId });
+            
+            // Send confirmation email
+            if (dealData) {
+              // Get user email from profiles
+              const { data: profileData } = await supabaseClient
+                .from("profiles")
+                .select("email")
+                .eq("id", dealData.user_id)
+                .single();
+              
+              if (profileData?.email) {
+                const dealName = dealData.name !== "Untitled Deal" 
+                  ? dealData.name 
+                  : [dealData.year, dealData.make, dealData.model].filter(Boolean).join(" ") || "Your Deal";
+                
+                await sendDealUnlockEmail(
+                  Deno.env.get("SUPABASE_URL") ?? "",
+                  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+                  dealId,
+                  profileData.email,
+                  dealName,
+                  session.payment_intent as string,
+                  session.amount_total ?? 999
+                );
+              }
+            }
           }
           break;
         }

@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Car, ExternalLink, CheckCircle2, Lock, Calendar, Receipt } from "lucide-react";
+import { Loader2, Car, ExternalLink, CheckCircle2, Lock, Calendar, Receipt, Download } from "lucide-react";
 import { format } from "date-fns";
+import { generateDealReceipt } from "@/lib/receiptPdfExport";
 
 interface DealEntitlement {
   id: string;
@@ -88,6 +89,17 @@ export const UnlockedDeals = () => {
     return vehicleInfo || "Untitled Deal";
   };
 
+  const handleDownloadReceipt = (entitlement: DealEntitlement) => {
+    if (!entitlement.stripe_payment_intent_id || !entitlement.unlocked_at) return;
+    
+    generateDealReceipt({
+      paymentIntentId: entitlement.stripe_payment_intent_id,
+      dealName: getDealDisplayName(entitlement),
+      unlockedAt: entitlement.unlocked_at,
+      amount: 9.99,
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-4">
@@ -155,12 +167,24 @@ export const UnlockedDeals = () => {
                   )}
                 </div>
               </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to={`/deal-room?dealId=${entitlement.deal_id}`}>
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  View
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                {entitlement.stripe_payment_intent_id && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleDownloadReceipt(entitlement)}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Receipt
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to={`/deal-room?dealId=${entitlement.deal_id}`}>
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    View
+                  </Link>
+                </Button>
+              </div>
             </div>
           ))}
         </div>

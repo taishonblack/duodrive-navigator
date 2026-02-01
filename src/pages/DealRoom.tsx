@@ -14,7 +14,7 @@ import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Search, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle } from "lucide-react";
-import { WhatToSayNext } from "@/components/WhatToSayNext";
+import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
 import { FeeBreakdown } from "@/components/FeeBreakdown";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -247,6 +247,7 @@ export default function DealRoom() {
   const [dealTextInput, setDealTextInput] = useState("");
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [isSmartFilling, setIsSmartFilling] = useState(false);
+  const [feeContext, setFeeContext] = useState<FeeContext | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(() => {
     try {
       const saved = localStorage.getItem(SIDE_PANEL_KEY);
@@ -2229,12 +2230,14 @@ TTL & fees $2,800`}
                 registration={parseNumber(dealData.registration)}
                 askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
                 onGlossaryClick={() => setActiveTab("glossary")}
+                onFeeContextChange={setFeeContext}
               />
               
               {/* Negotiation Scripts */}
               <WhatToSayNext 
                 dealData={dealData} 
-                scoreResult={scoreResult} 
+                scoreResult={scoreResult}
+                feeContext={feeContext || undefined}
               />
             </div>
           </TabsContent>

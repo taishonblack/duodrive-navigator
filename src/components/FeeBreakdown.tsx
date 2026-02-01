@@ -1,8 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ScoreRing } from "@/components/ScoreRing";
 import { 
   CheckCircle2, 
@@ -11,10 +10,10 @@ import {
   DollarSign,
   ShieldCheck,
   Scale,
-  Trash2,
   HelpCircle
 } from "lucide-react";
 import { TermTooltip } from "@/components/TermTooltip";
+import type { FeeContext } from "@/components/WhatToSayNext";
 
 type FeeCategory = "legit" | "negotiable" | "junk";
 
@@ -26,6 +25,19 @@ interface FeeItem {
   tip: string;
 }
 
+export interface FeeBreakdownResult {
+  fees: FeeItem[];
+  dealScore: number;
+  totalFees: number;
+  categorySummary: {
+    legit: number;
+    negotiable: number;
+    junk: number;
+  };
+  savingsPotential: number;
+  feeContext: FeeContext;
+}
+
 interface FeeBreakdownProps {
   docFee: number;
   dealerFee: number;
@@ -35,6 +47,7 @@ interface FeeBreakdownProps {
   askingPrice: number;
   className?: string;
   onGlossaryClick?: () => void;
+  onFeeContextChange?: (context: FeeContext) => void;
 }
 
 const categoryConfig: Record<FeeCategory, { 
@@ -97,8 +110,9 @@ export function FeeBreakdown({
   askingPrice,
   className,
   onGlossaryClick,
+  onFeeContextChange,
 }: FeeBreakdownProps) {
-  const { fees, dealScore, totalFees, categorySummary, savingsPotential } = useMemo(() => {
+  const result = useMemo((): FeeBreakdownResult => {
     const feeItems: FeeItem[] = [];
     
     // Taxes - always legit
@@ -184,8 +198,11 @@ export function FeeBreakdown({
     const negotiableTotal = feeItems.filter(f => f.category === "negotiable").reduce((sum, f) => sum + f.amount, 0);
     const junkTotal = feeItems.filter(f => f.category === "junk").reduce((sum, f) => sum + f.amount, 0);
     
+    // Get fee names by category
+    const junkFees = feeItems.filter(f => f.category === "junk").map(f => f.name);
+    const negotiableFees = feeItems.filter(f => f.category === "negotiable").map(f => f.name);
+    
     // Calculate deal score based on fee breakdown
-    // Score starts at 100 and gets penalized for bad fees
     let score = 100;
     
     // Penalty for junk fees (major impact)
@@ -204,7 +221,30 @@ export function FeeBreakdown({
     score = Math.max(0, Math.min(100, Math.round(score)));
     
     // Potential savings = junk fees + 50% of negotiable fees
-    const savingsPotential = junkTotal + (negotiableTotal * 0.5);
+    const savingsPotential = Math.round(junkTotal + (negotiableTotal * 0.5));
+    
+    // Generate prebuilt negotiation script
+    let prebuiltScript: string | null = null;
+    
+    if (junkTotal > 0 || negotiableTotal > 0) {
+      const scriptParts: string[] = [];
+      
+      if (junkFees.length > 0) {
+        scriptParts.push(`I'd like to discuss some of the fees on this deal. I'm not going to pay for the ${junkFees.join(" or the ")} - these are dealer add-ons that I didn't ask for and don't need.`);
+      }
+      
+      if (negotiableFees.length > 0 && junkFees.length > 0) {
+        scriptParts.push(`I'd also like you to work on the ${negotiableFees.join(" and ")} - I've seen lower fees at other dealerships in the area.`);
+      } else if (negotiableFees.length > 0) {
+        scriptParts.push(`I'd like to discuss the ${negotiableFees.join(" and ")}. I've seen lower fees at other dealerships, and I'd like you to match that.`);
+      }
+      
+      if (savingsPotential > 0) {
+        scriptParts.push(`If we can get these fees adjusted, I'm ready to move forward today. Otherwise, I'll need to consider the other offers I'm looking at.`);
+      }
+      
+      prebuiltScript = scriptParts.join(" ");
+    }
     
     return {
       fees: feeItems,
@@ -215,9 +255,33 @@ export function FeeBreakdown({
         negotiable: negotiableTotal,
         junk: junkTotal,
       },
-      savingsPotential: Math.round(savingsPotential),
+      savingsPotential,
+      feeContext: {
+        junkFees,
+        negotiableFees,
+        junkTotal,
+        negotiableTotal,
+        savingsPotential,
+        prebuiltScript,
+      },
     };
   }, [docFee, dealerFee, addOns, taxes, registration, askingPrice]);
+  
+  const { fees, dealScore, totalFees, categorySummary, savingsPotential, feeContext } = result;
+  
+  // Track previous context to avoid infinite loops
+  const prevContextRef = useRef<string>("");
+  
+  // Call the callback with fee context when it changes
+  useEffect(() => {
+    if (onFeeContextChange) {
+      const contextString = JSON.stringify(feeContext);
+      if (contextString !== prevContextRef.current) {
+        prevContextRef.current = contextString;
+        onFeeContextChange(feeContext);
+      }
+    }
+  }, [feeContext, onFeeContextChange]);
   
   const getScoreLabel = (score: number): string => {
     if (score >= 80) return "Clean Fee Structure";

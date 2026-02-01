@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, DollarSign, XCircle, Percent, LogOut, Copy, Check, Sparkles } from "lucide-react";
+import { Loader2, DollarSign, XCircle, Percent, LogOut, Copy, Check, Sparkles, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DealData {
@@ -28,9 +28,19 @@ interface ScoreResult {
   recommendation: string;
 }
 
+export interface FeeContext {
+  junkFees: string[];
+  negotiableFees: string[];
+  junkTotal: number;
+  negotiableTotal: number;
+  savingsPotential: number;
+  prebuiltScript: string | null;
+}
+
 interface WhatToSayNextProps {
   dealData: DealData;
   scoreResult: ScoreResult | null;
+  feeContext?: FeeContext;
 }
 
 type ScriptType = "counter" | "fees" | "buyrate" | "walkaway";
@@ -40,6 +50,7 @@ interface GeneratedScript {
   title: string;
   script: string;
   tips: string[];
+  isPrebuilt?: boolean;
 }
 
 const scriptOptions = [
@@ -81,7 +92,7 @@ const scriptOptions = [
   },
 ];
 
-export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
+export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNextProps) {
   const [loadingType, setLoadingType] = useState<ScriptType | null>(null);
   const [generatedScript, setGeneratedScript] = useState<GeneratedScript | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -92,6 +103,35 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
     .join(" ");
 
   const hasMinimumData = dealData.year && dealData.make && dealData.askingPrice;
+  
+  // Check if we have junk/negotiable fees from FeeBreakdown
+  const hasFeeIssues = feeContext && (feeContext.junkTotal > 0 || feeContext.negotiableTotal > 0);
+
+  // Auto-show fee script if we have prebuilt content from FeeBreakdown
+  useEffect(() => {
+    if (feeContext?.prebuiltScript && !generatedScript) {
+      const tips = [];
+      if (feeContext.junkFees.length > 0) {
+        tips.push(`Junk fees to remove: ${feeContext.junkFees.join(", ")}`);
+      }
+      if (feeContext.negotiableFees.length > 0) {
+        tips.push(`Fees to negotiate: ${feeContext.negotiableFees.join(", ")}`);
+      }
+      if (feeContext.savingsPotential > 0) {
+        tips.push(`Potential savings: $${feeContext.savingsPotential.toLocaleString()}`);
+      }
+      tips.push("Stay calm and polite - firmness works better than aggression");
+      tips.push("If they refuse, ask to speak with the sales manager");
+      
+      setGeneratedScript({
+        type: "fees",
+        title: "Remove Fees",
+        script: feeContext.prebuiltScript,
+        tips,
+        isPrebuilt: true,
+      });
+    }
+  }, [feeContext?.prebuiltScript]);
 
   const generateScript = async (type: ScriptType) => {
     if (!hasMinimumData) {
@@ -99,6 +139,37 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
         title: "More info needed",
         description: "Please add at least Year, Make, and Asking Price in 'The Deal' tab first.",
         variant: "destructive",
+      });
+      return;
+    }
+
+    // For fees, if we have prebuilt context, enhance the request
+    if (type === "fees" && feeContext?.prebuiltScript) {
+      // Use prebuilt script from FeeBreakdown
+      const tips = [];
+      if (feeContext.junkFees.length > 0) {
+        tips.push(`Junk fees to remove: ${feeContext.junkFees.join(", ")}`);
+      }
+      if (feeContext.negotiableFees.length > 0) {
+        tips.push(`Fees to negotiate: ${feeContext.negotiableFees.join(", ")}`);
+      }
+      if (feeContext.savingsPotential > 0) {
+        tips.push(`Potential savings: $${feeContext.savingsPotential.toLocaleString()}`);
+      }
+      tips.push("Stay calm and polite - firmness works better than aggression");
+      tips.push("If they refuse, ask to speak with the sales manager");
+      
+      setGeneratedScript({
+        type: "fees",
+        title: "Remove Fees",
+        script: feeContext.prebuiltScript,
+        tips,
+        isPrebuilt: true,
+      });
+      
+      toast({
+        title: "Script Ready!",
+        description: "Fee negotiation script based on your deal's fee analysis.",
       });
       return;
     }
@@ -119,6 +190,7 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
             scriptType: type,
             dealData,
             scoreResult,
+            feeContext: type === "fees" ? feeContext : undefined,
           }),
         }
       );
@@ -174,6 +246,58 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
     }
   };
 
+  const regenerateWithAI = async () => {
+    if (!generatedScript || generatedScript.type !== "fees") return;
+    
+    setLoadingType("fees");
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-negotiation-script`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            scriptType: "fees",
+            dealData,
+            scoreResult,
+            feeContext,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to regenerate script");
+      }
+
+      const data = await response.json();
+      
+      setGeneratedScript({
+        type: "fees",
+        title: "Remove Fees",
+        script: data.script,
+        tips: data.tips || [],
+        isPrebuilt: false,
+      });
+
+      toast({
+        title: "AI Script Generated!",
+        description: "Enhanced negotiation script ready.",
+      });
+    } catch (error) {
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate AI script",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingType(null);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -189,12 +313,29 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
         </p>
       </div>
 
+      {/* Fee Alert Banner - show if we have fee issues */}
+      {hasFeeIssues && !generatedScript && (
+        <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              Fee issues detected in your deal
+            </p>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+              We found ${(feeContext!.junkTotal + feeContext!.negotiableTotal).toLocaleString()} in fees that can be reduced or removed. 
+              Click "Remove Fees" below for a ready-to-use script.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Script Buttons */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {scriptOptions.map((option) => {
           const Icon = option.icon;
           const isLoading = loadingType === option.type;
           const isSelected = generatedScript?.type === option.type;
+          const hasFeeContext = option.type === "fees" && hasFeeIssues;
           
           return (
             <button
@@ -219,11 +360,21 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-foreground">{option.title}</h3>
                   <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                  {hasFeeContext && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                      Script ready from fee analysis
+                    </p>
+                  )}
                 </div>
               </div>
               {isSelected && (
                 <div className="absolute top-2 right-2">
                   <Check className={`h-4 w-4 ${option.color}`} />
+                </div>
+              )}
+              {hasFeeContext && !isSelected && (
+                <div className="absolute top-2 right-2">
+                  <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 </div>
               )}
             </button>
@@ -245,25 +396,48 @@ export function WhatToSayNext({ dealData, scoreResult }: WhatToSayNextProps) {
                   })()
                 )}
                 {generatedScript.title} Script
-              </CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={copyToClipboard}
-                className="gap-2"
-              >
-                {copiedScript ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy
-                  </>
+                {generatedScript.isPrebuilt && (
+                  <span className="text-xs font-normal text-muted-foreground ml-2">
+                    (from fee analysis)
+                  </span>
                 )}
-              </Button>
+              </CardTitle>
+              <div className="flex gap-2">
+                {generatedScript.isPrebuilt && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={regenerateWithAI}
+                    disabled={loadingType !== null}
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    {loadingType === "fees" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    Enhance with AI
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={copyToClipboard}
+                  className="gap-2"
+                >
+                  {copiedScript ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
             <CardDescription>
               Use this script when talking to the dealer

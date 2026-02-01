@@ -94,6 +94,7 @@ const scriptOptions = [
 
 export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNextProps) {
   const [loadingType, setLoadingType] = useState<ScriptType | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
   const [generatedScript, setGeneratedScript] = useState<GeneratedScript | null>(null);
   const [generatedScripts, setGeneratedScripts] = useState<Map<ScriptType, GeneratedScript>>(new Map());
   const [copiedScript, setCopiedScript] = useState(false);
@@ -290,6 +291,124 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
     }
   };
 
+  const generateAllScripts = async () => {
+    if (!hasMinimumData) {
+      toast({
+        title: "More info needed",
+        description: "Please add at least Year, Make, and Asking Price in 'The Deal' tab first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingAll(true);
+    const scriptsToGenerate: ScriptType[] = ["counter", "fees", "buyrate", "walkaway"];
+    const newScripts = new Map<ScriptType, GeneratedScript>();
+    let successCount = 0;
+
+    // Handle prebuilt fee script first if available
+    if (feeContext?.prebuiltScript) {
+      const tips = [];
+      if (feeContext.junkFees.length > 0) {
+        tips.push(`Junk fees to remove: ${feeContext.junkFees.join(", ")}`);
+      }
+      if (feeContext.negotiableFees.length > 0) {
+        tips.push(`Fees to negotiate: ${feeContext.negotiableFees.join(", ")}`);
+      }
+      if (feeContext.savingsPotential > 0) {
+        tips.push(`Potential savings: $${feeContext.savingsPotential.toLocaleString()}`);
+      }
+      tips.push("Stay calm and polite - firmness works better than aggression");
+      tips.push("If they refuse, ask to speak with the sales manager");
+      
+      newScripts.set("fees", {
+        type: "fees",
+        title: "Remove Fees",
+        script: feeContext.prebuiltScript,
+        tips,
+        isPrebuilt: true,
+      });
+      successCount++;
+    }
+
+    // Generate remaining scripts in parallel
+    const scriptsToFetch = feeContext?.prebuiltScript 
+      ? scriptsToGenerate.filter(t => t !== "fees")
+      : scriptsToGenerate;
+
+    const results = await Promise.allSettled(
+      scriptsToFetch.map(async (type) => {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-negotiation-script`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              scriptType: type,
+              dealData,
+              scoreResult,
+              feeContext: type === "fees" ? feeContext : undefined,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to generate ${type} script`);
+        }
+
+        const data = await response.json();
+        const option = scriptOptions.find(o => o.type === type);
+        
+        return {
+          type,
+          title: option?.title || "Script",
+          script: data.script,
+          tips: data.tips || [],
+        } as GeneratedScript;
+      })
+    );
+
+    // Process results
+    results.forEach((result) => {
+      if (result.status === "fulfilled") {
+        newScripts.set(result.value.type, result.value);
+        successCount++;
+      }
+    });
+
+    // Update state with all generated scripts
+    setGeneratedScripts(newScripts);
+    
+    // Show the first generated script
+    if (newScripts.size > 0) {
+      const firstScript = newScripts.get("counter") || newScripts.values().next().value;
+      setGeneratedScript(firstScript);
+    }
+
+    setLoadingAll(false);
+
+    if (successCount === scriptsToGenerate.length) {
+      toast({
+        title: "All Scripts Ready!",
+        description: `${successCount} negotiation scripts generated successfully.`,
+      });
+    } else if (successCount > 0) {
+      toast({
+        title: "Scripts Partially Generated",
+        description: `${successCount} of ${scriptsToGenerate.length} scripts generated.`,
+      });
+    } else {
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate scripts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const regenerateWithAI = async () => {
     if (!generatedScript || generatedScript.type !== "fees") return;
     
@@ -377,25 +496,28 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {scriptOptions.map((option) => {
           const Icon = option.icon;
-          const isLoading = loadingType === option.type;
+          const isLoading = loadingType === option.type || loadingAll;
           const isSelected = generatedScript?.type === option.type;
+          const hasGenerated = generatedScripts.has(option.type);
           const hasFeeContext = option.type === "fees" && hasFeeIssues;
           
           return (
             <button
               key={option.type}
               onClick={() => generateScript(option.type)}
-              disabled={loadingType !== null}
+              disabled={loadingType !== null || loadingAll}
               className={`relative p-5 rounded-xl border-2 transition-all duration-200 text-left group
                 ${isSelected 
                   ? `${option.borderColor} ${option.bgColor} ring-2 ring-offset-2 ring-primary/50` 
-                  : `border-border bg-card hover:${option.bgColor} hover:${option.borderColor}`}
-                ${loadingType !== null && !isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  : hasGenerated
+                    ? `${option.borderColor} ${option.bgColor}`
+                    : `border-border bg-card hover:${option.bgColor} hover:${option.borderColor}`}
+                ${(loadingType !== null || loadingAll) && !isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
               `}
             >
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${option.bgColor}`}>
-                  {isLoading ? (
+                  {loadingAll || loadingType === option.type ? (
                     <Loader2 className={`h-5 w-5 ${option.color} animate-spin`} />
                   ) : (
                     <Icon className={`h-5 w-5 ${option.color}`} />
@@ -404,7 +526,7 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-foreground">{option.title}</h3>
                   <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
-                  {hasFeeContext && (
+                  {hasFeeContext && !hasGenerated && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
                       Script ready from fee analysis
                     </p>
@@ -416,7 +538,12 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
                   <Check className={`h-4 w-4 ${option.color}`} />
                 </div>
               )}
-              {hasFeeContext && !isSelected && (
+              {hasGenerated && !isSelected && (
+                <div className="absolute top-2 right-2">
+                  <Check className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              {hasFeeContext && !isSelected && !hasGenerated && (
                 <div className="absolute top-2 right-2">
                   <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 </div>
@@ -426,9 +553,27 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
         })}
       </div>
 
-      {/* Copy All Scripts Button */}
-      {generatedScripts.size > 0 && (
-        <div className="flex justify-end">
+      {/* Generate All & Copy All Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          onClick={generateAllScripts}
+          disabled={loadingType !== null || loadingAll || !hasMinimumData}
+          className="gap-2"
+        >
+          {loadingAll ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating All Scripts...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Generate All Scripts
+            </>
+          )}
+        </Button>
+        
+        {generatedScripts.size > 0 && (
           <Button
             variant="outline"
             size="sm"
@@ -447,8 +592,8 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
               </>
             )}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Generated Script Display */}
       {generatedScript && (

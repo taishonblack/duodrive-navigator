@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,7 @@ import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
 import { DealRoomCopilot } from "@/components/DealRoomCopilot";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
+import DealAnalysisPaywall from "@/components/DealAnalysisPaywall";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle } from "lucide-react";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
@@ -34,9 +35,12 @@ const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
 
 export default function DealRoom() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("copilot");
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
+  const [currentDealId, setCurrentDealId] = useState<string | null>(null);
+  const [dealEntitlementStatus, setDealEntitlementStatus] = useState<"locked" | "unlocked" | "loading">("loading");
   
   // Use shared chat hook for synced messages across all copilot areas
   const { 
@@ -63,6 +67,57 @@ export default function DealRoom() {
     }
   });
   const { toast } = useToast();
+
+  // Check for dealId and checkout status in URL params
+  useEffect(() => {
+    const dealId = searchParams.get("dealId");
+    const checkoutStatus = searchParams.get("checkout");
+    
+    if (dealId) {
+      setCurrentDealId(dealId);
+      
+      if (checkoutStatus === "success") {
+        toast({
+          title: "Payment Successful!",
+          description: "Your deal analysis has been unlocked.",
+        });
+        // Re-check entitlement after successful payment
+        checkDealEntitlement(dealId);
+      } else if (checkoutStatus === "cancelled") {
+        toast({
+          title: "Payment Cancelled",
+          description: "You can try again when you're ready.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [searchParams, toast]);
+
+  // Check deal entitlement when currentDealId changes
+  const checkDealEntitlement = async (dealId: string) => {
+    setDealEntitlementStatus("loading");
+    try {
+      const { data, error } = await supabase.functions.invoke("check-deal-entitlement", {
+        body: { dealId },
+      });
+
+      if (error) throw error;
+      
+      setDealEntitlementStatus(data?.status === "unlocked" ? "unlocked" : "locked");
+    } catch (error) {
+      console.error("Error checking entitlement:", error);
+      setDealEntitlementStatus("locked");
+    }
+  };
+
+  useEffect(() => {
+    if (currentDealId) {
+      checkDealEntitlement(currentDealId);
+    } else {
+      // No deal selected - treat as locked (need to save first)
+      setDealEntitlementStatus("locked");
+    }
+  }, [currentDealId]);
 
   // Persist side panel state
   useEffect(() => {
@@ -114,6 +169,7 @@ export default function DealRoom() {
       insurance: "",
       fuelCost: "",
       maintenance: "",
+      name: "",
     };
   });
 
@@ -921,6 +977,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
   };
 
   const handleLoadDeal = (deal: any) => {
+    setCurrentDealId(deal.id);
     setDealData({
       year: deal.year || "",
       make: deal.make || "",
@@ -946,6 +1003,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
       insurance: deal.insurance || "",
       fuelCost: deal.fuel_cost || "",
       maintenance: deal.maintenance || "",
+      name: deal.name || "",
     });
     setScoreResult(deal.score_result || null);
     clearMessages();
@@ -953,6 +1011,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
   };
 
   const handleNewDeal = () => {
+    setCurrentDealId(null);
     const emptyDeal = {
       year: "",
       make: "",
@@ -978,6 +1037,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
       insurance: "",
       fuelCost: "",
       maintenance: "",
+      name: "",
     };
     setDealData(emptyDeal);
     setScoreResult(null);
@@ -2005,23 +2065,39 @@ TTL & fees $2,800`}
           {/* WHAT TO SAY NEXT TAB */}
           <TabsContent value="scripts" className="animate-fade-in">
             <div className="max-w-4xl mx-auto py-4 space-y-6">
-              {/* Fee Breakdown for context */}
-              <FeeBreakdown
-                docFee={parseNumber(dealData.docFee)}
-                dealerFee={parseNumber(dealData.dealerFee)}
-                addOns={parseNumber(dealData.addOns)}
-                taxes={parseNumber(dealData.taxes)}
-                registration={parseNumber(dealData.registration)}
-                askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
-                onFeeContextChange={setFeeContext}
-              />
-              
-              {/* Negotiation Scripts */}
-              <WhatToSayNext 
-                dealData={dealData} 
-                scoreResult={scoreResult}
-                feeContext={feeContext || undefined}
-              />
+              {dealEntitlementStatus === "loading" ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : dealEntitlementStatus === "locked" ? (
+                <DealAnalysisPaywall 
+                  dealId={currentDealId || ""} 
+                  dealName={dealData.name || `${dealData.year} ${dealData.make} ${dealData.model}`.trim() || undefined}
+                  onUnlocked={() => {
+                    if (currentDealId) checkDealEntitlement(currentDealId);
+                  }}
+                />
+              ) : (
+                <>
+                  {/* Fee Breakdown for context */}
+                  <FeeBreakdown
+                    docFee={parseNumber(dealData.docFee)}
+                    dealerFee={parseNumber(dealData.dealerFee)}
+                    addOns={parseNumber(dealData.addOns)}
+                    taxes={parseNumber(dealData.taxes)}
+                    registration={parseNumber(dealData.registration)}
+                    askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
+                    onFeeContextChange={setFeeContext}
+                  />
+                  
+                  {/* Negotiation Scripts */}
+                  <WhatToSayNext 
+                    dealData={dealData} 
+                    scoreResult={scoreResult}
+                    feeContext={feeContext || undefined}
+                  />
+                </>
+              )}
             </div>
           </TabsContent>
 

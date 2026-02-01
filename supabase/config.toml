@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.generate-negotiation-script]
 verify_jwt = false
+
+[functions.pricing-confidence]
+verify_jwt = false

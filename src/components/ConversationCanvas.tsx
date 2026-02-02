@@ -24,6 +24,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChatMessage } from "@/hooks/useCopilotChat";
 import ReactMarkdown from "react-markdown";
+import { DealershipModeToggle } from "@/components/DealershipModeToggle";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { ChatHelperTips } from "@/components/ChatHelperTips";
+import { DealershipQuickReplies } from "@/components/QuickReplyButtons";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -34,6 +39,11 @@ interface ConversationCanvasProps {
   isExtracting: boolean;
   scoreResult?: { overall: number } | null;
   onViewAnalysis?: () => void;
+  // Dealership mode props
+  isDealershipMode?: boolean;
+  onDealershipModeChange?: (enabled: boolean) => void;
+  showDealershipCheck?: boolean;
+  onDealershipCheckResponse?: (isAtDealership: boolean) => void;
 }
 
 export function ConversationCanvas({
@@ -45,6 +55,10 @@ export function ConversationCanvas({
   isExtracting,
   scoreResult,
   onViewAnalysis,
+  isDealershipMode = false,
+  onDealershipModeChange,
+  showDealershipCheck = false,
+  onDealershipCheckResponse,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -53,6 +67,7 @@ export function ConversationCanvas({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   // Check auth state
   useEffect(() => {
@@ -98,23 +113,40 @@ export function ConversationCanvas({
     <div className="flex flex-col h-[calc(100vh-280px)] min-h-[500px] max-h-[700px] bg-card rounded-2xl border border-border shadow-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Bot className="h-4 w-4" />
           </div>
           <span className="font-medium text-foreground">Deal Room</span>
+          {/* Dealership Mode indicator on mobile */}
+          {isMobile && isDealershipMode && (
+            <DealershipModeToggle
+              isEnabled={isDealershipMode}
+              onToggle={onDealershipModeChange || (() => {})}
+              isMobile={true}
+            />
+          )}
         </div>
-        {hasUserMessages && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClearMessages}
-            className="h-8 text-muted-foreground hover:text-foreground"
-          >
-            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-            New Chat
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Desktop dealership mode toggle */}
+          {!isMobile && onDealershipModeChange && (
+            <DealershipModeToggle
+              isEnabled={isDealershipMode}
+              onToggle={onDealershipModeChange}
+            />
+          )}
+          {hasUserMessages && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearMessages}
+              className="h-8 text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              New Chat
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Messages Area */}
@@ -169,12 +201,20 @@ export function ConversationCanvas({
             </div>
           )}
 
+          {/* Dealership check quick replies */}
+          {showDealershipCheck && onDealershipCheckResponse && !isLoading && (
+            <DealershipQuickReplies
+              onSelect={onDealershipCheckResponse}
+              disabled={isLoading}
+            />
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border bg-background">
+      <div className="p-4 border-t border-border bg-background space-y-3">
         <div className="flex items-center gap-2">
           {/* Upload Menu */}
           <DropdownMenu>
@@ -228,6 +268,15 @@ export function ConversationCanvas({
             className="hidden"
           />
 
+          {/* Voice Input (mobile) */}
+          {isMobile && (
+            <VoiceInputButton
+              onTranscript={onSendMessage}
+              disabled={isLoading || isExtracting}
+              atDealership={isDealershipMode}
+            />
+          )}
+
           {/* Text Input */}
           <Input
             value={input}
@@ -253,9 +302,12 @@ export function ConversationCanvas({
           </Button>
         </div>
 
+        {/* Helper tips */}
+        <ChatHelperTips isDealershipMode={isDealershipMode} />
+
         {/* Sign in to save prompt */}
         {isLoggedIn === false && (
-          <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <LogIn className="h-3.5 w-3.5" />
             <span>
               <Link to="/auth" className="text-primary hover:underline font-medium">

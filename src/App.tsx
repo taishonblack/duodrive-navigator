@@ -12,6 +12,7 @@ import DealRoom from "./pages/DealRoom";
 import HenryPopout from "./pages/HenryPopout";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
 import Glossary from "./pages/Glossary";
+import WindowSticker from "./pages/WindowSticker";
 import Coaching from "./pages/Coaching";
 import CoachingChat from "./pages/CoachingChat";
 import ChatHistory from "./pages/ChatHistory";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/henry/popout" element={<HenryPopout />} />
             <Route path="/why-duodrive" element={<WhyDuoDrive />} />
             <Route path="/glossary" element={<Glossary />} />
+            <Route path="/learn/window-sticker" element={<WindowSticker />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             {/* Legacy coaching routes - hidden from UI but preserved for potential future $49 escalation feature

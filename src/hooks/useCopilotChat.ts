@@ -22,17 +22,11 @@ const getGreeting = () => {
 
 const getWelcomeMessage = (): ChatMessage => ({
   role: "assistant",
-  content: `${getGreeting()}! 👋 I'm your DuoDrive AI Copilot — here to help you understand and evaluate your car deal.
+  content: `${getGreeting()}! 👋 I'll help you think through this car calmly and realistically.
 
-**How to get started:**
-Type or paste your deal information below. It can be messy — a dealer quote, a screenshot text, bullet points, or even just a few details. I'll extract what I can and help fill in the gaps.
+Tell me about the car you're considering, or upload a dealer quote or screenshot.
 
-**Example:**
-"2021 Honda Accord LX, 35k miles, asking $24,500. They want $3k down, 6.9% APR for 60 months. Doc fee $399. I make about $5,000/month."
-
-Once I have your deal info, I'll calculate your DuoDrive Score and show you if it's a fair price, what to negotiate, and how it fits your budget.
-
-Ready when you are! 🚗`,
+You can answer casually — I'll ask follow-ups and fill in gaps as we go.`,
 });
 
 // Check if chat has expired (24 hours)

@@ -18,6 +18,7 @@ import DealAnalysisPaywall from "@/components/DealAnalysisPaywall";
 import { EstimateAprModal, CreditTier, VehicleCondition, LoanTerm } from "@/components/EstimateAprModal";
 import { HowToUseHenry } from "@/components/HowToUseHenry";
 import { VinBadge, getFieldSource } from "@/components/VinBadge";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock } from "lucide-react";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
@@ -83,7 +84,21 @@ export default function DealRoom() {
       return false;
     }
   });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const { toast } = useToast();
+
+  // Check auth state
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Check for dealId and checkout status in URL params
   useEffect(() => {
@@ -1603,6 +1618,11 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     </Button>
                   </div>
                 </details>
+
+                {/* Sign in prompt */}
+                {isLoggedIn === false && (
+                  <SignInPrompt className="pt-4" />
+                )}
               </div>
             )}
           </TabsContent>
@@ -1975,6 +1995,13 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     </Button>
                   </div>
                 </div>
+
+                {/* Sign in prompt */}
+                {isLoggedIn === false && (
+                  <div className="lg:col-span-3">
+                    <SignInPrompt className="pt-2" />
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>

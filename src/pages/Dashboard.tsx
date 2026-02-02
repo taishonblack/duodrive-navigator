@@ -178,7 +178,7 @@ export default function Dashboard() {
     <Layout>
       <SEO 
         title="Dashboard"
-        description="Track your saved car deals, DuoDrive scores, and coaching sessions. Monitor your car buying progress in one place."
+        description="Track your saved car deals and DuoDrive scores. Monitor your car buying progress in one place."
         canonical="/dashboard"
         noIndex
       />
@@ -187,7 +187,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-2">
-            Track your deals, scores, and coaching sessions
+            Track your deals and scores
           </p>
         </div>
 
@@ -221,6 +221,7 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+          {/* Coaching Sessions stat card - hidden for now (legacy feature)
           <Card className="bg-card border-border">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -234,6 +235,7 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+          */}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -377,7 +379,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Coaching Sessions */}
+          {/* Coaching Sessions Card - hidden for now (legacy feature)
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -403,7 +405,6 @@ export default function Dashboard() {
                     const StatusIcon = status.icon;
                     const isUpcoming = request.status === "pending" || request.status === "claimed";
                     
-                    // Parse the scheduled date and time for calendar
                     const scheduledDateTime = (() => {
                       try {
                         const dateStr = request.scheduled_date;
@@ -477,13 +478,15 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+          */}
 
-          {/* Coach Updates - Full Width */}
+          {/* Coach Updates - hidden for now (legacy feature)
           {user && (
             <div className="lg:col-span-2">
               <CustomerCoachUpdates userId={user.id} />
             </div>
           )}
+          */}
         </div>
       </div>
     </Layout>

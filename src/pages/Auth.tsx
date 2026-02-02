@@ -285,7 +285,7 @@ export default function Auth() {
     <Layout>
       <SEO 
         title="Sign In"
-        description="Sign in or create an account to save and compare car deals, track your DuoDrive scores, and book coaching sessions."
+        description="Sign in or create an account to save and compare car deals and track your DuoDrive scores."
         canonical="/auth"
         noIndex
       />

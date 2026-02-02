@@ -1094,27 +1094,10 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
   // Handle conversation message - sends to AI and triggers extraction
   const handleConversationMessage = async (message: string) => {
-    // First add the user message to chat
-    setChatMessages(prev => [...prev, { role: 'user', content: message }]);
-    setIsChatLoading(true);
-
-    // Check if message contains deal info to extract
-    const hasNumbers = /\$?\d+[,\d]*/.test(message);
-    const hasCarTerms = /\b(year|make|model|price|apr|down|payment|mileage|miles)\b/i.test(message);
-    
-    if (hasNumbers || hasCarTerms || message.length > 50) {
-      // Try to extract deal info via AI
-      setDealTextInput(message);
-      try {
-        await extractDealFromText();
-      } catch (e) {
-        // If extraction fails, still send as regular chat
-        await sendChatMessage(message);
-      }
-    } else {
-      // Regular chat message
-      await sendChatMessage(message);
-    }
+    // Send all messages through the AI copilot which handles extraction automatically
+    // The AI will extract deal data via [DEAL_EXTRACTED] markers in its response
+    // Note: sendChatMessage handles adding the user message and loading state
+    await sendChatMessage(message);
   };
 
   // Handle file upload in conversation - shows as chat message
@@ -1124,9 +1107,18 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
     // Add upload message to chat
     const fileType = file.type.includes('pdf') ? 'PDF document' : 'image';
+    const uploadMessage = `📎 Uploaded ${fileType}: ${file.name}`;
+    
+    // Add user message showing the upload
     setChatMessages(prev => [...prev, { 
       role: 'user', 
-      content: `📎 Uploaded ${fileType}: ${file.name}` 
+      content: uploadMessage 
+    }]);
+
+    // Add AI acknowledgment
+    setChatMessages(prev => [...prev, {
+      role: 'assistant',
+      content: `Got it — I'm reading the ${fileType.toLowerCase()} now. I'll pull out the key numbers and ask if anything's missing.`
     }]);
 
     // Process the file

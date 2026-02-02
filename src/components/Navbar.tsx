@@ -133,9 +133,11 @@ export function Navbar() {
           {/* CTA + Auth */}
           <div className="hidden md:flex items-center gap-3">
             <GlossarySearch />
-            <Button asChild>
-              <Link to="/deal-room">Analyze My Deal</Link>
-            </Button>
+            {location.pathname !== "/deal-room" && (
+              <Button asChild>
+                <Link to="/deal-room">Analyze My Deal</Link>
+              </Button>
+            )}
             
             {user ? (
               <DropdownMenu>
@@ -250,11 +252,13 @@ export function Navbar() {
               )}
               
               <div className="pt-2 space-y-2">
-                <Button asChild className="w-full">
-                  <Link to="/deal-room" onClick={() => setIsOpen(false)}>
-                    Analyze My Deal
-                  </Link>
-                </Button>
+                {location.pathname !== "/deal-room" && (
+                  <Button asChild className="w-full">
+                    <Link to="/deal-room" onClick={() => setIsOpen(false)}>
+                      Analyze My Deal
+                    </Link>
+                  </Button>
+                )}
                 
                 {user ? (
                   <div className="flex items-center justify-between px-4 py-3 bg-muted rounded-lg">

@@ -1135,51 +1135,40 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     <Layout>
       <SEO 
         title="Deal Room"
-        description="Analyze your car deal with AI-powered insights. Get your DuoDrive Score, identify hidden fees, and learn negotiation strategies."
+        description="Chat with Henry, your AI copilot for car buying. Get your DuoDrive Score, identify hidden fees, and learn what to say to the dealer."
         canonical="/deal-room"
-        keywords="car deal analyzer, car deal review, car buying AI, DuoDrive Score, car price analysis"
+        keywords="car deal analyzer, car deal review, car buying AI, DuoDrive Score, car price analysis, Henry AI"
       />
       {/* First-visit tutorial overlay */}
       <DealRoomTutorial />
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Deal Room</h1>
-            <p className="mt-2 text-muted-foreground">
-              Send me your deal — I'll break it down for you.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" disabled={!hasFormData}>
-                  <FilePlus2 className="h-4 w-4 mr-2" />
-                  New Deal
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will clear all current deal data. If you haven't saved this deal, your data will be lost.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleNewDeal}>
-                    Start New Deal
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <SavedDeals
-              dealData={dealData}
-              scoreResult={scoreResult}
-              onLoadDeal={handleLoadDeal}
-              onNewDeal={handleNewDeal}
-            />
-          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+            Deal Room <span className="text-muted-foreground font-normal text-lg md:text-xl">— Send me your deal, I'll break it down for you.</span>
+          </h1>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={!hasFormData}>
+                <FilePlus2 className="h-4 w-4 mr-2" />
+                New Deal
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will clear all current deal data. If you haven't saved this deal, your data will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleNewDeal}>
+                  Start New Deal
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

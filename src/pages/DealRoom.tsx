@@ -1586,33 +1586,25 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/30 to-primary/5 border border-primary/20">
                 <div className="flex justify-center mb-4">
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
-                    <Sparkles className="h-8 w-8" />
+                    <MessageCircle className="h-8 w-8" />
                   </div>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-                  Send me your deal — I'll break it down
+                  Tell me about the car you're considering
                 </h2>
                 <p className="text-muted-foreground max-w-xl mx-auto">
-                  Paste your dealer quote, type the numbers, or upload a screenshot. I'll extract everything and tell you if it's a good deal.
+                  I'll ask a few questions and break it down for you. Describe the car, paste a dealer quote, or upload a screenshot.
                 </p>
               </div>
 
               {/* Deal Input Area - show when no user messages yet */}
               {chatMessages.filter(m => m.role === 'user').length === 0 && !hasFormData && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <div className="flex items-center gap-3 mb-4">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-foreground">Type or paste your deal information</h3>
-                  </div>
                   <Textarea
-                    placeholder={`Type or paste your deal information here — dealer quote, text message, email, notes, etc.
-
-Example:
-2017 Camry SE, 82k miles
-Price $17,900, down payment $500
-APR 11.9%, 60 months
-TTL & fees $2,800`}
-                    className="min-h-[160px] mb-4 resize-none"
+                    placeholder={`"I'm looking at a 2025 Lexus TX 350 for about $74,000…"
+"Here's the quote the dealer sent me…"
+"I'm thinking about leasing vs buying — can you help?"`}
+                    className="min-h-[140px] mb-4 resize-none text-base"
                     value={dealTextInput}
                     onChange={(e) => setDealTextInput(e.target.value)}
                     disabled={isExtractingText}
@@ -1631,8 +1623,8 @@ TTL & fees $2,800`}
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-5 w-5 mr-2" />
-                          Extract Deal Info
+                          <Send className="h-5 w-5 mr-2" />
+                          Analyze My Deal
                         </>
                       )}
                     </Button>
@@ -1642,14 +1634,13 @@ TTL & fees $2,800`}
                         onClick={pasteFromClipboard}
                         disabled={isExtractingText}
                         className="h-11"
+                        title="Paste from clipboard"
                       >
-                        <Clipboard className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Paste</span>
+                        <Clipboard className="h-4 w-4" />
                       </Button>
                       <Label htmlFor="file-upload-copilot" className="cursor-pointer">
-                        <div className="flex items-center gap-2 px-4 py-2 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
+                        <div className="flex items-center justify-center w-11 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" title="Upload quote">
                           <ImagePlus className="h-4 w-4" />
-                          <span className="hidden sm:inline">Image</span>
                         </div>
                         <Input
                           id="file-upload-copilot"
@@ -1661,9 +1652,8 @@ TTL & fees $2,800`}
                         />
                       </Label>
                       <Label htmlFor="camera-capture-copilot" className="cursor-pointer">
-                        <div className="flex items-center gap-2 px-4 py-2 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
+                        <div className="flex items-center justify-center w-11 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" title="Take photo">
                           <Camera className="h-4 w-4" />
-                          <span className="hidden sm:inline">Camera</span>
                         </div>
                         <Input
                           id="camera-capture-copilot"
@@ -1683,6 +1673,9 @@ TTL & fees $2,800`}
                       <span className="text-sm">Extracting from image...</span>
                     </div>
                   )}
+                  <p className="text-xs text-muted-foreground mt-4 text-center">
+                    I'll fill in reasonable estimates if you don't have everything yet — you can refine later.
+                  </p>
                 </div>
               )}
 
@@ -1692,152 +1685,67 @@ TTL & fees $2,800`}
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3">
                       <Bot className="h-5 w-5 text-primary" />
-                      <h3 className="font-semibold text-foreground">I see you have a deal in progress</h3>
+                      <div>
+                        <h3 className="font-semibold text-foreground">
+                          {dealData.year && dealData.make 
+                            ? `${dealData.year} ${dealData.make} ${dealData.model || ''}`.trim()
+                            : 'I see you have a deal in progress'}
+                        </h3>
+                        {dealData.askingPrice && (
+                          <p className="text-sm text-muted-foreground">
+                            {dealData.askingPrice.startsWith('$') ? dealData.askingPrice : `$${parseInt(dealData.askingPrice).toLocaleString()}`}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
                           <RotateCcw className="h-4 w-4 mr-2" />
-                          Clear Deal
+                          Start Over
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Clear Current Deal?</AlertDialogTitle>
+                          <AlertDialogTitle>Start Fresh?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will erase all deal information and start fresh. If you haven't saved this deal, your data will be lost.
+                            This will clear your current deal so you can analyze a new one. Any unsaved information will be lost.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel>Keep This Deal</AlertDialogCancel>
                           <AlertDialogAction onClick={handleNewDeal}>
-                            Clear Deal
+                            Start Fresh
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {dealData.year && dealData.make && (
-                      <>Looking at a {dealData.year} {dealData.make} {dealData.model || ''} {dealData.askingPrice && `for ${dealData.askingPrice.startsWith('$') ? dealData.askingPrice : `$${parseInt(dealData.askingPrice).toLocaleString()}`}`}. </>
-                    )}
-                    What would you like to do?
-                  </p>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Button 
-                      variant="outline" 
                       onClick={() => {
                         setChatMessages([{ role: 'user', content: 'Calculate my DuoDrive Score and tell me if this is a good deal.' }]);
                         evaluateDeal();
                       }}
                       disabled={isLoading}
-                      className="justify-start"
+                      className="justify-start h-auto py-3"
                     >
-                      <Target className="h-4 w-4 mr-2" />
-                      Calculate DuoDrive Score
+                      <Target className="h-4 w-4 mr-2 shrink-0" />
+                      <span>Analyze This Deal</span>
                     </Button>
                     <Button 
                       variant="outline" 
                       onClick={() => setActiveTab("deal")}
-                      className="justify-start"
+                      className="justify-start h-auto py-3"
                     >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Review/Edit Deal Details
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        const msg = "What should I look out for in this deal? Are there any red flags?";
-                        setChatInput(msg);
-                        setTimeout(() => sendChatMessage(), 100);
-                      }}
-                      className="justify-start"
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                      Check for Red Flags
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        const msg = "Give me a negotiation script to get a better price on this deal.";
-                        setChatInput(msg);
-                        setTimeout(() => sendChatMessage(), 100);
-                      }}
-                      className="justify-start"
-                    >
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Get Negotiation Script
+                      <FileText className="h-4 w-4 mr-2 shrink-0" />
+                      <span>Review Details</span>
                     </Button>
                   </div>
-                </div>
-              )}
 
-              {/* What's Missing Indicator */}
-              {hasFormData && missingFields.length > 0 && (
-                <div className="p-4 rounded-xl bg-muted/50 border border-border">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                      <h4 className="text-sm font-medium text-foreground">What's missing?</h4>
-                      <span className="text-xs text-muted-foreground hidden sm:inline">Adding these improves accuracy</span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={smartFillMissingFields}
-                      disabled={isSmartFilling}
-                      className="h-8"
-                    >
-                      {isSmartFilling ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                          Filling...
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="h-3 w-3 mr-1.5" />
-                          Smart Fill
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {missingFields.filter(f => f.importance === 'critical').map(f => (
-                      <button
-                        key={f.field}
-                        onClick={() => setActiveTab("deal")}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                      >
-                        <XCircle className="h-3 w-3" />
-                        {f.label}
-                      </button>
-                    ))}
-                    {missingFields.filter(f => f.importance === 'recommended').map(f => (
-                      <button
-                        key={f.field}
-                        onClick={() => setActiveTab("deal")}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                    {missingFields.filter(f => f.importance === 'optional').slice(0, 3).map(f => (
-                      <button
-                        key={f.field}
-                        onClick={() => setActiveTab("deal")}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-muted text-muted-foreground hover:bg-accent transition-colors"
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                  {missingFields.filter(f => f.importance === 'critical').length > 0 && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                      Red items are required for accurate scoring
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Click "Smart Fill" to let AI suggest reasonable defaults based on your vehicle
+                  <p className="text-xs text-muted-foreground mt-4 text-center">
+                    I'll make reasonable estimates if anything's missing — you can always refine later.
                   </p>
                 </div>
               )}
@@ -1909,29 +1817,22 @@ TTL & fees $2,800`}
                 </div>
               )}
 
-              {/* Input area when deal exists but no user chat messages */}
-              {(hasFormData || chatMessages.filter(m => m.role === 'user').length > 0) && chatMessages.filter(m => m.role === 'user').length === 0 && (
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="Type or paste your deal information..." 
-                      className="flex-1" 
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
-                      disabled={isChatLoading}
-                    />
-                    <Button onClick={() => sendChatMessage()} disabled={isChatLoading || !chatInput.trim()}>
-                      {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
+              {/* Follow-up input when chat is active */}
+              {chatMessages.filter(m => m.role === 'user').length > 0 && (
+                <div className="flex gap-2 mt-4">
+                  <Input 
+                    placeholder="Ask a follow-up question..." 
+                    className="flex-1" 
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                    disabled={isChatLoading}
+                  />
+                  <Button onClick={() => sendChatMessage()} disabled={isChatLoading || !chatInput.trim()}>
+                    {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
                 </div>
               )}
-
-              {/* Bottom tips */}
-              <div className="text-center text-xs text-muted-foreground">
-                <p>I can read dealer quotes, text messages, emails, bullet points, or any format. Just paste it!</p>
-              </div>
             </div>
           </TabsContent>
 

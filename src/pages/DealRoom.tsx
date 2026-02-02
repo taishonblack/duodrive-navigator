@@ -1148,12 +1148,32 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     await sendChatMessage(message);
   };
 
-  // Handle file upload in conversation - shows as chat message
+  // Handle file upload in conversation - runs OCR and sends text to Henry
   const handleConversationUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Add upload message to chat
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a JPG, PNG, WebP, or PDF file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const fileType = file.type.includes('pdf') ? 'PDF document' : 'image';
     const uploadMessage = `📎 Uploaded ${fileType}: ${file.name}`;
     
@@ -1163,14 +1183,219 @@ Be conservative and realistic. Only suggest values that make sense for a typical
       content: uploadMessage 
     }]);
 
-    // Add AI acknowledgment
-    setChatMessages(prev => [...prev, {
-      role: 'assistant',
-      content: `Got it — I'm reading the ${fileType.toLowerCase()} now. I'll pull out the key numbers and ask if anything's missing.`
-    }]);
+    setIsExtracting(true);
+    setIsChatLoading(true);
 
-    // Process the file
-    await handleFileUpload(event);
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Step 1: Run OCR to get readable text from the image
+      const ocrResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-quote-ocr`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          imageBase64: base64,
+          mimeType: file.type,
+        }),
+      });
+
+      let ocrText = "";
+      if (ocrResponse.ok) {
+        const ocrData = await ocrResponse.json();
+        ocrText = ocrData.text || "";
+        console.log("OCR extraction successful, text length:", ocrText.length);
+      } else {
+        console.error("OCR failed, continuing without text");
+      }
+
+      // Step 2: Also run structured extraction for form fields (parallel would be better but sequential is fine)
+      const extractResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-quote`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          imageBase64: base64,
+          mimeType: file.type,
+        }),
+      });
+
+      if (extractResponse.ok) {
+        const { data: extracted } = await extractResponse.json();
+        if (extracted) {
+          // Update form fields with structured data
+          const newExtractedFields = new Set<string>();
+          const extractableFields = [
+            'year', 'make', 'model', 'trim', 'mileage', 'vin',
+            'askingPrice', 'negotiatedPrice', 'downPayment', 'tradeIn', 'apr', 'term',
+            'docFee', 'dealerFee', 'addOns', 'taxes', 'registration'
+          ];
+          
+          extractableFields.forEach(field => {
+            if (extracted[field]) {
+              newExtractedFields.add(field);
+            }
+          });
+          
+          setExtractedFields(prev => new Set([...prev, ...newExtractedFields]));
+          setDealData((prev) => ({
+            ...prev,
+            year: extracted.year || prev.year,
+            make: extracted.make || prev.make,
+            model: extracted.model || prev.model,
+            trim: extracted.trim || prev.trim,
+            mileage: extracted.mileage || prev.mileage,
+            vin: extracted.vin || prev.vin,
+            askingPrice: extracted.askingPrice || prev.askingPrice,
+            negotiatedPrice: extracted.negotiatedPrice || prev.negotiatedPrice,
+            downPayment: extracted.downPayment || prev.downPayment,
+            tradeIn: extracted.tradeIn || prev.tradeIn,
+            apr: extracted.apr || prev.apr,
+            term: extracted.term || prev.term,
+            docFee: extracted.docFee || prev.docFee,
+            dealerFee: extracted.dealerFee || prev.dealerFee,
+            addOns: extracted.addOns || prev.addOns,
+            taxes: extracted.taxes || prev.taxes,
+            registration: extracted.registration || prev.registration,
+          }));
+        }
+      }
+
+      setIsExtracting(false);
+
+      // Step 3: Send OCR text to Henry so he can read and respond
+      // Build message with OCR text wrapper
+      const messageForHenry = ocrText 
+        ? `[IMAGE_TEXT]\n${ocrText}\n[/IMAGE_TEXT]`
+        : `Uploaded image: ${file.name}`;
+
+      // Create a synthetic user message with the OCR text (hidden from UI)
+      const hiddenUserMessage: ChatMessage = { role: 'user', content: messageForHenry };
+      
+      // Build deal context for Henry
+      const dealContext = {
+        year: dealData.year,
+        make: dealData.make,
+        model: dealData.model,
+        trim: dealData.trim,
+        mileage: dealData.mileage,
+        askingPrice: dealData.askingPrice,
+        negotiatedPrice: dealData.negotiatedPrice,
+        downPayment: dealData.downPayment,
+        tradeIn: dealData.tradeIn,
+        apr: dealData.apr,
+        term: dealData.term,
+        creditScore: dealData.creditScore,
+        monthlyIncome: dealData.monthlyIncome,
+        insurance: dealData.insurance,
+        fuelCost: dealData.fuelCost,
+        maintenance: dealData.maintenance,
+        scoreResult: scoreResult || undefined,
+      };
+
+      // Send to Henry with OCR content
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [...chatMessages, { role: 'user', content: uploadMessage }, hiddenUserMessage],
+          dealContext,
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to get response");
+      }
+
+      // Stream Henry's response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantContent = "";
+
+      // Add empty assistant message
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              const { cleanContent } = parseExtractedDealData(assistantContent);
+              setChatMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: cleanContent };
+                return updated;
+              });
+            }
+          } catch {
+            // Incomplete JSON, continue
+          }
+        }
+      }
+
+      // After streaming is complete, extract any deal data from the full response
+      const { extractedData } = parseExtractedDealData(assistantContent);
+      if (extractedData) {
+        applyExtractedDealData(extractedData);
+      }
+
+    } catch (error) {
+      console.error("Conversation upload error:", error);
+      toast({
+        title: "Upload Error",
+        description: error instanceof Error ? error.message : "Failed to process the file",
+        variant: "destructive",
+      });
+      // Add error message to chat
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "I had trouble reading that file. Could you try uploading it again, or describe what you see on the sticker?"
+      }]);
+    } finally {
+      setIsExtracting(false);
+      setIsChatLoading(false);
+      // Reset input so same file can be uploaded again
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
   };
 
   return (

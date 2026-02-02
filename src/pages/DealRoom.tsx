@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +20,7 @@ import { EstimateAprModal, CreditTier, VehicleCondition, LoanTerm } from "@/comp
 import { HowToUseHenry } from "@/components/HowToUseHenry";
 import { VinBadge, getFieldSource } from "@/components/VinBadge";
 import { SignInPrompt } from "@/components/SignInPrompt";
-import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock } from "lucide-react";
+import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock, ExternalLink } from "lucide-react";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
 import { FeeBreakdown } from "@/components/FeeBreakdown";
@@ -43,6 +44,7 @@ import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
 import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
 import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } from "@/lib/vinUtils";
+import { useHenryBroadcastMain, openHenryPopout } from "@/hooks/useHenryBroadcast";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -620,6 +622,31 @@ export default function DealRoom() {
     }
   };
 
+  // BroadcastChannel for popout window sync
+  const handlePopoutMessage = useCallback((content: string) => {
+    // Treat the message from popout as if typed in main tab
+    sendChatMessage(content);
+  }, [sendChatMessage]);
+
+  useHenryBroadcastMain({
+    messages: chatMessages,
+    dealContext: dealData,
+    isLoading: isChatLoading,
+    onPopoutMessage: handlePopoutMessage,
+  });
+
+  // Handle pop-out button click
+  const handleOpenPopout = () => {
+    const popout = openHenryPopout();
+    if (!popout) {
+      toast({
+        title: "Pop-out blocked",
+        description: "Enable popups for DuoDrive to use pop-out mode.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const extractDealFromText = async () => {
     if (!dealTextInput.trim() || isExtractingText) return;
 
@@ -1162,28 +1189,48 @@ Be conservative and realistic. Only suggest values that make sense for a typical
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Deal Room <span className="text-muted-foreground font-normal text-lg md:text-xl">— Send me your deal, I'll break it down for you.</span>
           </h1>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={!hasFormData}>
-                <FilePlus2 className="h-4 w-4 mr-2" />
-                New Deal
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will clear all current deal data. If you haven't saved this deal, your data will be lost.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleNewDeal}>
-                  Start New Deal
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="flex items-center gap-2">
+            {/* Pop-out Henry button - desktop only */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenPopout}
+                  className="hidden md:flex"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Pop out Henry
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Keep Henry open while you compare cars online</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!hasFormData}>
+                  <FilePlus2 className="h-4 w-4 mr-2" />
+                  New Deal
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will clear all current deal data. If you haven't saved this deal, your data will be lost.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewDeal}>
+                    Start New Deal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

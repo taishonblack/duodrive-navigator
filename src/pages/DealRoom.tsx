@@ -45,6 +45,7 @@ import { EmailShareDialog } from "@/components/EmailShareDialog";
 import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
 import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } from "@/lib/vinUtils";
 import { useHenryBroadcastMain, openHenryPopout } from "@/hooks/useHenryBroadcast";
+import { estimateInsurance } from "@/lib/insuranceEstimator";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -215,6 +216,36 @@ export default function DealRoom() {
       console.error("Failed to cache deal:", e);
     }
   }, [dealData]);
+
+  // Auto-estimate insurance when vehicle info and credit score are available
+  useEffect(() => {
+    // Only auto-estimate if insurance is empty and we have enough data
+    if (dealData.insurance) return;
+    
+    const hasVehicleInfo = dealData.make && dealData.model;
+    const hasFinancialContext = dealData.creditScore || dealData.askingPrice;
+    
+    if (hasVehicleInfo && hasFinancialContext) {
+      const estimate = estimateInsurance({
+        make: dealData.make,
+        model: dealData.model,
+        year: dealData.year,
+        askingPrice: dealData.askingPrice,
+        creditScore: dealData.creditScore,
+        isNew: !dealData.mileage || parseInt(dealData.mileage) < 100,
+      });
+      
+      // Auto-fill the insurance field with estimate
+      setDealData((prev) => ({ ...prev, insurance: String(estimate.monthly) }));
+      setExtractedFields((prev) => new Set([...prev, "insurance"]));
+      
+      // Show a subtle toast about the estimate
+      toast({
+        title: "Insurance Estimated",
+        description: `Estimated ~$${estimate.monthly}/mo based on ${estimate.confidence} confidence (${estimate.factors.slice(0, 2).join(", ")})`,
+      });
+    }
+  }, [dealData.make, dealData.model, dealData.year, dealData.askingPrice, dealData.creditScore, dealData.mileage, dealData.insurance, toast]);
 
   // Check for extracted deal data from floating copilot (synced from other pages)
   useEffect(() => {

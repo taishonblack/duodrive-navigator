@@ -5,12 +5,12 @@ const footerLinks = {
   product: [
     { href: "/deal-room", label: "Deal Room" },
     { href: "/score", label: "DuoDrive Score" },
-    { href: "/coaching", label: "Coaching" },
+    // { href: "/coaching", label: "Coaching" }, // Hidden for now - may return for escalation feature
   ],
   company: [
     { href: "/why-duodrive", label: "Why DuoDrive" },
     { href: "/contact", label: "Contact" },
-    { href: "/coach", label: "Coach Login" },
+    // { href: "/coach", label: "Coach Login" }, // Hidden for now - legacy coaching infrastructure
   ],
   legal: [
     { href: "/privacy", label: "Privacy Policy" },

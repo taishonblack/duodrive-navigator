@@ -33,7 +33,7 @@ const principles = [
   "You shouldn't go broke for transportation",
   "Information should be equally accessible to everyone",
   "Honest scoring with transparent formulas",
-  "Expert help available when you need it",
+  "AI-powered guidance available when you need it",
 ];
 
 const aboutSchema = {

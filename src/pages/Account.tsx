@@ -467,24 +467,26 @@ export default function Account() {
       title: "Score Updates",
       description: "Receive updates when market conditions affect your saved deals",
     },
-    {
-      key: "coaching_offers" as const,
-      icon: GraduationCap,
-      title: "Coaching Offers",
-      description: "Special offers and tips from our car buying coaches",
-    },
+    // Coaching offers hidden for now - legacy feature
+    // {
+    //   key: "coaching_offers" as const,
+    //   icon: GraduationCap,
+    //   title: "Coaching Offers",
+    //   description: "Special offers and tips from our car buying coaches",
+    // },
     {
       key: "product_news" as const,
       icon: Newspaper,
       title: "Product News",
       description: "New features and updates from DuoDrive",
     },
-    {
-      key: "sms_reminders" as const,
-      icon: MessageSquare,
-      title: "SMS Notifications",
-      description: "Receive text message reminders for coaching sessions",
-    },
+    // SMS reminders hidden for now - legacy coaching feature
+    // {
+    //   key: "sms_reminders" as const,
+    //   icon: MessageSquare,
+    //   title: "SMS Notifications",
+    //   description: "Receive text message reminders for coaching sessions",
+    // },
   ];
 
   return (

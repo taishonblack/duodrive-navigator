@@ -16,9 +16,11 @@ export interface ChatMessage {
 // Henry's opening message - he owns the greeting
 const getWelcomeMessage = (): ChatMessage => ({
   role: "assistant",
-  content: `Hi — I'm Henry, the DuoDrive AI Copilot. I'm here to help you find a great deal and avoid getting pressured.
+  content: `Hi — I'm Henry, the DuoDrive AI Copilot. I'm here to help you think through your car purchase and find the best possible deal.
 
-First — what's your name?`,
+Before we dive in, I need to ask one quick thing so I don't make this awkward later 🙂
+
+What's your name?`,
 });
 
 // Check if chat has expired (24 hours)

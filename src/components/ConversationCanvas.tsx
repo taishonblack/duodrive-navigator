@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Bot, 
   User, 
@@ -11,7 +13,8 @@ import {
   Camera, 
   ImagePlus, 
   FileText,
-  RotateCcw
+  RotateCcw,
+  LogIn
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,11 +47,25 @@ export function ConversationCanvas({
   onViewAnalysis,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Check auth state
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Auto-scroll chat container only (not the page)
   useEffect(() => {
@@ -235,6 +252,19 @@ export function ConversationCanvas({
             )}
           </Button>
         </div>
+
+        {/* Sign in to save prompt */}
+        {isLoggedIn === false && (
+          <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <LogIn className="h-3.5 w-3.5" />
+            <span>
+              <Link to="/auth" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+              {" "}to save and compare deals
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

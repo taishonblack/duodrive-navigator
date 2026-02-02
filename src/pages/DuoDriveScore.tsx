@@ -40,8 +40,8 @@ const pillars = [
     icon: Heart,
     title: "Affordability",
     description: "Determines if the car fits your budget considering income, insurance, and total cost of ownership.",
-    formula: "Affordability = 100 × (1 - Monthly Burden / Max Recommended)",
-    details: "Based on the 20/4/10 rule: 20% down, 4-year loan, 10% of income for total car costs including insurance and maintenance.",
+    formula: "Comfort Score = Lifestyle Fit × Monthly Burden Factor",
+    details: "Based on our Comfort Framework: we ask 'Will this feel okay month after month?' — not 'What does the math allow?' We assess proportionality to income, monthly comfort, and financial flexibility.",
   },
 ];
 
@@ -105,7 +105,7 @@ export default function DuoDriveScore() {
               The DuoDrive Score
             </h1>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-              A transparent, data-driven score from 0-100 that helps you understand if a car deal is right for you. No hidden factors, no mystery math — just honest analysis.
+              A transparent, AI-powered score from 0-100 that helps you understand if a car deal is right for you. Just chat with Henry, our AI copilot, and get honest analysis — no hidden factors, no mystery math.
             </p>
           </div>
         </div>
@@ -168,14 +168,14 @@ export default function DuoDriveScore() {
               Why We Built This Score
             </h2>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-              Car buying has been opaque for too long. Dealers have all the information while buyers are left guessing. The DuoDrive Score changes that by giving you the same level of insight that professionals have — presented in a way that actually makes sense.
+              Car buying has been opaque for too long. Dealers have all the information while buyers are left guessing. The DuoDrive Score changes that by giving you the same level of insight that professionals have — powered by AI and presented in plain English.
             </p>
             <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-              We believe transportation shouldn't break the bank, and you deserve to know exactly what you're getting into before signing anything.
+              We believe transportation shouldn't break the bank, and you deserve to know exactly what you're getting into before signing anything. Just describe your deal to Henry, and he'll handle the rest.
             </p>
             <Button asChild className="mt-8">
               <Link to="/deal-room">
-                Try It Now
+                Chat with Henry
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

@@ -12,7 +12,6 @@ interface BudgetComfortCardProps {
   monthlyPayment: number;
   monthlyIncome: number;
   askingPrice: number;
-  customerMaxSafePrice: number;
   isAcknowledged: boolean;
   onAcknowledge: () => void;
 }
@@ -52,7 +51,6 @@ export function BudgetComfortCard({
   monthlyPayment,
   monthlyIncome,
   askingPrice,
-  customerMaxSafePrice,
   isAcknowledged,
   onAcknowledge,
 }: BudgetComfortCardProps) {
@@ -127,12 +125,12 @@ export function BudgetComfortCard({
             </p>
           </div>
           <div className="p-3 rounded-lg bg-muted">
-            <p className="text-xs text-muted-foreground">Comfort Zone Max</p>
+            <p className="text-xs text-muted-foreground">Total Monthly Cost</p>
             <p className="text-lg font-bold text-foreground">
-              ${customerMaxSafePrice.toLocaleString()}
+              ${(monthlyPayment + Math.round(monthlyIncome * 0.03) + Math.round(monthlyIncome * 0.04) + Math.round(monthlyIncome * 0.01)).toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">
-              Based on your profile
+              Loan + insurance + fuel + maintenance
             </p>
           </div>
         </div>

@@ -338,38 +338,35 @@ When a VIN is decoded via NHTSA and present in context:
 
 ---
 
-## IMAGE UPLOAD HANDLING (WINDOW STICKER / BUYER'S ORDER)
+## IMAGE UPLOAD BEHAVIOR (CRITICAL)
 
-When a user uploads an image (window sticker, buyer's order, dealer worksheet):
+If the user uploads an image (or the user message contains "Uploaded image:" / "uploaded image" / "window_sticker" / "buyers_order" / "[IMAGE_TEXT]"):
+- Do NOT end your message with "I'm reading the image now" or any placeholder.
+- Always do BOTH in the same reply:
+  1) Say what you were able to extract (if any text was provided).
+  2) Ask exactly ONE next question that moves the deal forward.
 
-**Step 1 — Acknowledge immediately:**
-"Got it — I'm reading the sticker now."
-
-**Step 2 — Confirm what you extracted (build trust):**
+**If OCR text was provided (inside [IMAGE_TEXT]...[/IMAGE_TEXT]):**
 Summarize in 3–6 bullets what you found. Example:
-"Here's what I see:
+"Got it — here's what I pulled from the sticker:
 • Vehicle: 2025 Hyundai Santa Fe SE FWD
 • Mileage: 4,555 miles
 • VIN: 5NMP14GL3SH085177
 • MSRP: $34,300
 • Shown Price: $30,027"
 
-**Step 3 — Ask ONE high-leverage follow-up question:**
-Use this exact phrasing:
+Then ask ONE high-leverage follow-up:
 "Quick check so I don't assume wrong: is $[shown price] the dealer's selling price (before taxes/fees), or do you have an out-the-door total?"
 
-If the sticker shows MSRP only (no dealer price):
-"What price are they actually offering you today — selling price or out-the-door?"
+**If you cannot see any extracted text from the image:**
+Say you can't read the image content yet, then ask ONE "next best" question:
+"Thanks — I've got the photo. Is this the window sticker or the buyer's order — and what's the out-the-door total (or selling price) they're offering today?"
 
-If they don't have OTD yet:
-"No worries — do you have a photo of the buyer's order or worksheet with fees?"
-
-**Step 4 — Extract data at the end:**
-Include all extracted fields:
+**After ANY image upload, always end with extraction:**
 \`[DEAL_EXTRACTED]{"year":"2025","make":"Hyundai","model":"Santa Fe","trim":"SE FWD","mileage":"4555","vin":"5NMP14GL3SH085177","askingPrice":"30027"}[/DEAL_EXTRACTED]\`
 
 **Rules:**
-- Always confirm extraction BEFORE asking questions
+- NEVER end on "I'm reading it now" — always ask the next question
 - Ask only ONE question per turn (even after image upload)
 - If user is in Dealership Mode, keep summary even shorter (3 bullets max)
 
@@ -805,6 +802,24 @@ serve(async (req) => {
     }
 
     console.log("Starting AI chat with V3 context:", mergedDealContext?.scoreResult ? "full score" : mergedDealContext ? "partial" : "none");
+
+    // Guard: If last user message was an image upload, force follow-up behavior
+    const lastUserContent = lastUserMessage.toLowerCase();
+    const isImageUpload = lastUserContent.includes("uploaded image") || 
+                          lastUserContent.includes("window_sticker") || 
+                          lastUserContent.includes("buyers_order") ||
+                          lastUserContent.includes("[image_text]");
+    
+    if (isImageUpload) {
+      contextMessage += `\n\n--- CRITICAL INSTRUCTION ---
+The last user action was an image upload.
+You MUST respond with:
+1) A summary of what you can see (or acknowledge you can't read the content)
+2) ONE next-step question (fees/OTD/selling price)
+Do NOT end on "I'm reading it now" or any placeholder. Always ask a question.
+--- END CRITICAL INSTRUCTION ---\n`;
+      console.log("Image upload detected - adding guard instruction");
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

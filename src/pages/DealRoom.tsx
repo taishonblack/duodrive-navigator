@@ -1689,9 +1689,33 @@ TTL & fees $2,800`}
               {/* Quick Actions when deal data exists */}
               {hasFormData && chatMessages.filter(m => m.role === 'user').length === 0 && (
                 <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Bot className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-foreground">I see you have a deal in progress</h3>
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <Bot className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-foreground">I see you have a deal in progress</h3>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Clear Deal
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Clear Current Deal?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will erase all deal information and start fresh. If you haven't saved this deal, your data will be lost.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleNewDeal}>
+                            Clear Deal
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
                     {dealData.year && dealData.make && (

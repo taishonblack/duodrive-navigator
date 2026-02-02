@@ -1190,24 +1190,23 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             Deal Room <span className="text-muted-foreground font-normal text-lg md:text-xl">— Send me your deal, I'll break it down for you.</span>
           </h1>
           <div className="flex items-center gap-2">
-            {/* Pop-out Henry button - desktop only */}
+            {/* Pop-out Henry button - desktop only, icon-only */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={handleOpenPopout}
-                  className="hidden md:flex"
+                  className="hidden md:flex h-8 w-8"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Pop out Henry
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Keep Henry open while you compare cars online</p>
+                <p>Pop out Henry — keep him open while you browse</p>
               </TooltipContent>
             </Tooltip>
-            
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={!hasFormData}>

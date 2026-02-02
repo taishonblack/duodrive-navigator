@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScoreRing } from "@/components/ScoreRing";
 import { PillarCard } from "@/components/PillarCard";
 import { SavedDeals } from "@/components/SavedDeals";
-import { DealRoomCopilot } from "@/components/DealRoomCopilot";
+import { ConversationCanvas } from "@/components/ConversationCanvas";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import DealAnalysisPaywall from "@/components/DealAnalysisPaywall";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock } from "lucide-react";
@@ -1092,6 +1092,47 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
   const missingFields = getMissingFields();
 
+  // Handle conversation message - sends to AI and triggers extraction
+  const handleConversationMessage = async (message: string) => {
+    // First add the user message to chat
+    setChatMessages(prev => [...prev, { role: 'user', content: message }]);
+    setIsChatLoading(true);
+
+    // Check if message contains deal info to extract
+    const hasNumbers = /\$?\d+[,\d]*/.test(message);
+    const hasCarTerms = /\b(year|make|model|price|apr|down|payment|mileage|miles)\b/i.test(message);
+    
+    if (hasNumbers || hasCarTerms || message.length > 50) {
+      // Try to extract deal info via AI
+      setDealTextInput(message);
+      try {
+        await extractDealFromText();
+      } catch (e) {
+        // If extraction fails, still send as regular chat
+        await sendChatMessage(message);
+      }
+    } else {
+      // Regular chat message
+      await sendChatMessage(message);
+    }
+  };
+
+  // Handle file upload in conversation - shows as chat message
+  const handleConversationUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Add upload message to chat
+    const fileType = file.type.includes('pdf') ? 'PDF document' : 'image';
+    setChatMessages(prev => [...prev, { 
+      role: 'user', 
+      content: `📎 Uploaded ${fileType}: ${file.name}` 
+    }]);
+
+    // Process the file
+    await handleFileUpload(event);
+  };
+
   return (
     <Layout>
       <SEO 
@@ -1579,260 +1620,27 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             )}
           </TabsContent>
 
-          {/* AI COPILOT TAB - PRIMARY ENTRY POINT */}
+          {/* AI COPILOT TAB - CONVERSATION-FIRST EXPERIENCE */}
           <TabsContent value="copilot" className="animate-fade-in">
-            <div className="max-w-4xl mx-auto space-y-6">
-              {/* Hero Section */}
-              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/30 to-primary/5 border border-primary/20">
-                <div className="flex justify-center mb-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
-                    <MessageCircle className="h-8 w-8" />
-                  </div>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-                  Tell me about the car you're considering
-                </h2>
-                <p className="text-muted-foreground max-w-xl mx-auto">
-                  I'll ask a few questions and break it down for you. Describe the car, paste a dealer quote, or upload a screenshot.
-                </p>
+            <div className="max-w-3xl mx-auto">
+              <ConversationCanvas
+                messages={chatMessages}
+                onSendMessage={handleConversationMessage}
+                onClearMessages={handleNewDeal}
+                onFileUpload={handleConversationUpload}
+                isLoading={isChatLoading || isExtractingText}
+                isExtracting={isExtracting}
+                scoreResult={scoreResult}
+                onViewAnalysis={() => setActiveTab("overview")}
+              />
+              
+              {/* Tab descriptions - subtle helper text */}
+              <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+                <span><strong>The Deal</strong> — Vehicle & pricing summary</span>
+                <span><strong>Calculator</strong> — How the numbers work</span>
+                <span><strong>Overview</strong> — Is this a good fit?</span>
+                <span><strong>What to Say</strong> — Dealer-ready responses</span>
               </div>
-
-              {/* Deal Input Area - show when no user messages yet */}
-              {chatMessages.filter(m => m.role === 'user').length === 0 && !hasFormData && (
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <Textarea
-                    placeholder={`"I'm looking at a 2025 Lexus TX 350 for about $74,000…"
-"Here's the quote the dealer sent me…"
-"I'm thinking about leasing vs buying — can you help?"`}
-                    className="min-h-[140px] mb-4 resize-none text-base"
-                    value={dealTextInput}
-                    onChange={(e) => setDealTextInput(e.target.value)}
-                    disabled={isExtractingText}
-                  />
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button 
-                      onClick={extractDealFromText} 
-                      disabled={!dealTextInput.trim() || isExtractingText}
-                      className="flex-1"
-                      size="lg"
-                    >
-                      {isExtractingText ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                          Understanding your deal...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-5 w-5 mr-2" />
-                          Analyze My Deal
-                        </>
-                      )}
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={pasteFromClipboard}
-                        disabled={isExtractingText}
-                        className="h-11"
-                        title="Paste from clipboard"
-                      >
-                        <Clipboard className="h-4 w-4" />
-                      </Button>
-                      <Label htmlFor="file-upload-copilot" className="cursor-pointer">
-                        <div className="flex items-center justify-center w-11 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" title="Upload quote">
-                          <ImagePlus className="h-4 w-4" />
-                        </div>
-                        <Input
-                          id="file-upload-copilot"
-                          type="file"
-                          accept="image/*,application/pdf"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                          disabled={isExtracting}
-                        />
-                      </Label>
-                      <Label htmlFor="camera-capture-copilot" className="cursor-pointer">
-                        <div className="flex items-center justify-center w-11 h-11 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" title="Take photo">
-                          <Camera className="h-4 w-4" />
-                        </div>
-                        <Input
-                          id="camera-capture-copilot"
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                          disabled={isExtracting}
-                        />
-                      </Label>
-                    </div>
-                  </div>
-                  {isExtracting && (
-                    <div className="flex items-center gap-2 mt-4 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Extracting from image...</span>
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-4 text-center">
-                    I'll fill in reasonable estimates if you don't have everything yet — you can refine later.
-                  </p>
-                </div>
-              )}
-
-              {/* Quick Actions when deal data exists */}
-              {hasFormData && chatMessages.filter(m => m.role === 'user').length === 0 && (
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      <Bot className="h-5 w-5 text-primary" />
-                      <div>
-                        <h3 className="font-semibold text-foreground">
-                          {dealData.year && dealData.make 
-                            ? `${dealData.year} ${dealData.make} ${dealData.model || ''}`.trim()
-                            : 'I see you have a deal in progress'}
-                        </h3>
-                        {dealData.askingPrice && (
-                          <p className="text-sm text-muted-foreground">
-                            {dealData.askingPrice.startsWith('$') ? dealData.askingPrice : `$${parseInt(dealData.askingPrice).toLocaleString()}`}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Start Over
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Start Fresh?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will clear your current deal so you can analyze a new one. Any unsaved information will be lost.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Keep This Deal</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleNewDeal}>
-                            Start Fresh
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Button 
-                      onClick={() => {
-                        setChatMessages([{ role: 'user', content: 'Calculate my DuoDrive Score and tell me if this is a good deal.' }]);
-                        evaluateDeal();
-                      }}
-                      disabled={isLoading}
-                      className="justify-start h-auto py-3"
-                    >
-                      <Target className="h-4 w-4 mr-2 shrink-0" />
-                      <span>Analyze This Deal</span>
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setActiveTab("deal")}
-                      className="justify-start h-auto py-3"
-                    >
-                      <FileText className="h-4 w-4 mr-2 shrink-0" />
-                      <span>Review Details</span>
-                    </Button>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground mt-4 text-center">
-                    I'll make reasonable estimates if anything's missing — you can always refine later.
-                  </p>
-                </div>
-              )}
-
-              {/* Chat Messages */}
-              {chatMessages.filter(m => m.role === 'user').length > 0 && (
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">Conversation</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearMessages}
-                      className="h-8 text-muted-foreground hover:text-foreground"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                      Clear
-                    </Button>
-                  </div>
-                  <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto">
-                    {chatMessages.map((msg, i) => (
-                      <div
-                        key={i}
-                        className={`p-4 rounded-xl ${
-                          msg.role === 'user' 
-                            ? 'bg-primary/10 ml-8' 
-                            : 'bg-muted mr-8'
-                        }`}
-                      >
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          {msg.role === 'user' ? 'You' : 'AI Copilot'}
-                        </p>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{msg.content}</p>
-                      </div>
-                    ))}
-                    {isChatLoading && chatMessages[chatMessages.length - 1]?.content === '' && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="Type or paste your deal information..." 
-                      className="flex-1" 
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
-                      disabled={isChatLoading}
-                    />
-                    <Button onClick={() => sendChatMessage()} disabled={isChatLoading || !chatInput.trim()}>
-                      {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  
-                  {scoreResult && (
-                    <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-3 w-3 rounded-full ${getDealHealthColor(scoreResult.overall).replace('text-', 'bg-')}`} />
-                        <span className="text-sm text-muted-foreground">DuoDrive Score: <strong className="text-foreground">{scoreResult.overall}</strong></span>
-                      </div>
-                      <Button variant="link" size="sm" onClick={() => setActiveTab("overview")} className="text-primary">
-                        View Full Analysis <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Follow-up input when chat is active */}
-              {chatMessages.filter(m => m.role === 'user').length > 0 && (
-                <div className="flex gap-2 mt-4">
-                  <Input 
-                    placeholder="Ask a follow-up question..." 
-                    className="flex-1" 
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
-                    disabled={isChatLoading}
-                  />
-                  <Button onClick={() => sendChatMessage()} disabled={isChatLoading || !chatInput.trim()}>
-                    {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  </Button>
-                </div>
-              )}
             </div>
           </TabsContent>
 
@@ -2150,27 +1958,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Side Panel AI Copilot - visible on non-copilot tabs */}
-      {activeTab !== "copilot" && (
-        <DealRoomCopilot
-          messages={chatMessages.map((msg, idx) => ({
-            role: msg.role,
-            content: msg.content
-          }))}
-          onSendMessage={(msg) => sendChatMessage(msg)}
-          onClearMessages={clearMessages}
-          isLoading={isChatLoading}
-          isOpen={isSidePanelOpen}
-          onToggle={() => setIsSidePanelOpen(!isSidePanelOpen)}
-          dealContext={{
-            year: dealData.year,
-            make: dealData.make,
-            model: dealData.model,
-            askingPrice: dealData.askingPrice
-          }}
-        />
-      )}
     </Layout>
   );
 }

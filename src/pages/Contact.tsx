@@ -89,7 +89,7 @@ export default function Contact() {
     <Layout>
       <SEO 
         title="Contact Us"
-        description="Get in touch with DuoDrive. Have questions about car deals or need help understanding your DuoDrive Score? We're here to help."
+        description="Get in touch with DuoDrive. Have questions about Henry, your AI copilot, or need help with your car deal analysis? We're here to help."
         canonical="/contact"
       />
       <div className="container mx-auto px-4 py-16">

@@ -48,11 +48,15 @@ interface RequestBody {
     model?: string;
     trim?: string;
     mileage?: string;
+    vin?: string;
+    vinDecoded?: boolean;
+    vinSource?: 'user' | 'ocr' | 'pdf_text';
     askingPrice?: string;
     negotiatedPrice?: string;
     downPayment?: string;
     tradeIn?: string;
     apr?: string;
+    aprSource?: 'dealer' | 'estimated';
     term?: string;
     monthlyIncome?: string;
     creditScore?: string;
@@ -61,6 +65,93 @@ interface RequestBody {
     maintenance?: string;
     scoreResult?: ScoreResult;
   };
+}
+
+// VIN utilities
+function normalizeVin(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function isValidVin(vin: string): boolean {
+  if (!vin) return false;
+  if (vin.length !== 17) return false;
+  if (/[IOQ]/.test(vin)) return false;
+  return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
+}
+
+function extractVin(text: string): string | null {
+  if (!text) return null;
+
+  const candidates = text
+    .toUpperCase()
+    .replace(/[^A-Z0-9:\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  for (const token of candidates) {
+    const t = token.replace(/^VIN:$/, "").trim();
+    const maybe = normalizeVin(t);
+    if (maybe.length === 17 && isValidVin(maybe)) return maybe;
+  }
+
+  const match = text.toUpperCase().match(/[A-HJ-NPR-Z0-9]{17}/g);
+  if (match) {
+    for (const m of match) {
+      const vin = normalizeVin(m);
+      if (isValidVin(vin)) return vin;
+    }
+  }
+
+  return null;
+}
+
+type NhtsaDecodeResult = Record<string, string>;
+
+async function decodeVinWithNhtsa(vin: string): Promise<NhtsaDecodeResult | null> {
+  const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${vin}?format=json`;
+  
+  try {
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const row = json?.Results?.[0];
+    if (!row) return null;
+
+    return row as NhtsaDecodeResult;
+  } catch (e) {
+    console.error("NHTSA decode error:", e);
+    return null;
+  }
+}
+
+function applyVinDecodeToDealContext(
+  dealContext: RequestBody["dealContext"] | undefined,
+  vin: string,
+  decoded: NhtsaDecodeResult
+): RequestBody["dealContext"] {
+  const next = { ...(dealContext || {}) };
+
+  next.vin = next.vin || vin;
+  next.vinDecoded = true;
+  next.year = next.year || decoded.ModelYear || undefined;
+  next.make = next.make || decoded.Make || undefined;
+  next.model = next.model || decoded.Model || undefined;
+
+  // Only set trim if NHTSA provided something non-empty AND user hasn't provided trim
+  const decodedTrim = (decoded.Trim || decoded.Trim2 || "").trim();
+  if (!next.trim && decodedTrim) next.trim = decodedTrim;
+
+  return next;
+}
+
+// Message de-duplication to prevent repeated dialogue
+function dedupeMessages(messages: Message[]): Message[] {
+  return messages.filter((m, idx, arr) => {
+    if (idx === 0) return true;
+    const prev = arr[idx - 1];
+    return !(prev.role === m.role && prev.content.trim() === m.content.trim());
+  });
 }
 
 const systemPrompt = `You are Henry, DuoDrive's AI Copilot. You help car buyers make realistic, buyer-first decisions about a car purchase.
@@ -147,6 +238,53 @@ Before asking anything:
 - If condition is "new" → skip mileage question
 - VIN is always optional — ask once, never again unless user brings it up
 - Never ask more than one question per turn
+- If VIN decode data is present in the deal context, treat year/make/model as authoritative unless user corrects it
+- Only state a trim as fact if it came from VIN decode or the user explicitly provided it
+
+---
+
+## VIN DECODE BEHAVIOR
+
+When a VIN is decoded via NHTSA and present in context:
+- Confirm the vehicle info: "Thanks — I decoded the VIN using NHTSA. I'm seeing a [year] [make] [model] ([trim if present]). Does that match the listing?"
+- If NHTSA returned trim, include it. If not, ask: "Trim isn't clear from this decode — do you know the trim name from the listing?"
+- Include the extracted data: \`[DEAL_EXTRACTED]{"vin":"...", "year":"...", "make":"...", "model":"...", "trim":"..."}[/DEAL_EXTRACTED]\`
+
+---
+
+## TRIM SAFETY (IMPORTANT)
+
+Only assert a trim as fact if:
+- The user explicitly provided it, OR
+- It was decoded from VIN and present in the deal context
+
+If the user says vague phrases like "fully loaded", "top trim", "nice package", "the best one", ask:
+"When you say 'fully loaded,' do you mean the highest trim — or specific features like panoramic roof, AWD, or premium audio?"
+
+Never guess or invent a trim name.
+
+---
+
+## APR & CREDIT RULE (S6 - Financing Terms)
+
+When you reach financing terms (APR/term/down payment):
+- If APR is missing, ask ONE question that offers two paths:
+
+"Do you know the APR the dealer quoted — or should we estimate it based on your credit range?"
+
+If the user chooses to estimate (or says "not sure"):
+Ask ONE question (credit tier) using this exact phrasing:
+"Totally okay — what credit range fits you best: Excellent (740+), Good (680–739), Fair (620–679), or Not sure?"
+
+Then estimate conservatively:
+- Excellent: 6.5%
+- Good: 8.0%
+- Fair: 10.5%
+- Building/Not sure: 10.5%
+
+Explain: "I'll use a conservative estimate — if the dealer quotes something different, we can adjust."
+
+Do NOT send the user to external sites for APR. Keep them inside DuoDrive.
 
 ---
 
@@ -339,62 +477,90 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // De-duplicate messages to prevent repeated dialogue
+    const dedupedMessages = dedupeMessages(messages);
+
+    // Extract VIN from last user message and decode if present
+    const lastUserMessage = [...dedupedMessages].reverse().find(m => m.role === "user")?.content || "";
+    let mergedDealContext = dealContext;
+
+    const existingVin = dealContext?.vin;
+    const vinFromText = extractVin(lastUserMessage);
+    const vin = existingVin || vinFromText;
+
+    if (vin && isValidVin(vin) && !dealContext?.vinDecoded) {
+      try {
+        const decoded = await decodeVinWithNhtsa(vin);
+        if (decoded) {
+          mergedDealContext = applyVinDecodeToDealContext(mergedDealContext, vin, decoded);
+          console.log("VIN decoded via NHTSA:", vin, decoded.Make, decoded.Model, decoded.ModelYear);
+        }
+      } catch (e) {
+        console.log("VIN decode failed:", e);
+      }
+    }
+
     // Build context-aware system message
     let contextMessage = systemPrompt;
     
-    if (dealContext) {
+    if (mergedDealContext) {
       contextMessage += "\n\n--- USER'S CURRENT DEAL CONTEXT ---\n";
       
-      // Vehicle info
-      if (dealContext.year && dealContext.make) {
-        contextMessage += `Vehicle: ${dealContext.year} ${dealContext.make} ${dealContext.model || ''} ${dealContext.trim || ''}\n`;
+      // VIN info
+      if (mergedDealContext.vin) {
+        contextMessage += `VIN: ${mergedDealContext.vin}${mergedDealContext.vinDecoded ? ' (NHTSA decoded)' : ''}\n`;
       }
-      if (dealContext.mileage) {
-        contextMessage += `Mileage: ${dealContext.mileage} miles\n`;
+      
+      // Vehicle info
+      if (mergedDealContext.year && mergedDealContext.make) {
+        contextMessage += `Vehicle: ${mergedDealContext.year} ${mergedDealContext.make} ${mergedDealContext.model || ''} ${mergedDealContext.trim || ''}\n`;
+      }
+      if (mergedDealContext.mileage) {
+        contextMessage += `Mileage: ${mergedDealContext.mileage} miles\n`;
       }
       
       // Pricing
-      if (dealContext.askingPrice) {
-        contextMessage += `Dealer Asking Price: $${dealContext.askingPrice}\n`;
+      if (mergedDealContext.askingPrice) {
+        contextMessage += `Dealer Asking Price: $${mergedDealContext.askingPrice}\n`;
       }
-      if (dealContext.negotiatedPrice) {
-        contextMessage += `Negotiated Price: $${dealContext.negotiatedPrice}\n`;
+      if (mergedDealContext.negotiatedPrice) {
+        contextMessage += `Negotiated Price: $${mergedDealContext.negotiatedPrice}\n`;
       }
-      if (dealContext.downPayment) {
-        contextMessage += `Down Payment: $${dealContext.downPayment}\n`;
+      if (mergedDealContext.downPayment) {
+        contextMessage += `Down Payment: $${mergedDealContext.downPayment}\n`;
       }
-      if (dealContext.tradeIn) {
-        contextMessage += `Trade-In Value: $${dealContext.tradeIn}\n`;
+      if (mergedDealContext.tradeIn) {
+        contextMessage += `Trade-In Value: $${mergedDealContext.tradeIn}\n`;
       }
       
       // Financing
-      if (dealContext.apr) {
-        contextMessage += `APR: ${dealContext.apr}%\n`;
+      if (mergedDealContext.apr) {
+        contextMessage += `APR: ${mergedDealContext.apr}%${mergedDealContext.aprSource === 'estimated' ? ' (estimated)' : ''}\n`;
       }
-      if (dealContext.term) {
-        contextMessage += `Loan Term: ${dealContext.term} months\n`;
+      if (mergedDealContext.term) {
+        contextMessage += `Loan Term: ${mergedDealContext.term} months\n`;
       }
-      if (dealContext.creditScore) {
-        contextMessage += `Credit Score Range: ${dealContext.creditScore}\n`;
+      if (mergedDealContext.creditScore) {
+        contextMessage += `Credit Score Range: ${mergedDealContext.creditScore}\n`;
       }
       
       // Buyer finances
-      if (dealContext.monthlyIncome) {
-        contextMessage += `Monthly Take-Home Income: $${dealContext.monthlyIncome}\n`;
+      if (mergedDealContext.monthlyIncome) {
+        contextMessage += `Monthly Take-Home Income: $${mergedDealContext.monthlyIncome}\n`;
       }
-      if (dealContext.insurance) {
-        contextMessage += `Monthly Insurance: $${dealContext.insurance}\n`;
+      if (mergedDealContext.insurance) {
+        contextMessage += `Monthly Insurance: $${mergedDealContext.insurance}\n`;
       }
-      if (dealContext.fuelCost) {
-        contextMessage += `Monthly Fuel Cost: $${dealContext.fuelCost}\n`;
+      if (mergedDealContext.fuelCost) {
+        contextMessage += `Monthly Fuel Cost: $${mergedDealContext.fuelCost}\n`;
       }
-      if (dealContext.maintenance) {
-        contextMessage += `Monthly Maintenance: $${dealContext.maintenance}\n`;
+      if (mergedDealContext.maintenance) {
+        contextMessage += `Monthly Maintenance: $${mergedDealContext.maintenance}\n`;
       }
       
       // V3 Score Results
-      if (dealContext.scoreResult) {
-        const sr = dealContext.scoreResult;
+      if (mergedDealContext.scoreResult) {
+        const sr = mergedDealContext.scoreResult;
         contextMessage += `\n--- DUODRIVE V3 SCORE RESULTS ---\n`;
         contextMessage += `Overall DuoDrive Score: ${sr.overall}/100\n`;
         
@@ -455,7 +621,7 @@ serve(async (req) => {
       }
     }
 
-    console.log("Starting AI chat with V3 context:", dealContext?.scoreResult ? "full score" : dealContext ? "partial" : "none");
+    console.log("Starting AI chat with V3 context:", mergedDealContext?.scoreResult ? "full score" : mergedDealContext ? "partial" : "none");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -467,7 +633,7 @@ serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: contextMessage },
-          ...messages,
+          ...dedupedMessages,
         ],
         stream: true,
       }),

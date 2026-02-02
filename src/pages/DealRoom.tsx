@@ -15,6 +15,9 @@ import { SavedDeals } from "@/components/SavedDeals";
 import { ConversationCanvas } from "@/components/ConversationCanvas";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import DealAnalysisPaywall from "@/components/DealAnalysisPaywall";
+import { EstimateAprModal, CreditTier, VehicleCondition, LoanTerm } from "@/components/EstimateAprModal";
+import { HowToUseHenry } from "@/components/HowToUseHenry";
+import { VinBadge, getFieldSource } from "@/components/VinBadge";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock } from "lucide-react";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
@@ -38,6 +41,7 @@ import { Progress } from "@/components/ui/progress";
 import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
 import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
+import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } from "@/lib/vinUtils";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -69,6 +73,8 @@ export default function DealRoom() {
   const [isSmartFilling, setIsSmartFilling] = useState(false);
   const [feeContext, setFeeContext] = useState<FeeContext | null>(null);
   const [affordabilityAcknowledged, setAffordabilityAcknowledged] = useState(false);
+  const [showAprModal, setShowAprModal] = useState(false);
+  const [vinDecodedFields, setVinDecodedFields] = useState<Set<string>>(new Set());
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(() => {
     try {
       const saved = localStorage.getItem(SIDE_PANEL_KEY);
@@ -1614,27 +1620,62 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
           {/* AI COPILOT TAB - CONVERSATION-FIRST EXPERIENCE */}
           <TabsContent value="copilot" className="animate-fade-in">
-            <div className="max-w-3xl mx-auto">
-              <ConversationCanvas
-                messages={chatMessages}
-                onSendMessage={handleConversationMessage}
-                onClearMessages={handleNewDeal}
-                onFileUpload={handleConversationUpload}
-                isLoading={isChatLoading || isExtractingText}
-                isExtracting={isExtracting}
-                scoreResult={scoreResult}
-                onViewAnalysis={() => setActiveTab("overview")}
-              />
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Main conversation area */}
+              <div className="lg:col-span-2">
+                <ConversationCanvas
+                  messages={chatMessages}
+                  onSendMessage={handleConversationMessage}
+                  onClearMessages={handleNewDeal}
+                  onFileUpload={handleConversationUpload}
+                  isLoading={isChatLoading || isExtractingText}
+                  isExtracting={isExtracting}
+                  scoreResult={scoreResult}
+                  onViewAnalysis={() => setActiveTab("overview")}
+                />
+              </div>
               
-              {/* Tab descriptions - subtle helper text */}
-              <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
-                <span><strong>The Deal</strong> — Vehicle & pricing summary</span>
-                <span><strong>Calculator</strong> — How the numbers work</span>
-                <span><strong>Overview</strong> — Is this a good fit?</span>
-                <span><strong>What to Say</strong> — Dealer-ready responses</span>
+              {/* How to use Henry - Side Panel */}
+              <div className="hidden lg:block">
+                <div className="sticky top-24 p-6 rounded-2xl bg-card border border-border shadow-card">
+                  <HowToUseHenry />
+                </div>
               </div>
             </div>
+            
+            {/* Tab descriptions - subtle helper text */}
+            <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+              <span><strong>The Deal</strong> — Vehicle & pricing summary</span>
+              <span><strong>Calculator</strong> — How the numbers work</span>
+              <span><strong>Overview</strong> — Is this a good fit?</span>
+              <span><strong>What to Say</strong> — Dealer-ready responses</span>
+            </div>
           </TabsContent>
+
+          {/* APR Estimation Modal */}
+          <EstimateAprModal
+            open={showAprModal}
+            onOpenChange={setShowAprModal}
+            defaultCondition={dealData.mileage && parseInt(dealData.mileage) > 0 ? "used" : "new"}
+            defaultTermMonths={parseInt(dealData.term) as LoanTerm || 60}
+            onApply={({ aprEstimated, creditTier }) => {
+              handleInputChange("apr", aprEstimated);
+              if (creditTier !== "unknown") {
+                const creditLabels: Record<CreditTier, string> = {
+                  excellent: "Excellent (740+)",
+                  good: "Good (680-739)",
+                  fair: "Fair (620-679)",
+                  building: "Building (<620)",
+                  unknown: "",
+                };
+                handleInputChange("creditScore", creditLabels[creditTier]);
+              }
+              toast({
+                title: "APR Estimated",
+                description: `Using ${aprEstimated}% APR (conservative estimate)`,
+              });
+            }}
+          />
 
           {/* WHAT TO SAY NEXT TAB */}
           <TabsContent value="scripts" className="animate-fade-in">

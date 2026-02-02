@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { 
   Bot, 
@@ -11,7 +10,6 @@ import {
   Plus, 
   Camera, 
   ImagePlus, 
-  Upload,
   FileText,
   RotateCcw
 } from "lucide-react";
@@ -46,15 +44,22 @@ export function ConversationCanvas({
   onViewAnalysis,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll chat container only (not the page)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    const el = chatScrollRef.current;
+    if (!el) return;
+
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages.length, isLoading]);
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
@@ -96,7 +101,7 @@ export function ConversationCanvas({
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4">
+      <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           {messages.map((message, index) => (
             <MessageBubble key={index} message={message} />
@@ -149,7 +154,7 @@ export function ConversationCanvas({
 
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input Area */}
       <div className="p-4 border-t border-border bg-background">

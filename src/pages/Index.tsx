@@ -9,18 +9,18 @@ import heroImage from "@/assets/hero-road.jpg";
 const steps = [
   {
     icon: Upload,
-    title: "Upload or Paste Your Quote",
-    description: "Paste your deal details, screenshot, or dealer quote. Our AI extracts and analyzes the numbers automatically.",
+    title: "Tell Henry About Your Deal",
+    description: "Describe your deal, paste a quote, or upload a screenshot. Henry, our AI copilot, extracts and analyzes everything automatically.",
   },
   {
     icon: Calculator,
     title: "Get Your DuoDrive Score",
-    description: "See instant analysis on pricing, fairness, fees, and affordability. Know if you're overpaying.",
+    description: "Henry calculates your score instantly — analyzing pricing, fees, and affordability so you know if you're overpaying.",
   },
   {
     icon: MessageSquare,
     title: "Know What to Say Next",
-    description: "Get AI-generated negotiation scripts that are firm, polite, and dealer-ready. No humans needed.",
+    description: "Henry generates negotiation scripts that are firm, polite, and dealer-ready. Just chat — no forms, no guesswork.",
   },
 ];
 
@@ -36,22 +36,22 @@ const features = [
   {
     icon: Target,
     title: "Fair Price Range",
-    description: "See what others are paying for the same car in your area.",
+    description: "Henry shows you what others are paying for the same car in your area.",
   },
   {
     icon: FileSearch,
     title: "Quote Analyzer",
-    description: "Upload any dealer quote and we'll decode the math, flag hidden fees, and recalculate correctly.",
+    description: "Paste any dealer quote and Henry decodes the math, flags hidden fees, and recalculates correctly.",
   },
   {
     icon: Sparkles,
     title: "Negotiation Scripts",
-    description: "Get exactly what to say to counter, remove fees, or walk away professionally.",
+    description: "Henry tells you exactly what to say to counter, remove fees, or walk away professionally.",
   },
   {
     icon: Bot,
-    title: "AI Copilot",
-    description: "Ask questions about your deal and get instant, expert-level guidance.",
+    title: "Meet Henry",
+    description: "Your AI copilot for car buying. Just chat — Henry handles the research, math, and strategy.",
   },
 ];
 
@@ -78,12 +78,12 @@ export default function Index() {
               Know the deal before you sign.
             </h1>
             <p className="mt-6 text-lg md:text-xl text-muted-foreground leading-relaxed">
-              DuoDrive uses AI to analyze car pricing, decode dealer quotes, and generate negotiation scripts—so you don't overpay or get pressured.
+              Meet Henry — your AI copilot for car buying. Just describe your deal and Henry analyzes pricing, decodes quotes, and tells you exactly what to say to the dealer.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Button asChild variant="hero">
                 <Link to="/deal-room">
-                  Analyze My Deal
+                  Chat with Henry
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
@@ -124,7 +124,7 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              How DuoDrive Works
+              How Henry Helps You
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Three steps to understand your deal and know what to say
@@ -268,7 +268,7 @@ export default function Index() {
                 Decode Any Dealer Quote
               </h2>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                Upload a screenshot, paste text, or forward an email. Our AI instantly identifies hidden fees, rate padding, and payment packing—then tells you exactly what to remove.
+                Paste a screenshot, forward an email, or just describe the numbers. Henry instantly identifies hidden fees, rate padding, and payment packing—then tells you exactly what to remove.
               </p>
               <ul className="mt-6 space-y-3">
                 <li className="flex items-start gap-3">
@@ -286,7 +286,7 @@ export default function Index() {
               </ul>
               <Button asChild className="mt-8">
                 <Link to="/deal-room">
-                  Try the Quote Analyzer
+                  Chat with Henry
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -307,11 +307,11 @@ export default function Index() {
                 Ready to understand your deal?
               </h2>
               <p className="mt-4 text-lg text-secondary-foreground/80">
-                Get instant AI analysis and know exactly what to say to the dealer.
+                Henry is ready to help. Just describe your deal and get instant analysis.
               </p>
               <Button asChild variant="hero" className="mt-8">
                 <Link to="/deal-room">
-                  Analyze My Deal Now
+                  Chat with Henry Now
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>

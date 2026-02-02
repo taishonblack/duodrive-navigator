@@ -35,11 +35,11 @@ function getComfortLabel(level: ComfortLevel): string {
 function getComfortDescription(level: ComfortLevel, priceToIncomeRatio: number): string {
   switch (level) {
     case "comfortable":
-      return "This vehicle fits comfortably within recommended affordability guidelines. The monthly costs should be manageable alongside your other expenses.";
+      return "This vehicle aligns well with conservative affordability guidelines. Based on your income and estimated ownership costs, it should fit comfortably alongside your other financial priorities.";
     case "stretch":
-      return "This vehicle is at the edge of recommended affordability thresholds. While manageable, it may reduce your financial flexibility month-to-month.";
+      return "This vehicle pushes beyond conservative guidelines. It may be workable, but could limit flexibility for savings or other goals.";
     case "high-risk":
-      return `Vehicles at this price level (${priceToIncomeRatio.toFixed(0)}% of annual income) typically require a higher income or larger down payment to feel comfortable long-term.`;
+      return "This vehicle exceeds conservative affordability guidelines. Even if approved, long-term ownership may feel financially stressful.";
   }
 }
 
@@ -135,16 +135,13 @@ export function BudgetComfortCard({
           </div>
         </div>
         
-        {/* Why This Matters */}
-        {level !== "comfortable" && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-            <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Even when monthly payments look manageable, higher-priced vehicles increase insurance costs, 
-              reduce financial flexibility, and raise long-term risk.
-            </p>
-          </div>
-        )}
+        {/* Reassurance Note */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+          <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            This is guidance — not a rule. DuoDrive highlights risk so you can make an informed choice.
+          </p>
+        </div>
         
         {/* Acknowledgment for High Risk */}
         {level === "high-risk" && !isAcknowledged && (

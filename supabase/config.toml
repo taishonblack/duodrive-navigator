@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.extract-quote]
 verify_jwt = false
 
+[functions.extract-quote-ocr]
+verify_jwt = false
+
 [functions.extract-deal-text]
 verify_jwt = false
 

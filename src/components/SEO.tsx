@@ -12,8 +12,8 @@ interface SEOProps {
 }
 
 const defaultTitle = "DuoDrive - Car Buying Simplified";
-const defaultDescription = "DuoDrive helps you understand if a car deal is safe, fair, affordable — and right for your budget. Get instant analysis with the DuoDrive Score.";
-const defaultKeywords = "car buying, car deal analyzer, DuoDrive Score, car affordability, vehicle purchase, car buying coach";
+const defaultDescription = "Meet Henry, your AI copilot for car buying. Just describe your deal and Henry analyzes pricing, decodes quotes, and tells you exactly what to say.";
+const defaultKeywords = "car buying, car deal analyzer, DuoDrive Score, car affordability, vehicle purchase, AI car buying, Henry AI copilot";
 const siteUrl = "https://duodrive.app";
 const defaultImage = "https://lovable.dev/opengraph-image-p98pqg.png";
 
@@ -74,7 +74,7 @@ export const organizationSchema = {
   "name": "DuoDrive",
   "url": "https://duodrive.app",
   "logo": "https://duodrive.app/favicon.ico",
-  "description": "DuoDrive helps car buyers understand if a deal is safe, fair, and affordable.",
+  "description": "DuoDrive helps car buyers understand if a deal is safe, fair, and affordable with Henry, our AI copilot.",
   "sameAs": []
 };
 
@@ -83,7 +83,7 @@ export const websiteSchema = {
   "@type": "WebSite",
   "name": "DuoDrive",
   "url": "https://duodrive.app",
-  "description": "Car Buying Simplified - Get instant analysis with the DuoDrive Score",
+  "description": "Car Buying Simplified - Chat with Henry, your AI copilot, for instant deal analysis",
   "potentialAction": {
     "@type": "SearchAction",
     "target": "https://duodrive.app/deal-room",

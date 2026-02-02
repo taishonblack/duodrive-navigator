@@ -92,9 +92,9 @@ export default function DuoDriveScore() {
     <Layout>
       <SEO 
         title="Understanding the DuoDrive Score"
-        description="Learn how the DuoDrive Score evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability."
+        description="Learn how Henry, your AI copilot, evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability."
         canonical="/score"
-        keywords="DuoDrive Score, car deal evaluation, car buying score, vehicle scoring, car deal analysis"
+        keywords="DuoDrive Score, car deal evaluation, car buying score, vehicle scoring, car deal analysis, Henry AI"
         structuredData={[faqSchema, articleSchema]}
       />
       {/* Hero */}

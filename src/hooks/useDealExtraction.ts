@@ -1,28 +1,45 @@
 import { useCallback } from "react";
 
 export interface ExtractedDealData {
+  // User context
+  userName?: string;
+  atDealership?: string;
+  dealershipMode?: string;
+  
+  // Vehicle info
   year?: string;
   make?: string;
   model?: string;
   trim?: string;
   mileage?: string;
   vin?: string;
+  isNew?: string;
+  
+  // Pricing
   askingPrice?: string;
   negotiatedPrice?: string;
   downPayment?: string;
   tradeIn?: string;
+  
+  // Financing
   apr?: string;
   term?: string;
+  monthlyPayment?: string;
+  
+  // Fees
   docFee?: string;
   dealerFee?: string;
   addOns?: string;
   taxes?: string;
   registration?: string;
+  
+  // Buyer finances
   monthlyIncome?: string;
   creditScore?: string;
   insurance?: string;
   fuelCost?: string;
   maintenance?: string;
+  zip?: string;
 }
 
 const DEAL_DATA_MARKER = "[DEAL_EXTRACTED]";
@@ -99,18 +116,23 @@ export function formatExtractedFields(data: ExtractedDealData): string {
 // Get list of extracted field names
 export function getExtractedFieldNames(data: ExtractedDealData): string[] {
   const fieldLabels: Record<keyof ExtractedDealData, string> = {
+    userName: "Name",
+    atDealership: "At Dealership",
+    dealershipMode: "Dealership Mode",
     year: "Year",
     make: "Make",
     model: "Model",
     trim: "Trim",
     mileage: "Mileage",
     vin: "VIN",
+    isNew: "New/Used",
     askingPrice: "Asking Price",
     negotiatedPrice: "Negotiated Price",
     downPayment: "Down Payment",
     tradeIn: "Trade-In",
     apr: "APR",
     term: "Term",
+    monthlyPayment: "Monthly Payment",
     docFee: "Doc Fee",
     dealerFee: "Dealer Fee",
     addOns: "Add-Ons",
@@ -121,6 +143,7 @@ export function getExtractedFieldNames(data: ExtractedDealData): string[] {
     insurance: "Insurance",
     fuelCost: "Fuel Cost",
     maintenance: "Maintenance",
+    zip: "ZIP Code",
   };
 
   return Object.entries(data)

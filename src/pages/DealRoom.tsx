@@ -1490,7 +1490,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                       monthlyPayment={scoreResult.monthlyPayment}
                       monthlyIncome={parseNumber(dealData.monthlyIncome) || 5000}
                       askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice)}
-                      customerMaxSafePrice={scoreResult.customerMaxSafePrice}
                       isAcknowledged={affordabilityAcknowledged}
                       onAcknowledge={() => setAffordabilityAcknowledged(true)}
                     />

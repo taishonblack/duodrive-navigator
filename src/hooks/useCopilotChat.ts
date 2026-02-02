@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
-const CHAT_STORAGE_KEY = "duodrive_copilot_chat";
-const CHAT_TIMESTAMP_KEY = "duodrive_copilot_chat_timestamp";
-const RESUME_CONVERSATION_KEY = "duodrive_resume_conversation";
+// Versioned keys to clear legacy seeded messages
+const CHAT_STORAGE_KEY = "duodrive_copilot_chat_v3";
+const CHAT_TIMESTAMP_KEY = "duodrive_copilot_chat_timestamp_v3";
+const RESUME_CONVERSATION_KEY = "duodrive_resume_conversation_v3";
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export interface ChatMessage {
@@ -12,21 +13,12 @@ export interface ChatMessage {
   content: string;
 }
 
-// Get time-based greeting
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-};
-
+// Henry's opening message - he owns the greeting
 const getWelcomeMessage = (): ChatMessage => ({
   role: "assistant",
-  content: `${getGreeting()}! 👋 I'll help you think through this car calmly and realistically.
+  content: `Hi — I'm Henry, the DuoDrive AI Copilot. I'm here to help you find a great deal and avoid getting pressured.
 
-Tell me about the car you're considering, or upload a dealer quote or screenshot.
-
-You can answer casually — I'll ask follow-ups and fill in gaps as we go.`,
+First — what's your name?`,
 });
 
 // Check if chat has expired (24 hours)

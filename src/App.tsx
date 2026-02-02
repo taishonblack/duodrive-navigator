@@ -44,7 +44,10 @@ const App = () => (
             <Route path="/glossary" element={<Glossary />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
-            {/* Coaching routes hidden but preserved for potential $49 escalation feature */}
+            {/* Legacy coaching routes - hidden from UI but preserved for potential future $49 escalation feature
+                These routes are functional but not linked from navigation, footer, or dashboard.
+                Related components: Coaching.tsx, CoachingChat.tsx, ChatHistory.tsx, CoachAuth.tsx, CoachDashboard.tsx
+                See memory: legacy/coaching-infrastructure for full context */}
             <Route path="/coaching" element={<Coaching />} />
             <Route path="/coaching-chat/:sessionId" element={<CoachingChat />} />
             <Route path="/chat-history" element={<ChatHistory />} />

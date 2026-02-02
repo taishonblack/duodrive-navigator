@@ -26,6 +26,14 @@ import { useCopilotChat, ChatMessage } from "@/hooks/useCopilotChat";
 import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreResult, AffordabilityStatus } from "@/lib/duodriveScore";
 import { analyzeAffordability, isLuxuryBrand } from "@/lib/affordabilityRules";
 import { AffordabilityWarning } from "@/components/AffordabilityWarning";
+import {
+  MarketReferenceCard,
+  PricingPositionCard,
+  BudgetComfortCard,
+  MonthlyRealityCard,
+  DealerAddOnsCard,
+  WhyThisMattersCard,
+} from "@/components/dealroom";
 import { Progress } from "@/components/ui/progress";
 import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
@@ -1412,381 +1420,162 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                 <Button onClick={() => setActiveTab("deal")}>Enter Deal Details</Button>
               </div>
             ) : (
-              <div className="max-w-4xl mx-auto space-y-6">
-                {/* Learn More Section */}
-                <details className="group p-5 rounded-2xl bg-accent/50 border border-primary/20">
-                  <summary className="flex items-center justify-between cursor-pointer list-none">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">How is the DuoDrive Score calculated?</h3>
-                        <p className="text-sm text-muted-foreground">Learn what goes into your score</p>
-                      </div>
+              <div className="max-w-4xl mx-auto space-y-8">
+                {/* SECTION A: How This Car Is Priced (Market Context) */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center group-open:rotate-180 transition-transform">
-                      <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </summary>
-                  <div className="mt-4 pt-4 border-t border-border space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      The DuoDrive Score (0-100) evaluates your car deal across five weighted pillars to give you a complete picture of whether it's a good buy:
-                    </p>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div className="p-3 rounded-lg bg-background border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingDown className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium text-foreground">Depreciation (20%)</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">How much value the car has already lost and will continue to lose</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-background border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Wrench className="h-4 w-4 text-orange-500" />
-                          <span className="text-sm font-medium text-foreground">Reliability (20%)</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Historical reliability of the make and expected repair costs</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-background border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Shield className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-medium text-foreground">Safety (15%)</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Safety ratings and modern safety features for the vehicle</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-background border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <DollarSign className="h-4 w-4 text-emerald-500" />
-                          <span className="text-sm font-medium text-foreground">Deal Health (25%)</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Price vs market value, fees, APR relative to your credit score</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-background border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Heart className="h-4 w-4 text-pink-500" />
-                          <span className="text-sm font-medium text-foreground">Affordability (20%)</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">How well the car fits your budget and income level</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-background border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Target className="h-4 w-4 text-purple-500" />
-                          <span className="text-sm font-medium text-foreground">Key Metrics</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">DPG, CFG, CMSP, and payment burden calculations</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 pt-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to="/glossary">
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          View Full Glossary
-                        </Link>
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Tap any <span className="inline-flex items-center"><HelpCircle className="h-3 w-3 mx-0.5" /></span> icon for quick definitions
-                      </p>
-                    </div>
-                  </div>
-                </details>
-
-                {/* Fairness Meter */}
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-elevated">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-foreground">Deal Fairness Meter</h2>
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-                      scoreResult.pillars.dealHealth.score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                      scoreResult.pillars.dealHealth.score >= 60 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                      scoreResult.pillars.dealHealth.score >= 40 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {scoreResult.pillars.dealHealth.score >= 80 ? <CheckCircle2 className="h-4 w-4" /> :
-                       scoreResult.pillars.dealHealth.score >= 40 ? <AlertTriangle className="h-4 w-4" /> :
-                       <XCircle className="h-4 w-4" />}
-                      {getDealHealthLabel(scoreResult.pillars.dealHealth.score)}
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <Progress 
-                      value={scoreResult.pillars.dealHealth.score} 
-                      className="h-4 rounded-full"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                      <span>Overpriced</span>
-                      <span>Needs Work</span>
-                      <span>Fair</span>
-                      <span>Great Deal</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* V3 Metrics Grid */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* True Market Price */}
-                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">True Market Price (TMP)</p>
-                        <p className="text-2xl font-bold text-foreground">${scoreResult.trueMarketPrice.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">AI-estimated fair value based on year, make, model, and mileage</p>
-                  </div>
-
-                  {/* Deal Price Gap */}
-                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        scoreResult.dealPriceGapPercent <= 0 ? 'bg-green-100 dark:bg-green-900/30' :
-                        scoreResult.dealPriceGapPercent <= 10 ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                        'bg-red-100 dark:bg-red-900/30'
-                      }`}>
-                        <TrendingUp className={`h-5 w-5 ${
-                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.dealPriceGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground flex items-center">
-                          Deal Price Gap (DPG)
-                          <TermTooltip 
-                            term="Deal Price Gap (DPG)" 
-                            definition="The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal; a positive gap means you're paying above market value."
-                          />
-                        </p>
-                        <p className={`text-2xl font-bold ${
-                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.dealPriceGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`}>
-                          {scoreResult.dealPriceGap >= 0 ? '+' : ''}${scoreResult.dealPriceGap.toLocaleString()} ({scoreResult.dealPriceGapPercent}%)
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {scoreResult.dealPriceGapPercent <= 0 ? 'Great! Price is at or below market value.' :
-                       scoreResult.dealPriceGapPercent <= 10 ? 'Fair price, close to market value.' :
-                       scoreResult.dealPriceGapPercent <= 20 ? 'Overpriced. Try to negotiate down.' :
-                       'Significantly overpriced. Consider walking away.'}
-                    </p>
-                  </div>
-
-                  {/* Customer Max Safe Price */}
-                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground flex items-center">
-                          Your Safe Max Price (CMSP)
-                          <TermTooltip 
-                            term="Customer Max Safe Price (CMSP)" 
-                            definition="The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income."
-                          />
-                        </p>
-                        <p className="text-2xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Based on 12% of your income rule for monthly payment</p>
-                  </div>
-
-                  {/* Customer Fit Gap */}
-                  <div className="p-5 rounded-xl bg-card border border-border shadow-card">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        scoreResult.customerFitGap >= 0 ? 'bg-green-100 dark:bg-green-900/30' :
-                        scoreResult.customerFitGapPercent <= 10 ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                        scoreResult.customerFitGapPercent <= 25 ? 'bg-orange-100 dark:bg-orange-900/30' :
-                        'bg-red-100 dark:bg-red-900/30'
-                      }`}>
-                        <Heart className={`h-5 w-5 ${
-                          scoreResult.customerFitGap >= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground flex items-center">
-                          Budget Fit Gap (CFG)
-                          <TermTooltip 
-                            term="Customer Fit Gap (CFG)" 
-                            definition="The difference between your max safe price (CMSP) and the asking price. Positive = under budget, negative = over budget."
-                          />
-                        </p>
-                        <p className={`text-2xl font-bold ${
-                          scoreResult.customerFitGap >= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`}>
-                          {scoreResult.customerFitGap >= 0 ? `$${scoreResult.customerFitGap.toLocaleString()} under budget` : `$${Math.abs(scoreResult.customerFitGap).toLocaleString()} over budget`}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {scoreResult.customerFitGap >= 0 ? 'Fits within your safe budget!' :
-                       scoreResult.customerFitGapPercent <= 10 ? 'Slightly above safe range.' :
-                       scoreResult.customerFitGapPercent <= 25 ? 'Risky stretch for your budget.' :
-                       'Far above what you can safely afford.'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Financial Details */}
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Loan & Payment Details</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 rounded-xl bg-muted">
-                      <p className="text-2xl font-bold text-foreground">${scoreResult.monthlyPayment.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">Monthly Payment</p>
-                    </div>
-                    <div className="text-center p-4 rounded-xl bg-muted">
-                      <p className="text-2xl font-bold text-foreground">${scoreResult.loanAmount.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">Loan Amount</p>
-                    </div>
-                    <div className="text-center p-4 rounded-xl bg-muted">
-                      <p className="text-2xl font-bold text-foreground">${scoreResult.totalInterest.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">Total Interest</p>
-                    </div>
-                    <div className="text-center p-4 rounded-xl bg-muted">
-                      <p className="text-2xl font-bold text-foreground">{scoreResult.interestRatio}%</p>
-                      <p className="text-sm text-muted-foreground flex items-center justify-center">
-                        Interest Ratio
-                        <TermTooltip 
-                          term="Interest Ratio" 
-                          definition="The percentage of your total loan payments that goes toward interest rather than principal. A higher ratio means you're paying more for the privilege of borrowing."
-                        />
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Monthly Burden Analysis */}
-                <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Affordability Analysis</h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Price-to-Income Ratio - NEW from Rules A-D */}
-                    <div className="p-4 rounded-xl bg-muted">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground flex items-center">
-                          Price-to-Income
-                          <TermTooltip 
-                            term="Price-to-Income Ratio" 
-                            definition="The vehicle price as a percentage of your annual income. Financial experts recommend keeping this under 50-60% for healthy finances. Above 70% is a red flag."
-                          />
-                        </span>
-                        <span className={`text-lg font-bold ${
-                          scoreResult.priceToIncomeRatio <= 50 ? 'text-green-600' :
-                          scoreResult.priceToIncomeRatio <= 60 ? 'text-yellow-600' :
-                          scoreResult.priceToIncomeRatio <= 70 ? 'text-orange-600' :
-                          'text-red-600'
-                        }`}>{scoreResult.priceToIncomeRatio}%</span>
-                      </div>
-                      <Progress value={Math.min(scoreResult.priceToIncomeRatio * 1.25, 100)} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">Target: under 50-60% of annual income</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-muted">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground flex items-center">
-                          Payment Burden
-                          <TermTooltip 
-                            term="Payment Burden" 
-                            definition="The percentage of your monthly income that goes toward your car payment. Financial experts recommend keeping this under 12% to maintain healthy finances."
-                          />
-                        </span>
-                        <span className={`text-lg font-bold ${
-                          scoreResult.paymentBurdenPercent <= 10 ? 'text-green-600' :
-                          scoreResult.paymentBurdenPercent <= 15 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>{scoreResult.paymentBurdenPercent}%</span>
-                      </div>
-                      <Progress value={Math.min(scoreResult.paymentBurdenPercent * 4, 100)} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">Target: under 12% of income</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-muted">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground flex items-center">
-                          Total Operating Cost
-                          <TermTooltip 
-                            term="Total Operating Cost" 
-                            definition="The total percentage of your monthly income spent on all car-related expenses: payment, insurance, fuel, and maintenance. Financial experts recommend keeping this under 20% of your income."
-                          />
-                        </span>
-                        <span className={`text-lg font-bold ${
-                          scoreResult.operatingCostBurden <= 15 ? 'text-green-600' :
-                          scoreResult.operatingCostBurden <= 20 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>{scoreResult.operatingCostBurden}%</span>
-                      </div>
-                      <Progress value={Math.min(scoreResult.operatingCostBurden * 3.3, 100)} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">Target: under 20% of income</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-muted">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Total Monthly Cost</span>
-                        <span className="text-lg font-bold text-foreground">${scoreResult.totalMonthlyCost.toLocaleString()}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-3">Payment + insurance + fuel + maintenance</p>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">How This Car Is Priced</h2>
+                      <p className="text-sm text-muted-foreground">Market context and pricing position</p>
                     </div>
                   </div>
                   
-                  {/* Affordability Status Banner */}
-                  {scoreResult.affordabilityStatus !== 'fits_budget' && (
-                    <div className={`mt-4 p-4 rounded-xl border ${
-                      scoreResult.affordabilityStatus === 'stretch_warning' 
-                        ? 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800' 
-                        : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
-                    }`}>
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className={`h-5 w-5 shrink-0 mt-0.5 ${
-                          scoreResult.affordabilityStatus === 'stretch_warning'
-                            ? 'text-yellow-600 dark:text-yellow-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`} />
-                        <div>
-                          <p className={`font-medium ${
-                            scoreResult.affordabilityStatus === 'stretch_warning'
-                              ? 'text-yellow-700 dark:text-yellow-300'
-                              : 'text-red-700 dark:text-red-300'
-                          }`}>
-                            {scoreResult.affordabilityStatus === 'stretch_warning' 
-                              ? 'Budget Stretch Detected' 
-                              : 'This Vehicle May Be Outside Your Budget'}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {scoreResult.affordabilityStatus === 'stretch_warning'
-                              ? 'This deal is close to your budget limit. Proceed carefully.'
-                              : 'Based on your income, this vehicle exceeds recommended affordability thresholds. See the "What To Say" tab for guidance.'}
-                          </p>
-                        </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <MarketReferenceCard 
+                      trueMarketPrice={scoreResult.trueMarketPrice}
+                      askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice)}
+                    />
+                    <PricingPositionCard 
+                      dealPriceGapPercent={scoreResult.dealPriceGapPercent}
+                      dealPriceGap={scoreResult.dealPriceGap}
+                    />
+                  </div>
+                  
+                  <DealerAddOnsCard
+                    addOns={parseNumber(dealData.addOns)}
+                    dealerFee={parseNumber(dealData.dealerFee)}
+                    docFee={parseNumber(dealData.docFee)}
+                    askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
+                    onViewScripts={() => setActiveTab("scripts")}
+                  />
+                </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-sm text-muted-foreground">Personal Fit</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+
+                {/* SECTION B: Is This a Good Fit for You? (Personal Fit) */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                      <Heart className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">Is This a Good Fit for You?</h2>
+                      <p className="text-sm text-muted-foreground">Personal affordability and budget alignment</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <MonthlyRealityCard
+                      monthlyPayment={scoreResult.monthlyPayment}
+                      insurance={parseNumber(dealData.insurance) || 150}
+                      fuelCost={parseNumber(dealData.fuelCost) || 200}
+                      maintenance={parseNumber(dealData.maintenance) || 50}
+                      totalMonthlyCost={scoreResult.totalMonthlyCost}
+                      monthlyIncome={parseNumber(dealData.monthlyIncome) || 5000}
+                      operatingCostBurden={scoreResult.operatingCostBurden}
+                    />
+                    <BudgetComfortCard
+                      affordabilityStatus={scoreResult.affordabilityStatus}
+                      priceToIncomeRatio={scoreResult.priceToIncomeRatio}
+                      paymentBurdenPercent={scoreResult.paymentBurdenPercent}
+                      operatingCostBurden={scoreResult.operatingCostBurden}
+                      monthlyPayment={scoreResult.monthlyPayment}
+                      monthlyIncome={parseNumber(dealData.monthlyIncome) || 5000}
+                      askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice)}
+                      customerMaxSafePrice={scoreResult.customerMaxSafePrice}
+                      isAcknowledged={affordabilityAcknowledged}
+                      onAcknowledge={() => setAffordabilityAcknowledged(true)}
+                    />
+                  </div>
+                  
+                  {/* Why This Matters - only shows when stretched */}
+                  <WhyThisMattersCard
+                    affordabilityStatus={scoreResult.affordabilityStatus}
+                    onShowAlternatives={() => {
+                      // Future: implement alternatives search
+                      toast({
+                        title: "Coming Soon",
+                        description: "Alternative vehicle search is coming in a future update.",
+                      });
+                    }}
+                    onShowWhatWouldWork={() => {
+                      // Future: implement what-would-work calculator
+                      toast({
+                        title: "Coming Soon", 
+                        description: "Budget scenario calculator is coming in a future update.",
+                      });
+                    }}
+                  />
+                </div>
+
+                {/* DuoDrive Score Summary */}
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-elevated">
+                  <div className="flex flex-col sm:flex-row items-center gap-6">
+                    <ScoreRing score={scoreResult.overall} size="lg" />
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Your DuoDrive Score</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {scoreResult.recommendation}
+                      </p>
+                      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                        <Button onClick={() => setActiveTab("overview")} variant="outline" size="sm">
+                          View Full Breakdown
+                        </Button>
+                        <Button onClick={() => setActiveTab("scripts")} size="sm">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          What To Say Next
+                        </Button>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Fee Breakdown Analysis */}
-                <FeeBreakdown
-                  docFee={parseNumber(dealData.docFee)}
-                  dealerFee={parseNumber(dealData.dealerFee)}
-                  addOns={parseNumber(dealData.addOns)}
-                  taxes={parseNumber(dealData.taxes)}
-                  registration={parseNumber(dealData.registration)}
-                  askingPrice={parseNumber(dealData.askingPrice) || parseNumber(dealData.negotiatedPrice) || 25000}
-                />
-
-                {/* View Full Score Button */}
-                <div className="text-center">
-                  <Button onClick={() => setActiveTab("overview")} size="lg">
-                    View Full Score Breakdown
-                  </Button>
-                </div>
+                {/* Learn More Section (collapsed by default) */}
+                <details className="group p-5 rounded-2xl bg-muted/50 border border-border">
+                  <summary className="flex items-center justify-between cursor-pointer list-none">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium text-foreground">How is the DuoDrive Score calculated?</span>
+                    </div>
+                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center group-open:rotate-180 transition-transform">
+                      <TrendingDown className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  </summary>
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      The DuoDrive Score (0-100) evaluates your car deal across market pricing, affordability rules, and deal structure to determine if it's right for you.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                        <span>Market pricing position</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Heart className="h-4 w-4 text-emerald-500" />
+                        <span>Budget fit (12% income rule)</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <DollarSign className="h-4 w-4 text-amber-500" />
+                        <span>Fee transparency</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-purple-500" />
+                        <span>Financial safety rules</span>
+                      </div>
+                    </div>
+                    <Button variant="link" size="sm" className="mt-3 p-0 h-auto" asChild>
+                      <Link to="/glossary">View Full Glossary →</Link>
+                    </Button>
+                  </div>
+                </details>
               </div>
             )}
           </TabsContent>
@@ -2294,126 +2083,73 @@ TTL & fees $2,800`}
                   </div>
                 </div>
 
-                {/* V3 Market & Budget Analysis */}
+                {/* Market & Budget Summary - Plain English */}
                 <div className="lg:col-span-3 p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <h2 className="text-xl font-semibold text-foreground mb-4">Market & Budget Analysis</h2>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* True Market Price */}
-                    <div className={`p-4 rounded-xl border-2 ${
-                      scoreResult.dealPriceGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
-                      scoreResult.dealPriceGapPercent <= 5 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
-                      scoreResult.dealPriceGapPercent <= 10 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
-                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Target className={`h-5 w-5 ${
-                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.dealPriceGapPercent <= 5 ? 'text-yellow-600 dark:text-yellow-400' :
-                          scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`} />
-                        <span className="text-xs font-medium text-muted-foreground flex items-center">
-                          TMP
-                          <TermTooltip 
-                            term="True Market Price (TMP)" 
-                            definition="The estimated fair market value of a vehicle based on its year, mileage, condition, and comparable sales data. This is what the car is actually worth, not what the dealer is asking."
-                          />
-                        </span>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Market & Budget Summary</h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Market Context */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">How This Car Is Priced</h3>
+                      <div className="p-4 rounded-xl bg-muted">
+                        <p className="text-sm text-muted-foreground mb-1">Market Reference Range</p>
+                        <p className="text-xl font-bold text-foreground">
+                          ${Math.round(scoreResult.trueMarketPrice * 0.9).toLocaleString()} – ${Math.round(scoreResult.trueMarketPrice * 1.1).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">Based on similar vehicles</p>
                       </div>
-                      <p className="text-xl font-bold text-foreground">${scoreResult.trueMarketPrice.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground mt-1">True Market Price</p>
-                    </div>
-
-                    {/* Deal Price Gap */}
-                    <div className={`p-4 rounded-xl border-2 ${
-                      scoreResult.dealPriceGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
-                      scoreResult.dealPriceGapPercent <= 5 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
-                      scoreResult.dealPriceGapPercent <= 10 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
-                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className={`h-5 w-5 ${
-                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.dealPriceGapPercent <= 5 ? 'text-yellow-600 dark:text-yellow-400' :
-                          scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`} />
-                        <span className="text-xs font-medium text-muted-foreground flex items-center">
-                          DPG
-                          <TermTooltip 
-                            term="Deal Price Gap (DPG)" 
-                            definition="The difference between the asking price and the estimated true market value. A negative gap means you're getting a deal; a positive gap means you're paying above market value."
-                          />
-                        </span>
-                      </div>
-                      <p className={`text-xl font-bold ${
-                        scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                        scoreResult.dealPriceGapPercent <= 5 ? 'text-yellow-600 dark:text-yellow-400' :
-                        scoreResult.dealPriceGapPercent <= 10 ? 'text-orange-600 dark:text-orange-400' :
-                        'text-red-600 dark:text-red-400'
+                      <div className={`p-4 rounded-xl ${
+                        scoreResult.dealPriceGapPercent <= 0 ? 'bg-green-50 dark:bg-green-950/30' :
+                        scoreResult.dealPriceGapPercent <= 10 ? 'bg-blue-50 dark:bg-blue-950/30' :
+                        scoreResult.dealPriceGapPercent <= 25 ? 'bg-yellow-50 dark:bg-yellow-950/30' :
+                        'bg-red-50 dark:bg-red-950/30'
                       }`}>
-                        {scoreResult.dealPriceGap >= 0 ? '+' : ''}${scoreResult.dealPriceGap.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Deal Price Gap ({scoreResult.dealPriceGapPercent}%)</p>
+                        <p className="text-sm text-muted-foreground mb-1">Pricing Position</p>
+                        <p className={`text-lg font-bold ${
+                          scoreResult.dealPriceGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.dealPriceGapPercent <= 10 ? 'text-blue-600 dark:text-blue-400' :
+                          scoreResult.dealPriceGapPercent <= 25 ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {scoreResult.dealPriceGapPercent <= -5 ? 'Below Typical' :
+                           scoreResult.dealPriceGapPercent <= 10 ? 'Typical Range' :
+                           scoreResult.dealPriceGapPercent <= 25 ? 'Above Typical' :
+                           'Well Above Typical'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreResult.dealPriceGap >= 0 ? `$${scoreResult.dealPriceGap.toLocaleString()} above reference` : `$${Math.abs(scoreResult.dealPriceGap).toLocaleString()} below reference`}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Customer Max Safe Price */}
-                    <div className={`p-4 rounded-xl border-2 ${
-                      scoreResult.customerFitGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
-                      scoreResult.customerFitGapPercent <= 10 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
-                      scoreResult.customerFitGapPercent <= 25 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
-                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Wallet className={`h-5 w-5 ${
-                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`} />
-                        <span className="text-xs font-medium text-muted-foreground flex items-center">
-                          CMSP
-                          <TermTooltip 
-                            term="Customer Max Safe Price (CMSP)" 
-                            definition="The maximum vehicle price you can safely afford based on your monthly income. Calculated using the 12% rule: your monthly car payment should not exceed 12% of your gross monthly income."
-                          />
-                        </span>
+                    {/* Personal Fit */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Your Budget Fit</h3>
+                      <div className="p-4 rounded-xl bg-muted">
+                        <p className="text-sm text-muted-foreground mb-1">Your Comfort Zone Max</p>
+                        <p className="text-xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Based on 12% income rule</p>
                       </div>
-                      <p className="text-xl font-bold text-foreground">${scoreResult.customerMaxSafePrice.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Max Safe Price</p>
-                    </div>
-
-                    {/* Customer Fit Gap */}
-                    <div className={`p-4 rounded-xl border-2 ${
-                      scoreResult.customerFitGapPercent <= 0 ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' :
-                      scoreResult.customerFitGapPercent <= 10 ? 'border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20' :
-                      scoreResult.customerFitGapPercent <= 25 ? 'border-orange-500/50 bg-orange-50 dark:bg-orange-950/20' :
-                      'border-red-500/50 bg-red-50 dark:bg-red-950/20'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Heart className={`h-5 w-5 ${
-                          scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                          scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                          scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`} />
-                        <span className="text-xs font-medium text-muted-foreground flex items-center">
-                          CFG
-                          <TermTooltip 
-                            term="Customer Fit Gap (CFG)" 
-                            definition="The difference between the asking price and what you can safely afford (CMSP). A negative gap means you're within budget; a positive gap shows how much the car exceeds your safe spending limit."
-                          />
-                        </span>
-                      </div>
-                      <p className={`text-xl font-bold ${
-                        scoreResult.customerFitGapPercent <= 0 ? 'text-green-600 dark:text-green-400' :
-                        scoreResult.customerFitGapPercent <= 10 ? 'text-yellow-600 dark:text-yellow-400' :
-                        scoreResult.customerFitGapPercent <= 25 ? 'text-orange-600 dark:text-orange-400' :
-                        'text-red-600 dark:text-red-400'
+                      <div className={`p-4 rounded-xl ${
+                        scoreResult.affordabilityStatus === 'fits_budget' ? 'bg-green-50 dark:bg-green-950/30' :
+                        scoreResult.affordabilityStatus === 'stretch_warning' ? 'bg-yellow-50 dark:bg-yellow-950/30' :
+                        'bg-red-50 dark:bg-red-950/30'
                       }`}>
-                        {scoreResult.customerFitGap >= 0 ? '+' : ''}${scoreResult.customerFitGap.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Budget Fit Gap ({scoreResult.customerFitGapPercent}%)</p>
+                        <p className="text-sm text-muted-foreground mb-1">Budget Status</p>
+                        <p className={`text-lg font-bold ${
+                          scoreResult.affordabilityStatus === 'fits_budget' ? 'text-green-600 dark:text-green-400' :
+                          scoreResult.affordabilityStatus === 'stretch_warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {scoreResult.affordabilityStatus === 'fits_budget' ? 'Comfortable' :
+                           scoreResult.affordabilityStatus === 'stretch_warning' ? 'Stretch' :
+                           'High Risk'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {scoreResult.customerFitGap >= 0 
+                            ? `$${scoreResult.customerFitGap.toLocaleString()} under your comfort zone` 
+                            : `$${Math.abs(scoreResult.customerFitGap).toLocaleString()} over your comfort zone`}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

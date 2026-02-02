@@ -99,13 +99,13 @@ export function MonthlyRealityCard({
             className="h-2"
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Target: under 20% of income for all transportation costs
+            Many conservative finance guidelines suggest keeping total car costs under ~10–12% of income to protect savings and flexibility.
           </p>
         </div>
         
         {/* Helper Text */}
         <p className="text-xs text-muted-foreground text-center">
-          Includes ownership costs beyond the loan payment
+          Financial planners recommend evaluating total car costs — not just the loan payment.
         </p>
       </CardContent>
     </Card>

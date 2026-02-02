@@ -28,25 +28,19 @@ export function WhyThisMattersCard({
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
             <Info className="h-4 w-4 text-muted-foreground" />
           </div>
-          Why This Matters
+          Why Conservative Guidelines Matter
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground leading-relaxed">
-          This vehicle may be outside a comfortable budget range right now. 
-          While it may be an excellent choice, its total cost is significantly higher than what's 
-          typically recommended based on your income and down payment.
+          Cars are depreciating assets. Staying within conservative spending ranges helps reduce stress, 
+          preserve savings, and avoid long-term tradeoffs — even at higher incomes.
         </p>
         
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Vehicles at this price point often require long loan terms, higher insurance costs, 
-          and leave less financial flexibility month to month. That can increase stress even if 
-          the payment initially looks manageable.
-        </p>
-        
-        <p className="text-sm text-muted-foreground leading-relaxed font-medium">
-          This doesn't mean the car is off the table forever — it simply means the timing or 
-          structure may not be right today.
+          <span className="font-medium text-foreground">Lenders ask "What's the maximum?"</span>
+          <br />
+          <span className="font-medium text-primary">DuoDrive asks "What's comfortable long-term?"</span>
         </p>
         
         {/* Action Buttons */}

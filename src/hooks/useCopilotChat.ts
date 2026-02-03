@@ -38,18 +38,28 @@ const HENRY_GREETINGS = [
 ];
 
 // Get a random greeting - uses session storage to persist during session
+const GREETING_STORAGE_KEY = "duodrive_henry_greeting_v2";
+
 const getRandomGreeting = (): string => {
-  const storageKey = "duodrive_henry_greeting";
   try {
-    const stored = sessionStorage.getItem(storageKey);
+    const stored = sessionStorage.getItem(GREETING_STORAGE_KEY);
     if (stored) return stored;
     
     const randomIndex = Math.floor(Math.random() * HENRY_GREETINGS.length);
     const greeting = HENRY_GREETINGS[randomIndex];
-    sessionStorage.setItem(storageKey, greeting);
+    sessionStorage.setItem(GREETING_STORAGE_KEY, greeting);
     return greeting;
   } catch {
     return HENRY_GREETINGS[0];
+  }
+};
+
+// Clear stored greeting to get a fresh one
+const clearStoredGreeting = () => {
+  try {
+    sessionStorage.removeItem(GREETING_STORAGE_KEY);
+  } catch {
+    // Ignore storage errors
   }
 };
 
@@ -240,6 +250,8 @@ export function useCopilotChat() {
   }, []);
 
   const clearMessages = useCallback(async () => {
+    // Clear stored greeting to get a fresh one
+    clearStoredGreeting();
     const welcome = getWelcomeMessage();
     setMessages([welcome]);
     
@@ -271,6 +283,7 @@ export function useCopilotChat() {
     // Only refresh if there's just the welcome message
     setMessages(prev => {
       if (prev.length === 1 && prev[0].role === "assistant") {
+        clearStoredGreeting();
         return [getWelcomeMessage()];
       }
       return prev;

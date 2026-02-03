@@ -138,12 +138,12 @@ export function ConversationCanvas({
           {hasUserMessages && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={onClearMessages}
-              className="h-8 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Start new chat"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-              New Chat
+              <RotateCcw className="h-4 w-4" />
             </Button>
           )}
         </div>

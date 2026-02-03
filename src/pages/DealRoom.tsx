@@ -21,6 +21,7 @@ import { HowToUseHenry } from "@/components/HowToUseHenry";
 import { VinBadge, getFieldSource } from "@/components/VinBadge";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock, ExternalLink } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
 import { PricingConfidence } from "@/components/PricingConfidence";
 import { FeeBreakdown } from "@/components/FeeBreakdown";
@@ -60,6 +61,12 @@ export default function DealRoom() {
   const [currentDealId, setCurrentDealId] = useState<string | null>(null);
   const [dealEntitlementStatus, setDealEntitlementStatus] = useState<"locked" | "unlocked" | "loading">("loading");
   
+  // Dealership mode state
+  const isMobile = useIsMobile();
+  const [isDealershipMode, setIsDealershipMode] = useState(false);
+  const [atDealership, setAtDealership] = useState<boolean | null>(null);
+  const [showDealershipCheck, setShowDealershipCheck] = useState(false);
+  
   // Use shared chat hook for synced messages across all copilot areas
   const { 
     messages: chatMessages, 
@@ -89,6 +96,39 @@ export default function DealRoom() {
   });
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const { toast } = useToast();
+
+  // Handle dealership check on mobile - show after user's first response (after name question)
+  useEffect(() => {
+    if (isMobile && atDealership === null) {
+      // Check if user has responded once (there should be at least 2 messages: welcome + user response)
+      const userMessages = chatMessages.filter(m => m.role === "user");
+      if (userMessages.length === 1 && !showDealershipCheck) {
+        // User just answered the name question, show dealership check
+        setShowDealershipCheck(true);
+      }
+    }
+  }, [chatMessages, isMobile, atDealership, showDealershipCheck]);
+
+  // Handle dealership check response
+  const handleDealershipCheckResponse = (isAtDealer: boolean) => {
+    setAtDealership(isAtDealer);
+    setShowDealershipCheck(false);
+    if (isAtDealer) {
+      setIsDealershipMode(true);
+      toast({
+        title: "Dealership Mode Enabled",
+        description: "Short, tactical answers for quick decisions.",
+      });
+    }
+  };
+
+  // Toggle dealership mode (for desktop toggle)
+  const handleDealershipModeToggle = (enabled: boolean) => {
+    setIsDealershipMode(enabled);
+    if (enabled) {
+      setAtDealership(true);
+    }
+  };
 
   // Check auth state
   useEffect(() => {
@@ -569,6 +609,10 @@ export default function DealRoom() {
         fuelCost: dealData.fuelCost,
         maintenance: dealData.maintenance,
         scoreResult: scoreResult || undefined,
+        // Dealership mode context
+        deviceHint: isMobile ? "mobile" : "desktop",
+        atDealership: atDealership ?? undefined,
+        dealershipMode: isDealershipMode,
       };
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
@@ -1943,6 +1987,10 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   isExtracting={isExtracting}
                   scoreResult={scoreResult}
                   onViewAnalysis={() => setActiveTab("overview")}
+                  isDealershipMode={isDealershipMode}
+                  onDealershipModeChange={handleDealershipModeToggle}
+                  showDealershipCheck={showDealershipCheck}
+                  onDealershipCheckResponse={handleDealershipCheckResponse}
                 />
               </div>
               

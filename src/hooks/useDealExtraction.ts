@@ -48,6 +48,12 @@ export interface ExtractedDealData {
   zip?: string;
   zipCode?: string;
   buyerZip?: string;
+  
+  // Border proximity / neighboring-state shopping
+  nearStateBorder?: string;
+  openToOutOfState?: string;
+  preferredStates?: string[];
+  maxSearchRadiusMiles?: string;
 }
 
 /**
@@ -99,6 +105,12 @@ const KEY_MAP: Record<string, string> = {
   condition: "condition",
   atDealership: "atDealership",
   dealershipMode: "dealershipMode",
+  
+  // Border proximity / neighboring-state shopping
+  nearStateBorder: "nearStateBorder",
+  openToOutOfState: "openToOutOfState",
+  preferredStates: "preferredStates",
+  maxSearchRadiusMiles: "maxSearchRadiusMiles",
 };
 
 /**
@@ -218,6 +230,11 @@ export function getExtractedFieldNames(data: ExtractedDealData): string[] {
     zip: "ZIP Code",
     zipCode: "ZIP Code",
     buyerZip: "ZIP Code",
+    // Border proximity / neighboring-state shopping
+    nearStateBorder: "Near State Border",
+    openToOutOfState: "Open to Out-of-State",
+    preferredStates: "Preferred States",
+    maxSearchRadiusMiles: "Search Radius",
   };
 
   return Object.entries(data)

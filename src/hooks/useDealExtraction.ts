@@ -3,6 +3,7 @@ import { useCallback } from "react";
 export interface ExtractedDealData {
   // User context
   userName?: string;
+  name?: string;
   atDealership?: string;
   dealershipMode?: string;
   
@@ -14,12 +15,16 @@ export interface ExtractedDealData {
   mileage?: string;
   vin?: string;
   isNew?: string;
+  condition?: string;
   
   // Pricing
   askingPrice?: string;
   negotiatedPrice?: string;
+  counterPrice?: string;
+  outTheDoorPrice?: string;
   downPayment?: string;
   tradeIn?: string;
+  tradeValue?: string;
   
   // Financing
   apr?: string;
@@ -35,12 +40,73 @@ export interface ExtractedDealData {
   
   // Buyer finances
   monthlyIncome?: string;
+  annualIncome?: string;
   creditScore?: string;
   insurance?: string;
   fuelCost?: string;
   maintenance?: string;
   zip?: string;
+  zipCode?: string;
+  buyerZip?: string;
 }
+
+/**
+ * Maps Henry extraction keys → Deal Room state keys
+ * This normalizes synonyms so Henry can use flexible wording without breaking state
+ */
+const KEY_MAP: Record<string, string> = {
+  // Name variations
+  userName: "name",
+  name: "name",
+  
+  // ZIP variations
+  zip: "buyerZip",
+  zipCode: "buyerZip",
+  buyerZip: "buyerZip",
+  
+  // Trade-in variations
+  tradeIn: "tradeIn",
+  tradeValue: "tradeIn",
+  
+  // Negotiation variations
+  negotiatedPrice: "negotiatedPrice",
+  counterPrice: "negotiatedPrice",
+  
+  // Direct mappings (no change needed)
+  askingPrice: "askingPrice",
+  outTheDoorPrice: "outTheDoorPrice",
+  downPayment: "downPayment",
+  monthlyIncome: "monthlyIncome",
+  creditScore: "creditScore",
+  apr: "apr",
+  term: "term",
+  monthlyPayment: "monthlyPayment",
+  docFee: "docFee",
+  dealerFee: "dealerFee",
+  addOns: "addOns",
+  taxes: "taxes",
+  registration: "registration",
+  insurance: "insurance",
+  fuelCost: "fuelCost",
+  maintenance: "maintenance",
+  year: "year",
+  make: "make",
+  model: "model",
+  trim: "trim",
+  mileage: "mileage",
+  vin: "vin",
+  isNew: "isNew",
+  condition: "condition",
+  atDealership: "atDealership",
+  dealershipMode: "dealershipMode",
+};
+
+/**
+ * Keys we intentionally ignore (not stored in Deal Room yet)
+ */
+const DROP_KEYS = new Set([
+  "annualIncome", // We only use monthlyIncome
+]);
 
 const DEAL_DATA_MARKER = "[DEAL_EXTRACTED]";
 const DEAL_DATA_END_MARKER = "[/DEAL_EXTRACTED]";
@@ -117,6 +183,7 @@ export function formatExtractedFields(data: ExtractedDealData): string {
 export function getExtractedFieldNames(data: ExtractedDealData): string[] {
   const fieldLabels: Record<keyof ExtractedDealData, string> = {
     userName: "Name",
+    name: "Name",
     atDealership: "At Dealership",
     dealershipMode: "Dealership Mode",
     year: "Year",
@@ -126,10 +193,14 @@ export function getExtractedFieldNames(data: ExtractedDealData): string[] {
     mileage: "Mileage",
     vin: "VIN",
     isNew: "New/Used",
+    condition: "Condition",
     askingPrice: "Asking Price",
     negotiatedPrice: "Negotiated Price",
+    counterPrice: "Counter Price",
+    outTheDoorPrice: "Out-the-Door Price",
     downPayment: "Down Payment",
     tradeIn: "Trade-In",
+    tradeValue: "Trade Value",
     apr: "APR",
     term: "Term",
     monthlyPayment: "Monthly Payment",
@@ -139,16 +210,40 @@ export function getExtractedFieldNames(data: ExtractedDealData): string[] {
     taxes: "Taxes",
     registration: "Registration",
     monthlyIncome: "Monthly Income",
+    annualIncome: "Annual Income",
     creditScore: "Credit Score",
     insurance: "Insurance",
     fuelCost: "Fuel Cost",
     maintenance: "Maintenance",
     zip: "ZIP Code",
+    zipCode: "ZIP Code",
+    buyerZip: "ZIP Code",
   };
 
   return Object.entries(data)
     .filter(([_, value]) => value !== undefined && value !== null && value !== "")
     .map(([key]) => fieldLabels[key as keyof ExtractedDealData] || key);
+}
+
+/**
+ * Normalizes extracted data keys using KEY_MAP
+ * This ensures Henry can use flexible wording without breaking state
+ */
+function normalizeExtractedData(extractedData: ExtractedDealData): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  
+  Object.entries(extractedData).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    if (DROP_KEYS.has(key)) return;
+    
+    // Get the normalized key, or use original if not in map
+    const targetKey = KEY_MAP[key] ?? key;
+    
+    // Convert to string and store
+    normalized[targetKey] = String(value);
+  });
+  
+  return normalized;
 }
 
 // Custom hook for managing deal extraction state
@@ -160,15 +255,16 @@ export function useDealExtraction() {
       setExtractedFields?: React.Dispatch<React.SetStateAction<Set<string>>>
     ) => {
       const newExtractedFields = new Set<string>();
+      
+      // Normalize the data using KEY_MAP
+      const normalized = normalizeExtractedData(extractedData);
 
       setDealData((prev: any) => {
         const updated = { ...prev };
 
-        Object.entries(extractedData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== "") {
-            updated[key] = String(value);
-            newExtractedFields.add(key);
-          }
+        Object.entries(normalized).forEach(([key, value]) => {
+          updated[key] = value;
+          newExtractedFields.add(key);
         });
 
         return updated;

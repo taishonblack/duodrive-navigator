@@ -15,30 +15,30 @@ export interface ChatMessage {
 
 // 20 casual opening greetings - Henry picks one randomly
 const HENRY_GREETINGS = [
-  "Hey — I'm Henry. What can I help with?",
-  "Hi there. I'm Henry.",
-  "Hey. I'm Henry. What are you looking at?",
-  "Hi — how can I help you?",
-  "Hey there. What's on your mind?",
-  "Hi. I'm Henry. What brings you in?",
-  "Hey — I'm Henry. How can I help?",
-  "Hi there. Looking at a car?",
-  "Hey. What are you thinking about?",
-  "Hi — I'm Henry. What's up?",
-  "Hey there. I'm Henry. What can I do?",
-  "Hi. How can I help today?",
-  "Hey — what are you working on?",
-  "Hi there. I'm Henry. What's going on?",
-  "Hey. Looking at something specific?",
-  "Hi — I'm Henry. What do you need?",
-  "Hey there. How can I help?",
-  "Hi. What's on the table?",
-  "Hey — I'm Henry. What brings you here?",
-  "Hi there. What can I help with?",
+  "What can I help you with today?",
+  "What kind of car are you looking at?",
+  "Tell me what you're shopping for.",
+  "What car are you considering right now?",
+  "How can I help with your car search?",
+  "What vehicle are you looking into?",
+  "What are you hoping to find today?",
+  "What's the car you're thinking about?",
+  "What are you trying to decide on?",
+  "What deal do you want help evaluating?",
+  "What car do you want to take a closer look at?",
+  "What are you currently shopping for?",
+  "What vehicle do you have questions about?",
+  "What's on your shortlist right now?",
+  "What car are you looking at today?",
+  "What do you want to run by me?",
+  "What are you considering buying?",
+  "What kind of car are you in the market for?",
+  "What do you want help figuring out?",
+  "What's the car you want to talk through?",
 ];
 
 // Get a random greeting - uses session storage to persist during session
-const GREETING_STORAGE_KEY = "duodrive_henry_greeting_v2";
+const GREETING_STORAGE_KEY = "duodrive_henry_greeting_v3";
 
 const getRandomGreeting = (): string => {
   try {

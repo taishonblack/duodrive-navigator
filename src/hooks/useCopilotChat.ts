@@ -25,7 +25,7 @@ const HENRY_GREETINGS = [
   "Hey — before you sign anything, let's look at it together.",
   "Hi there. I'm Henry. Happy to help however you want to use this.",
   "Hey. I'm Henry. What's on the table today?",
-  "Hi — I'm here if you want a second opinion on a car.",
+  "Hi — how can I help you?",
   "Hey there. I'm Henry. We'll keep this simple.",
   "Hi. I help people figure out if a car actually makes sense.",
   "Hey — no sales pitch here. I'm Henry.",

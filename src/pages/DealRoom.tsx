@@ -23,7 +23,7 @@ import { SignInPrompt } from "@/components/SignInPrompt";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock, ExternalLink } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
-import { PricingConfidence } from "@/components/PricingConfidence";
+
 import { FeeBreakdown } from "@/components/FeeBreakdown";
 import { TermTooltip } from "@/components/TermTooltip";
 import { supabase } from "@/integrations/supabase/client";
@@ -1707,11 +1707,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     <Input id="maintenance" placeholder="$50" value={dealData.maintenance} onChange={(e) => handleInputChange("maintenance", e.target.value)} />
                   </div>
                 </div>
-              </div>
-
-              {/* Pricing Confidence */}
-              <div className="lg:col-span-2">
-                <PricingConfidence dealData={dealData} />
               </div>
 
               {/* Upload Section */}

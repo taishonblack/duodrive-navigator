@@ -13,14 +13,50 @@ export interface ChatMessage {
   content: string;
 }
 
-// Henry's opening message - he owns the greeting
+// 20 casual opening greetings - Henry picks one randomly
+const HENRY_GREETINGS = [
+  "Hey — glad you stopped by. I'm Henry.",
+  "Hey there. I'm Henry. What are you looking at today?",
+  "Hi — I'm Henry. Want to walk through a car deal together?",
+  "Hey. I can help you sanity-check a car if you want.",
+  "Hi there. I'm Henry. No pressure — just clarity.",
+  "Hey — car shopping can be a lot. I'm Henry.",
+  "Hi. I'm Henry. We'll take this one step at a time.",
+  "Hey — before you sign anything, let's look at it together.",
+  "Hi there. I'm Henry. Happy to help however you want to use this.",
+  "Hey. I'm Henry. What's on the table today?",
+  "Hi — I'm here if you want a second opinion on a car.",
+  "Hey there. I'm Henry. We'll keep this simple.",
+  "Hi. I help people figure out if a car actually makes sense.",
+  "Hey — no sales pitch here. I'm Henry.",
+  "Hi there. Want to break down a car deal without the jargon?",
+  "Hey. I'm Henry. Nothing here locks you into anything.",
+  "Hi — I'm Henry. What kind of car are you considering?",
+  "Hey there. I can help you slow this down and look at the numbers.",
+  "Hi. I'm Henry. You're in the right place if you want clarity.",
+  "Hey — I'm Henry. Let's take a look together.",
+];
+
+// Get a random greeting - uses session storage to persist during session
+const getRandomGreeting = (): string => {
+  const storageKey = "duodrive_henry_greeting";
+  try {
+    const stored = sessionStorage.getItem(storageKey);
+    if (stored) return stored;
+    
+    const randomIndex = Math.floor(Math.random() * HENRY_GREETINGS.length);
+    const greeting = HENRY_GREETINGS[randomIndex];
+    sessionStorage.setItem(storageKey, greeting);
+    return greeting;
+  } catch {
+    return HENRY_GREETINGS[0];
+  }
+};
+
+// Henry's opening message - casual, human, no immediate name demand
 const getWelcomeMessage = (): ChatMessage => ({
   role: "assistant",
-  content: `Hi — I'm Henry, the DuoDrive AI Copilot. I'm here to help you think through your car purchase and find the best possible deal.
-
-Before we dive in, I need to ask one quick thing so I don't make this awkward later 🙂
-
-What's your name?`,
+  content: getRandomGreeting(),
 });
 
 // Check if chat has expired (24 hours)

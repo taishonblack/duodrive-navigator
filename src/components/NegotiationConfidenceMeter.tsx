@@ -1,10 +1,16 @@
-import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, XCircle, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   ConfidenceResult,
   getConfidenceDisplay,
 } from "@/hooks/useNegotiationConfidence";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useState } from "react";
 
 interface NegotiationConfidenceMeterProps {
   confidence: ConfidenceResult;
@@ -15,6 +21,7 @@ export function NegotiationConfidenceMeter({
   confidence,
   className,
 }: NegotiationConfidenceMeterProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const { state, missingFields, progress } = confidence;
   const display = getConfidenceDisplay(state);
 
@@ -43,56 +50,67 @@ export function NegotiationConfidenceMeter({
       : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border p-4 transition-all duration-300",
-        bgColor,
-        className
-      )}
-    >
-      {/* Header row */}
-      <div className="flex items-start gap-3">
-        <Icon className={cn("h-5 w-5 mt-0.5 shrink-0", iconColor)} />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-foreground text-sm">
-            {display.headline}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {display.subtext}
-          </p>
-        </div>
-      </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div
+        className={cn(
+          "rounded-xl border transition-all duration-300",
+          bgColor,
+          className
+        )}
+      >
+        <CollapsibleTrigger asChild>
+          <button className="w-full p-3 flex items-center gap-3 text-left hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
+            <Icon className={cn("h-4 w-4 shrink-0", iconColor)} />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-foreground text-sm leading-tight">
+                {display.headline}
+              </p>
+            </div>
+            <Progress
+              value={progress}
+              className="h-1.5 w-16 bg-muted/50"
+              indicatorClassName={progressColor}
+            />
+            <ChevronDown 
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                isOpen && "rotate-180"
+              )} 
+            />
+          </button>
+        </CollapsibleTrigger>
 
-      {/* Progress bar */}
-      <div className="mt-3">
-        <Progress
-          value={progress}
-          className="h-1.5 bg-muted/50"
-          indicatorClassName={progressColor}
-        />
-      </div>
+        <CollapsibleContent>
+          <div className="px-3 pb-3 pt-0">
+            <p className="text-xs text-muted-foreground mb-2">
+              {display.subtext}
+            </p>
 
-      {/* Missing fields (only show if not ready) */}
-      {state !== "ready" && missingFields.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-current/10">
-          <p className="text-xs text-muted-foreground mb-1.5">Missing:</p>
-          <div className="flex flex-wrap gap-1.5">
-            {missingFields.slice(0, 4).map((field) => (
-              <span
-                key={field}
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground"
-              >
-                {field}
-              </span>
-            ))}
-            {missingFields.length > 4 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
-                +{missingFields.length - 4} more
-              </span>
+            {/* Missing fields (only show if not ready) */}
+            {state !== "ready" && missingFields.length > 0 && (
+              <div className="pt-2 border-t border-current/10">
+                <p className="text-xs text-muted-foreground mb-1.5">Missing:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {missingFields.map((field) => (
+                    <span
+                      key={field}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground"
+                    >
+                      {field}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {state === "ready" && (
+              <p className="text-xs text-green-700 dark:text-green-300">
+                All key details captured — ready for full analysis.
+              </p>
             )}
           </div>
-        </div>
-      )}
-    </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }

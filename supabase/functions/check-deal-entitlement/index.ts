@@ -43,7 +43,35 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Check entitlement status
+    // Check if user is a permanent premium user
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const { data: premiumUser } = await supabaseAdmin
+      .from("premium_users")
+      .select("expires_at")
+      .eq("user_id", user.id)
+      .single();
+
+    if (premiumUser) {
+      // Check if premium hasn't expired (null = never expires)
+      const isActive = !premiumUser.expires_at || new Date(premiumUser.expires_at) > new Date();
+      if (isActive) {
+        logStep("User is permanent premium", { userId: user.id, expiresAt: premiumUser.expires_at });
+        return new Response(JSON.stringify({ 
+          status: "unlocked",
+          isPremiumUser: true,
+          expiresAt: premiumUser.expires_at
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+    }
+
+    // Check entitlement status for this specific deal
     const { data: entitlement, error: entitlementError } = await supabaseClient
       .from("deal_entitlements")
       .select("status, unlocked_at")

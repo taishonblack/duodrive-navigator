@@ -27,24 +27,24 @@ interface PremiumDecisionModalProps {
 
 const PREMIUM_BENEFITS = [
   {
-    icon: Shield,
-    text: "Show which fees matter — and which don't",
+    icon: Target,
+    text: "A clear fair price range",
   },
   {
-    icon: Target,
-    text: "Give you a realistic counter-offer range",
+    icon: Shield,
+    text: "Dealer-ready negotiation scripts",
   },
   {
     icon: TrendingUp,
-    text: "Compare this deal to similar cars nearby (and nearby states)",
+    text: "A breakdown of fees that matter vs. fluff",
   },
   {
     icon: MessageSquare,
-    text: "Give you exact wording to use with the dealer",
+    text: "Exact wording you can use with the dealer",
   },
   {
     icon: Footprints,
-    text: "Tell you clearly if walking away makes more sense",
+    text: "A confidence check so you don't second-guess later",
   },
 ];
 
@@ -97,17 +97,16 @@ export function PremiumDecisionModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle className="text-xl">
-            Want help deciding right now?
+            Unlock clarity before you decide.
           </DialogTitle>
           <DialogDescription className="text-base">
-            You're close — but a few details can change whether this deal is
-            fair or not.
+            You're close to making a real decision. Premium gives you the confidence to move forward — or walk away.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <p className="text-sm font-medium text-foreground">
-            With Premium, I'll:
+            Premium gives you:
           </p>
 
           <ul className="space-y-3">
@@ -155,10 +154,9 @@ export function PremiumDecisionModal({
           </Button>
         </div>
 
-        {/* Reassurance */}
+        {/* Reassurance - post-purchase anxiety reducer */}
         <p className="text-xs text-center text-muted-foreground pt-2">
-          "You can keep going for free — Premium just helps you push back with
-          confidence."
+          This is about walking in prepared — not buying blind. Nothing here locks you in.
         </p>
       </DialogContent>
     </Dialog>

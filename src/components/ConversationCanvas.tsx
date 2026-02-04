@@ -32,7 +32,7 @@ import { DealershipQuickReplies } from "@/components/DealershipQuickReplies";
 import { DealContext } from "@/config/dealershipQuickReplies";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TypewriterText } from "./TypewriterText";
-import { ChatActionButtons, isDealSummaryMessage } from "./ChatActionButtons";
+import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -200,9 +200,13 @@ export function ConversationCanvas({
               message.role === "assistant" && 
               index === messages.length - 1 &&
               !isLoading;
+            
+            // Count user messages for the fallback logic
+            const userMessageCount = messages.filter(m => m.role === "user").length;
+            
             const showActionButtons = 
               isLastAssistantMessage && 
-              isDealSummaryMessage(message.content) &&
+              shouldShowActionButtons(message.content, userMessageCount) &&
               onGoToWhatToSay && 
               onCompareAnother;
 

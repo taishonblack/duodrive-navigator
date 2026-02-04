@@ -824,6 +824,59 @@ export type Database = {
           },
         ]
       }
+      unknown_term_escalations: {
+        Row: {
+          context: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          term: string
+          updated_at: string
+          user_id: string | null
+          user_message: string
+        }
+        Insert: {
+          context?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          term: string
+          updated_at?: string
+          user_id?: string | null
+          user_message: string
+        }
+        Update: {
+          context?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          term?: string
+          updated_at?: string
+          user_id?: string | null
+          user_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unknown_term_escalations_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

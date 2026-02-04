@@ -59,23 +59,25 @@ export function NegotiationConfidenceMeter({
         )}
       >
         <CollapsibleTrigger asChild>
-          <button className="w-full p-3 flex items-center gap-3 text-left hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
-            <Icon className={cn("h-4 w-4 shrink-0", iconColor)} />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground text-sm leading-tight">
-                {display.headline}
-              </p>
+          <button className="w-full p-3 text-left hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
+            <div className="flex items-center gap-3">
+              <Icon className={cn("h-4 w-4 shrink-0", iconColor)} />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground text-sm leading-tight">
+                  {display.headline}
+                </p>
+              </div>
+              <ChevronDown 
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                  isOpen && "rotate-180"
+                )} 
+              />
             </div>
             <Progress
               value={progress}
-              className="h-1.5 w-16 bg-muted/50"
+              className="h-1.5 mt-2 bg-muted/50"
               indicatorClassName={progressColor}
-            />
-            <ChevronDown 
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                isOpen && "rotate-180"
-              )} 
             />
           </button>
         </CollapsibleTrigger>

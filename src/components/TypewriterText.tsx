@@ -8,6 +8,7 @@ interface TypewriterTextProps {
 
 export function TypewriterText({ text, speed = 80, onComplete }: TypewriterTextProps) {
   const [displayedWords, setDisplayedWords] = useState<string[]>([]);
+  const [isComplete, setIsComplete] = useState(false);
   const words = text.split(" ");
   const hasCompletedRef = useRef(false);
 
@@ -19,6 +20,7 @@ export function TypewriterText({ text, speed = 80, onComplete }: TypewriterTextP
       return () => clearTimeout(timeout);
     } else if (displayedWords.length === words.length && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
+      setIsComplete(true);
       onComplete?.();
     }
   }, [displayedWords.length, words, speed, onComplete]);
@@ -26,8 +28,16 @@ export function TypewriterText({ text, speed = 80, onComplete }: TypewriterTextP
   // Reset if text changes
   useEffect(() => {
     setDisplayedWords([]);
+    setIsComplete(false);
     hasCompletedRef.current = false;
   }, [text]);
 
-  return <>{displayedWords.join(" ")}</>;
+  return (
+    <>
+      {displayedWords.join(" ")}
+      {!isComplete && (
+        <span className="inline-block w-0.5 h-4 ml-0.5 bg-current animate-pulse align-middle" />
+      )}
+    </>
+  );
 }

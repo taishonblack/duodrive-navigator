@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useMemo } from "react";
 import { ChatMessage } from "@/hooks/useCopilotChat";
 
 // Message types for BroadcastChannel communication
-export type HenryBroadcastMessage =
+export type QuinnBroadcastMessage =
   | { type: "INIT_REQUEST" }
   | { type: "INIT_RESPONSE"; payload: { messages: ChatMessage[]; dealContext: Record<string, string> } }
   | { type: "POPOUT_USER_MESSAGE"; payload: { tempId: string; content: string } }
@@ -12,9 +12,9 @@ export type HenryBroadcastMessage =
   | { type: "POPOUT_CLOSED" }
   | { type: "MAIN_LOADING_STATE"; payload: { isLoading: boolean } };
 
-const CHANNEL_NAME = "duodrive_henry";
+const CHANNEL_NAME = "duodrive_quinn";
 
-interface UseHenryBroadcastMainOptions {
+interface UseQuinnBroadcastMainOptions {
   messages: ChatMessage[];
   dealContext: Record<string, string>;
   isLoading: boolean;
@@ -24,12 +24,12 @@ interface UseHenryBroadcastMainOptions {
 /**
  * Hook for the MAIN Deal Room tab - acts as the source of truth
  */
-export function useHenryBroadcastMain({
+export function useQuinnBroadcastMain({
   messages,
   dealContext,
   isLoading,
   onPopoutMessage,
-}: UseHenryBroadcastMainOptions) {
+}: UseQuinnBroadcastMainOptions) {
   const channel = useMemo(() => {
     try {
       return new BroadcastChannel(CHANNEL_NAME);
@@ -43,7 +43,7 @@ export function useHenryBroadcastMain({
   useEffect(() => {
     if (!channel) return;
 
-    const handleMessage = (event: MessageEvent<HenryBroadcastMessage>) => {
+    const handleMessage = (event: MessageEvent<QuinnBroadcastMessage>) => {
       const { type } = event.data || {};
       if (!type) return;
 
@@ -53,12 +53,12 @@ export function useHenryBroadcastMain({
           channel.postMessage({
             type: "INIT_RESPONSE",
             payload: { messages, dealContext },
-          } as HenryBroadcastMessage);
+          } as QuinnBroadcastMessage);
           break;
 
         case "POPOUT_USER_MESSAGE":
           // User typed in popout - forward to main for processing
-          const { content, tempId } = (event.data as Extract<HenryBroadcastMessage, { type: "POPOUT_USER_MESSAGE" }>).payload;
+          const { content, tempId } = (event.data as Extract<QuinnBroadcastMessage, { type: "POPOUT_USER_MESSAGE" }>).payload;
           onPopoutMessage(content, tempId);
           break;
 
@@ -85,7 +85,7 @@ export function useHenryBroadcastMain({
     channel.postMessage({
       type: "MAIN_MESSAGES_UPDATE",
       payload: { messages },
-    } as HenryBroadcastMessage);
+    } as QuinnBroadcastMessage);
   }, [channel, messages]);
 
   // Broadcast deal context updates to popout
@@ -94,7 +94,7 @@ export function useHenryBroadcastMain({
     channel.postMessage({
       type: "MAIN_DEALCONTEXT_UPDATE",
       payload: { dealContext },
-    } as HenryBroadcastMessage);
+    } as QuinnBroadcastMessage);
   }, [channel, dealContext]);
 
   // Broadcast loading state to popout
@@ -103,7 +103,7 @@ export function useHenryBroadcastMain({
     channel.postMessage({
       type: "MAIN_LOADING_STATE",
       payload: { isLoading },
-    } as HenryBroadcastMessage);
+    } as QuinnBroadcastMessage);
   }, [channel, isLoading]);
 
   // Cleanup
@@ -116,7 +116,7 @@ export function useHenryBroadcastMain({
   return { channel };
 }
 
-interface UseHenryBroadcastPopoutOptions {
+interface UseQuinnBroadcastPopoutOptions {
   onMessagesUpdate: (messages: ChatMessage[]) => void;
   onDealContextUpdate: (dealContext: Record<string, string>) => void;
   onLoadingStateUpdate: (isLoading: boolean) => void;
@@ -125,11 +125,11 @@ interface UseHenryBroadcastPopoutOptions {
 /**
  * Hook for the POPOUT window - receives updates and forwards user input
  */
-export function useHenryBroadcastPopout({
+export function useQuinnBroadcastPopout({
   onMessagesUpdate,
   onDealContextUpdate,
   onLoadingStateUpdate,
-}: UseHenryBroadcastPopoutOptions) {
+}: UseQuinnBroadcastPopoutOptions) {
   const channel = useMemo(() => {
     try {
       return new BroadcastChannel(CHANNEL_NAME);
@@ -145,7 +145,7 @@ export function useHenryBroadcastPopout({
   useEffect(() => {
     if (!channel) return;
 
-    const handleMessage = (event: MessageEvent<HenryBroadcastMessage>) => {
+    const handleMessage = (event: MessageEvent<QuinnBroadcastMessage>) => {
       const { type } = event.data || {};
       if (!type) return;
 
@@ -153,24 +153,24 @@ export function useHenryBroadcastPopout({
         case "INIT_RESPONSE":
           if (!initReceived.current) {
             initReceived.current = true;
-            const { messages, dealContext } = (event.data as Extract<HenryBroadcastMessage, { type: "INIT_RESPONSE" }>).payload;
+            const { messages, dealContext } = (event.data as Extract<QuinnBroadcastMessage, { type: "INIT_RESPONSE" }>).payload;
             onMessagesUpdate(messages);
             onDealContextUpdate(dealContext);
           }
           break;
 
         case "MAIN_MESSAGES_UPDATE":
-          const { messages } = (event.data as Extract<HenryBroadcastMessage, { type: "MAIN_MESSAGES_UPDATE" }>).payload;
+          const { messages } = (event.data as Extract<QuinnBroadcastMessage, { type: "MAIN_MESSAGES_UPDATE" }>).payload;
           onMessagesUpdate(messages);
           break;
 
         case "MAIN_DEALCONTEXT_UPDATE":
-          const { dealContext } = (event.data as Extract<HenryBroadcastMessage, { type: "MAIN_DEALCONTEXT_UPDATE" }>).payload;
+          const { dealContext } = (event.data as Extract<QuinnBroadcastMessage, { type: "MAIN_DEALCONTEXT_UPDATE" }>).payload;
           onDealContextUpdate(dealContext);
           break;
 
         case "MAIN_LOADING_STATE":
-          const { isLoading } = (event.data as Extract<HenryBroadcastMessage, { type: "MAIN_LOADING_STATE" }>).payload;
+          const { isLoading } = (event.data as Extract<QuinnBroadcastMessage, { type: "MAIN_LOADING_STATE" }>).payload;
           onLoadingStateUpdate(isLoading);
           break;
       }
@@ -179,7 +179,7 @@ export function useHenryBroadcastPopout({
     channel.onmessage = handleMessage;
 
     // Request initial state
-    channel.postMessage({ type: "INIT_REQUEST" } as HenryBroadcastMessage);
+    channel.postMessage({ type: "INIT_REQUEST" } as QuinnBroadcastMessage);
 
     return () => {
       channel.onmessage = null;
@@ -193,20 +193,20 @@ export function useHenryBroadcastPopout({
     channel.postMessage({
       type: "POPOUT_USER_MESSAGE",
       payload: { tempId, content },
-    } as HenryBroadcastMessage);
+    } as QuinnBroadcastMessage);
     return tempId;
   }, [channel]);
 
   // Focus the main tab
   const focusMain = useCallback(() => {
     if (!channel) return;
-    channel.postMessage({ type: "POPOUT_FOCUS_MAIN" } as HenryBroadcastMessage);
+    channel.postMessage({ type: "POPOUT_FOCUS_MAIN" } as QuinnBroadcastMessage);
   }, [channel]);
 
   // Notify main that popout is closing
   const notifyClose = useCallback(() => {
     if (!channel) return;
-    channel.postMessage({ type: "POPOUT_CLOSED" } as HenryBroadcastMessage);
+    channel.postMessage({ type: "POPOUT_CLOSED" } as QuinnBroadcastMessage);
   }, [channel]);
 
   // Cleanup
@@ -225,11 +225,11 @@ export function useHenryBroadcastPopout({
 }
 
 /**
- * Open the Henry popout window
+ * Open the Quinn popout window
  * Returns false if popup was blocked
  */
-export function openHenryPopout(): Window | null {
-  const existingPopout = window.open("", "duodrive_henry");
+export function openQuinnPopout(): Window | null {
+  const existingPopout = window.open("", "duodrive_quinn");
   
   // If we got an existing window with content, just focus it
   if (existingPopout && existingPopout.location.href !== "about:blank") {
@@ -239,8 +239,8 @@ export function openHenryPopout(): Window | null {
 
   // Open new popout window
   const popout = window.open(
-    "/henry/popout",
-    "duodrive_henry",
+    "/quinn/popout",
+    "duodrive_quinn",
     "width=420,height=680,resizable=yes,scrollbars=yes"
   );
 

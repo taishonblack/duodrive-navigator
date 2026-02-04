@@ -9,18 +9,18 @@ import heroImage from "@/assets/hero-road.jpg";
 const steps = [
   {
     icon: Upload,
-    title: "Tell Henry About Your Deal",
-    description: "Describe your deal, paste a quote, or upload a screenshot. Henry, our AI copilot, extracts and analyzes everything automatically.",
+    title: "Tell Quinn About Your Deal",
+    description: "Describe your deal, paste a quote, or upload a screenshot. Quinn, your AI copilot, extracts and analyzes everything automatically.",
   },
   {
     icon: Calculator,
     title: "Get Your DuoDrive Score",
-    description: "Henry calculates your score instantly — analyzing pricing, fees, and affordability so you know if you're overpaying.",
+    description: "Quinn calculates your score instantly — analyzing pricing, fees, and affordability so you know if you're overpaying.",
   },
   {
     icon: MessageSquare,
     title: "Know What to Say Next",
-    description: "Henry generates negotiation scripts that are firm, polite, and dealer-ready. Just chat — no forms, no guesswork.",
+    description: "Quinn generates negotiation scripts that are firm, polite, and dealer-ready. Just chat — no forms, no guesswork.",
   },
 ];
 
@@ -36,22 +36,22 @@ const features = [
   {
     icon: Target,
     title: "Fair Price Range",
-    description: "Henry shows you what others are paying for the same car in your area.",
+    description: "Quinn shows you what others are paying for the same car in your area.",
   },
   {
     icon: FileSearch,
     title: "Quote Analyzer",
-    description: "Paste any dealer quote and Henry decodes the math, flags hidden fees, and recalculates correctly.",
+    description: "Paste any dealer quote and Quinn decodes the math, flags hidden fees, and recalculates correctly.",
   },
   {
     icon: Sparkles,
     title: "Negotiation Scripts",
-    description: "Henry tells you exactly what to say to counter, remove fees, or walk away professionally.",
+    description: "Quinn tells you exactly what to say to counter, remove fees, or walk away professionally.",
   },
   {
     icon: Bot,
-    title: "Meet Henry",
-    description: "Your AI copilot for car buying. Just chat — Henry handles the research, math, and strategy.",
+    title: "Meet Quinn",
+    description: "Your AI copilot for car buying. Just chat — Quinn handles the research, math, and strategy.",
   },
 ];
 
@@ -78,12 +78,12 @@ export default function Index() {
               Know the deal before you sign.
             </h1>
             <p className="mt-6 text-lg md:text-xl text-muted-foreground leading-relaxed">
-              Meet Henry — your AI copilot for car buying. Just describe your deal and Henry analyzes pricing, decodes quotes, and tells you exactly what to say to the dealer.
+              Meet Quinn — your AI copilot for car buying. Just describe your deal and Quinn analyzes pricing, decodes quotes, and tells you exactly what to say to the dealer.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Button asChild variant="hero">
                 <Link to="/deal-room">
-                  Chat with Henry
+                  Chat with Quinn
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
@@ -124,7 +124,7 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              How Henry Helps You
+              How Quinn Helps You
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Three steps to understand your deal and know what to say
@@ -268,7 +268,7 @@ export default function Index() {
                 Decode Any Dealer Quote
               </h2>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                Paste a screenshot, forward an email, or just describe the numbers. Henry instantly identifies hidden fees, rate padding, and payment packing—then tells you exactly what to remove.
+                Paste a screenshot, forward an email, or just describe the numbers. Quinn instantly identifies hidden fees, rate padding, and payment packing—then tells you exactly what to remove.
               </p>
               <ul className="mt-6 space-y-3">
                 <li className="flex items-start gap-3">
@@ -286,7 +286,7 @@ export default function Index() {
               </ul>
               <Button asChild className="mt-8">
                 <Link to="/deal-room">
-                  Chat with Henry
+                  Chat with Quinn
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -307,11 +307,11 @@ export default function Index() {
                 Ready to understand your deal?
               </h2>
               <p className="mt-4 text-lg text-secondary-foreground/80">
-                Henry is ready to help. Just describe your deal and get instant analysis.
+                Quinn is ready to help. Just describe your deal and get instant analysis.
               </p>
               <Button asChild variant="hero" className="mt-8">
                 <Link to="/deal-room">
-                  Chat with Henry Now
+                  Chat with Quinn Now
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>

@@ -1,6 +1,6 @@
 import { Bot, MessageSquare, Upload, AlertCircle, Sparkles, Zap, Camera } from "lucide-react";
 
-export function HowToUseHenry() {
+export function HowToUseQuinn() {
   return (
     <div className="space-y-6 text-sm">
       <div className="flex items-start gap-3">
@@ -10,7 +10,7 @@ export function HowToUseHenry() {
         <div>
           <h3 className="font-semibold text-foreground">How to use DuoDrive</h3>
           <p className="text-muted-foreground mt-1">
-            Henry helps you evaluate a real dealership deal — not sell you a car.
+            Quinn helps you evaluate a real dealership deal — not sell you a car.
           </p>
         </div>
       </div>
@@ -33,7 +33,7 @@ export function HowToUseHenry() {
         <div className="flex items-start gap-2">
           <Camera className="h-4 w-4 mt-0.5 text-primary shrink-0" />
           <p className="text-muted-foreground">
-            Upload a photo of the window sticker or buyer's order — Henry will extract details.
+            Upload a photo of the window sticker or buyer's order — Quinn will extract details.
           </p>
         </div>
       </div>
@@ -45,13 +45,13 @@ export function HowToUseHenry() {
           <span className="font-medium text-foreground">At the dealership?</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Tell Henry "I'm at the dealership" for faster, tactical answers and scripts to say.
+          Tell Quinn "I'm at the dealership" for faster, tactical answers and scripts to say.
         </p>
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4 space-y-3">
         <p className="text-muted-foreground">
-          <strong className="text-foreground">As you chat, Henry will:</strong>
+          <strong className="text-foreground">As you chat, Quinn will:</strong>
         </p>
         <ul className="space-y-2 text-muted-foreground">
           <li className="flex items-start gap-2">

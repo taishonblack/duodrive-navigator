@@ -17,7 +17,7 @@ import { ConversationCanvas } from "@/components/ConversationCanvas";
 import { DealRoomTutorial } from "@/components/DealRoomTutorial";
 import DealAnalysisPaywall from "@/components/DealAnalysisPaywall";
 import { EstimateAprModal, CreditTier, VehicleCondition, LoanTerm } from "@/components/EstimateAprModal";
-import { HowToUseHenry } from "@/components/HowToUseHenry";
+import { HowToUseQuinn } from "@/components/HowToUseQuinn";
 import { VinBadge, getFieldSource } from "@/components/VinBadge";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { NegotiationConfidenceMeter } from "@/components/NegotiationConfidenceMeter";
@@ -49,7 +49,7 @@ import { generateScoreReport } from "@/lib/pdfExport";
 import { EmailShareDialog } from "@/components/EmailShareDialog";
 import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } from "@/hooks/useDealExtraction";
 import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } from "@/lib/vinUtils";
-import { useHenryBroadcastMain, openHenryPopout } from "@/hooks/useHenryBroadcast";
+import { useQuinnBroadcastMain, openQuinnPopout } from "@/hooks/useQuinnBroadcast";
 import { estimateInsurance } from "@/lib/insuranceEstimator";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
@@ -719,7 +719,7 @@ export default function DealRoom() {
     sendChatMessage(content);
   }, [sendChatMessage]);
 
-  useHenryBroadcastMain({
+  useQuinnBroadcastMain({
     messages: chatMessages,
     dealContext: dealData,
     isLoading: isChatLoading,
@@ -728,7 +728,7 @@ export default function DealRoom() {
 
   // Handle pop-out button click
   const handleOpenPopout = () => {
-    const popout = openHenryPopout();
+    const popout = openQuinnPopout();
     if (!popout) {
       toast({
         title: "Pop-out blocked",
@@ -2033,7 +2033,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               <div className="hidden lg:block">
                 <div className="sticky top-24 space-y-4">
                   <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
-                    <HowToUseHenry />
+                    <HowToUseQuinn />
                   </div>
                 </div>
               </div>

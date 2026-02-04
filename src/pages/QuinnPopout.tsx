@@ -4,10 +4,10 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Bot, User, Send, Loader2, ExternalLink, X } from "lucide-react";
 import { ChatMessage } from "@/hooks/useCopilotChat";
-import { useHenryBroadcastPopout } from "@/hooks/useHenryBroadcast";
+import { useQuinnBroadcastPopout } from "@/hooks/useQuinnBroadcast";
 import ReactMarkdown from "react-markdown";
 
-export default function HenryPopout() {
+export default function QuinnPopout() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [dealContext, setDealContext] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function HenryPopout() {
     setIsLoading(loading);
   }, []);
 
-  const { sendMessage, focusMain, notifyClose, isConnected: channelConnected } = useHenryBroadcastPopout({
+  const { sendMessage, focusMain, notifyClose, isConnected: channelConnected } = useQuinnBroadcastPopout({
     onMessagesUpdate: handleMessagesUpdate,
     onDealContextUpdate: handleDealContextUpdate,
     onLoadingStateUpdate: handleLoadingStateUpdate,
@@ -52,7 +52,7 @@ export default function HenryPopout() {
     const vehicleInfo = [dealContext.year, dealContext.make, dealContext.model]
       .filter(Boolean)
       .join(" ");
-    document.title = vehicleInfo ? `Henry — ${vehicleInfo}` : "DuoDrive — Henry";
+    document.title = vehicleInfo ? `Quinn — ${vehicleInfo}` : "DuoDrive — Quinn";
   }, [dealContext]);
 
   // Notify main when closing
@@ -137,7 +137,7 @@ export default function HenryPopout() {
             <Bot className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="font-semibold text-foreground">Henry</h1>
+            <h1 className="font-semibold text-foreground">Quinn</h1>
             {vehicleInfo && (
               <p className="text-xs text-muted-foreground truncate max-w-[180px]">
                 {vehicleInfo}

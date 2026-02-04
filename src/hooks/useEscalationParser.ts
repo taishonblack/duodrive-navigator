@@ -1,5 +1,5 @@
 /**
- * Parses [UNKNOWN_TERM]...[/UNKNOWN_TERM] tags from Henry's responses
+ * Parses [UNKNOWN_TERM]...[/UNKNOWN_TERM] tags from Quinn's responses
  * and saves them to the database for admin review.
  */
 

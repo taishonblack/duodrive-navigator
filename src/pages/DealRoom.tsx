@@ -2047,6 +2047,8 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                     targetOTD: scoreResult?.trueMarketPrice?.toString(),
                     targetTermMonths: dealData.term || "60",
                   }}
+                  onGoToWhatToSay={() => setActiveTab("what-to-say")}
+                  onCompareAnother={handleNewDeal}
                 />
               </div>
               

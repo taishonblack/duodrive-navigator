@@ -54,9 +54,9 @@ export default function WhyDuoDrive() {
     <Layout>
       <SEO 
         title="Why DuoDrive"
-        description="We built DuoDrive to protect car buyers. Meet Henry, your AI copilot who analyzes deals, decodes quotes, and tells you exactly what to say."
+        description="We built DuoDrive to protect car buyers. Meet Quinn, your AI copilot who analyzes deals, decodes quotes, and tells you exactly what to say."
         canonical="/why-duodrive"
-        keywords="why DuoDrive, car buying protection, car buyer advocate, transparent car buying, Henry AI"
+        keywords="why DuoDrive, car buying protection, car buyer advocate, transparent car buying, Quinn AI"
         structuredData={aboutSchema}
       />
       {/* Hero */}
@@ -156,11 +156,11 @@ export default function WhyDuoDrive() {
             Ready to Take Control?
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
-            Chat with Henry and see how your deal stacks up.
+            Chat with Quinn and see how your deal stacks up.
           </p>
           <Button asChild variant="hero" className="mt-8">
             <Link to="/deal-room">
-              Chat with Henry
+              Chat with Quinn
               <ArrowRight className="h-5 w-5" />
             </Link>
           </Button>

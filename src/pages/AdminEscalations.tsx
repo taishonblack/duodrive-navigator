@@ -193,9 +193,9 @@ export default function AdminEscalations() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Henry Escalations</h1>
+              <h1 className="text-2xl font-bold">Quinn Escalations</h1>
               <p className="text-muted-foreground">
-                Review unknown terms and requests that Henry couldn't handle
+                Review unknown terms and requests that Quinn couldn't handle
               </p>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function AdminEscalations() {
               <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <p className="text-muted-foreground">
                 {statusFilter === "all" 
-                  ? "No escalations yet. Henry is handling everything!" 
+                  ? "No escalations yet. Quinn is handling everything!" 
                   : `No ${statusFilter} escalations.`}
               </p>
             </CardContent>

@@ -32,6 +32,7 @@ import { DealershipQuickReplies } from "@/components/DealershipQuickReplies";
 import { DealContext } from "@/config/dealershipQuickReplies";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TypewriterText } from "./TypewriterText";
+import { ChatActionButtons, isDealSummaryMessage } from "./ChatActionButtons";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -51,6 +52,9 @@ interface ConversationCanvasProps {
   // Deal context for quick replies
   dealContext?: DealContext;
   targets?: { targetOTD?: string; targetTermMonths?: string };
+  // Navigation callbacks for action buttons
+  onGoToWhatToSay?: () => void;
+  onCompareAnother?: () => void;
 }
 
 export function ConversationCanvas({
@@ -69,6 +73,8 @@ export function ConversationCanvas({
   onDealershipCheckResponse,
   dealContext,
   targets,
+  onGoToWhatToSay,
+  onCompareAnother,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -189,14 +195,33 @@ export function ConversationCanvas({
       {/* Messages Area */}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
-          {messages.map((message, index) => (
-            <MessageBubble 
-              key={index} 
-              message={message} 
-              shouldAnimate={index === 0 && shouldAnimateWelcome}
-              onAnimationComplete={handleWelcomeAnimationComplete}
-            />
-          ))}
+          {messages.map((message, index) => {
+            const isLastAssistantMessage = 
+              message.role === "assistant" && 
+              index === messages.length - 1 &&
+              !isLoading;
+            const showActionButtons = 
+              isLastAssistantMessage && 
+              isDealSummaryMessage(message.content) &&
+              onGoToWhatToSay && 
+              onCompareAnother;
+
+            return (
+              <div key={index}>
+                <MessageBubble 
+                  message={message} 
+                  shouldAnimate={index === 0 && shouldAnimateWelcome}
+                  onAnimationComplete={handleWelcomeAnimationComplete}
+                />
+                {showActionButtons && (
+                  <ChatActionButtons
+                    onGoToWhatToSay={onGoToWhatToSay}
+                    onCompareAnother={onCompareAnother}
+                  />
+                )}
+              </div>
+            );
+          })}
           
           {/* Loading indicator */}
           {isLoading && (

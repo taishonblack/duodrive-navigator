@@ -20,6 +20,9 @@ import { EstimateAprModal, CreditTier, VehicleCondition, LoanTerm } from "@/comp
 import { HowToUseHenry } from "@/components/HowToUseHenry";
 import { VinBadge, getFieldSource } from "@/components/VinBadge";
 import { SignInPrompt } from "@/components/SignInPrompt";
+import { NegotiationConfidenceMeter } from "@/components/NegotiationConfidenceMeter";
+import { PremiumDecisionModal } from "@/components/PremiumDecisionModal";
+import { PostPurchaseConfirmation } from "@/components/PostPurchaseConfirmation";
 import { Upload, Calculator, Bot, BookOpen, BarChart3, TrendingDown, Wrench, Shield, DollarSign, Heart, Loader2, FileCheck, Camera, ImagePlus, FilePlus2, TrendingUp, Target, AlertTriangle, CheckCircle2, XCircle, Wallet, Download, Mail, Sparkles, Send, FileText, ArrowRight, Clipboard, Wand2, RotateCcw, HelpCircle, MessageSquare, MessageCircle, Lock, ExternalLink } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WhatToSayNext, FeeContext } from "@/components/WhatToSayNext";
@@ -29,6 +32,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCopilotChat, ChatMessage } from "@/hooks/useCopilotChat";
+import { useNegotiationConfidence } from "@/hooks/useNegotiationConfidence";
 import { calculateDuoDriveScore, getDealHealthColor, getDealHealthLabel, ScoreResult, AffordabilityStatus } from "@/lib/duodriveScore";
 import { analyzeAffordability, isLuxuryBrand } from "@/lib/affordabilityRules";
 import { AffordabilityWarning } from "@/components/AffordabilityWarning";
@@ -51,6 +55,7 @@ import { estimateInsurance } from "@/lib/insuranceEstimator";
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
 const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
+
 
 
 export default function DealRoom() {
@@ -95,6 +100,11 @@ export default function DealRoom() {
     }
   });
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  
+  // Premium experience state
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showPostPurchase, setShowPostPurchase] = useState(false);
+  
   const { toast } = useToast();
 
   // Handle dealership check on mobile - show after user's first response (after name question)
@@ -158,6 +168,9 @@ export default function DealRoom() {
         });
         // Re-check entitlement after successful payment
         checkDealEntitlement(dealId);
+        // Show post-purchase confirmation
+        setShowPostPurchase(true);
+        setDealEntitlementStatus("unlocked");
       } else if (checkoutStatus === "cancelled") {
         toast({
           title: "Payment Cancelled",
@@ -248,7 +261,9 @@ export default function DealRoom() {
     };
   });
 
-  // Save dealData to localStorage whenever it changes
+  // Negotiation confidence meter - tracks deal readiness
+  const negotiationConfidence = useNegotiationConfidence(dealData);
+
   useEffect(() => {
     try {
       localStorage.setItem(DEAL_CACHE_KEY, JSON.stringify(dealData));
@@ -1970,6 +1985,29 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
           {/* AI COPILOT TAB - CONVERSATION-FIRST EXPERIENCE */}
           <TabsContent value="copilot" className="animate-fade-in">
+            {/* Post-purchase confirmation - shows after successful payment */}
+            {showPostPurchase && dealEntitlementStatus === "unlocked" && (
+              <PostPurchaseConfirmation
+                isVisible={showPostPurchase}
+                onDismiss={() => setShowPostPurchase(false)}
+                onSaveDeal={() => {
+                  // Scroll to save deal section or trigger save
+                  toast({
+                    title: "Deal Saved",
+                    description: "Your deal has been saved to your account.",
+                  });
+                }}
+                onCompareAnother={handleNewDeal}
+                className="mb-6"
+              />
+            )}
+            
+            {/* Negotiation Confidence Meter - sticky at top */}
+            <NegotiationConfidenceMeter 
+              confidence={negotiationConfidence}
+              className="mb-6"
+            />
+            
             <div className="grid lg:grid-cols-3 gap-6">
               {/* Main conversation area */}
               <div className="lg:col-span-2">
@@ -1991,8 +2029,10 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               
               {/* How to use Henry - Side Panel */}
               <div className="hidden lg:block">
-                <div className="sticky top-24 p-6 rounded-2xl bg-card border border-border shadow-card">
-                  <HowToUseHenry />
+                <div className="sticky top-24 space-y-4">
+                  <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+                    <HowToUseHenry />
+                  </div>
                 </div>
               </div>
             </div>
@@ -2351,6 +2391,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             )}
           </TabsContent>
         </Tabs>
+        
+        {/* Premium Decision Modal */}
+        <PremiumDecisionModal
+          open={showPremiumModal}
+          onOpenChange={setShowPremiumModal}
+          dealId={currentDealId}
+          dealName={dealData.name || `${dealData.year} ${dealData.make} ${dealData.model}`.trim() || undefined}
+        />
       </div>
     </Layout>
   );

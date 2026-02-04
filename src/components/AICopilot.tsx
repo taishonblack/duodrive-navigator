@@ -6,6 +6,7 @@ import { X, Send, Bot, User, Sparkles, RotateCcw, ArrowRight } from "lucide-reac
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCopilotChat } from "@/hooks/useCopilotChat";
 import { parseExtractedDealData, ExtractedDealData } from "@/hooks/useDealExtraction";
+import { parseUnknownTerm, saveUnknownTermEscalation } from "@/hooks/useEscalationParser";
 
 const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
 
@@ -141,6 +142,12 @@ export function AICopilot() {
       if (extractedData) {
         storeExtractedDeal(extractedData);
         setHasExtractedData(true);
+      }
+
+      // Parse and save any escalation tags
+      const { unknownTerm } = parseUnknownTerm(assistantContent);
+      if (unknownTerm) {
+        saveUnknownTermEscalation(unknownTerm).catch(console.error);
       }
     } catch (error) {
       console.error("Chat error:", error);

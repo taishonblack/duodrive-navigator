@@ -509,6 +509,10 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/admin/escalations")}>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Henry Escalations
+            </Button>
             <Button variant="outline" size="sm" onClick={fetchData}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh

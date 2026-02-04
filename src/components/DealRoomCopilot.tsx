@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Bot, X, Send, User, ChevronRight, ChevronLeft, Sparkles, RotateCcw } from "lucide-react";
+import { TypewriterText } from "./TypewriterText";
 
 interface Message {
   role: "user" | "assistant";
@@ -35,6 +36,12 @@ export function DealRoomCopilot({
 }: DealRoomCopilotProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [hasAnimatedFirstMessage, setHasAnimatedFirstMessage] = useState(false);
+
+  // Check if this is a fresh session (only welcome message)
+  const isFirstMessageAnimatable = messages.length === 1 && 
+    messages[0].role === "assistant" && 
+    !hasAnimatedFirstMessage;
 
   // Auto-scroll to bottom when messages change or during loading
   useEffect(() => {
@@ -120,40 +127,54 @@ export function DealRoomCopilot({
               </p>
             </div>
           ) : (
-            messages.map((message, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "flex gap-3",
-                  message.role === "user" && "flex-row-reverse"
-                )}
-              >
+            messages.map((message, index) => {
+              const isFirstWelcome = index === 0 && message.role === "assistant" && isFirstMessageAnimatable;
+              
+              return (
                 <div
+                  key={index}
                   className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                    message.role === "assistant"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
+                    "flex gap-3",
+                    message.role === "user" && "flex-row-reverse"
                   )}
                 >
-                  {message.role === "assistant" ? (
-                    <Bot className="h-4 w-4" />
-                  ) : (
-                    <User className="h-4 w-4" />
-                  )}
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                      message.role === "assistant"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                    )}
+                  >
+                    {message.role === "assistant" ? (
+                      <Bot className="h-4 w-4" />
+                    ) : (
+                      <User className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-2",
+                      message.role === "assistant"
+                        ? "bg-muted text-foreground"
+                        : "bg-primary text-primary-foreground"
+                    )}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">
+                      {isFirstWelcome ? (
+                        <TypewriterText 
+                          text={message.content} 
+                          speed={100}
+                          onComplete={() => setHasAnimatedFirstMessage(true)}
+                        />
+                      ) : (
+                        message.content
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-2",
-                    message.role === "assistant"
-                      ? "bg-muted text-foreground"
-                      : "bg-primary text-primary-foreground"
-                  )}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
           {isLoading && (
             <div className="flex gap-3">

@@ -82,7 +82,7 @@ export function VoiceInputButton({
         title: "Listening...",
         description: atDealership 
           ? "Say the numbers you see. Be mindful of private info around you."
-          : "Speak your deal details. I'll transcribe them for Henry.",
+          : "Speak your deal details. I'll transcribe them for Quinn.",
       });
     };
 
@@ -183,7 +183,7 @@ export function VoiceInputButton({
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                Your voice will be transcribed and sent to Henry so he can help evaluate your deal.
+                Your voice will be transcribed and sent to Quinn so they can help evaluate your deal.
               </p>
               {atDealership && (
                 <p className="text-amber-600 dark:text-amber-400">

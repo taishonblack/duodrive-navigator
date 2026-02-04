@@ -92,9 +92,9 @@ export default function DuoDriveScore() {
     <Layout>
       <SEO 
         title="Understanding the DuoDrive Score"
-        description="Learn how Henry, your AI copilot, evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability."
+        description="Learn how Quinn, your AI copilot, evaluates car deals using five key pillars: depreciation, reliability, safety, deal health, and affordability."
         canonical="/score"
-        keywords="DuoDrive Score, car deal evaluation, car buying score, vehicle scoring, car deal analysis, Henry AI"
+        keywords="DuoDrive Score, car deal evaluation, car buying score, vehicle scoring, car deal analysis, Quinn AI"
         structuredData={[faqSchema, articleSchema]}
       />
       {/* Hero */}
@@ -105,7 +105,7 @@ export default function DuoDriveScore() {
               The DuoDrive Score
             </h1>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-              A transparent, AI-powered score from 0-100 that helps you understand if a car deal is right for you. Just chat with Henry, our AI copilot, and get honest analysis — no hidden factors, no mystery math.
+              A transparent, AI-powered score from 0-100 that helps you understand if a car deal is right for you. Just chat with Quinn, your AI copilot, and get honest analysis — no hidden factors, no mystery math.
             </p>
           </div>
         </div>
@@ -171,11 +171,11 @@ export default function DuoDriveScore() {
               Car buying has been opaque for too long. Dealers have all the information while buyers are left guessing. The DuoDrive Score changes that by giving you the same level of insight that professionals have — powered by AI and presented in plain English.
             </p>
             <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-              We believe transportation shouldn't break the bank, and you deserve to know exactly what you're getting into before signing anything. Just describe your deal to Henry, and he'll handle the rest.
+              We believe transportation shouldn't break the bank, and you deserve to know exactly what you're getting into before signing anything. Just describe your deal to Quinn, and they'll handle the rest.
             </p>
             <Button asChild className="mt-8">
               <Link to="/deal-room">
-                Chat with Henry
+                Chat with Quinn
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

@@ -9,7 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import DealComparison from "./pages/DealComparison";
 import DuoDriveScore from "./pages/DuoDriveScore";
 import DealRoom from "./pages/DealRoom";
-import HenryPopout from "./pages/HenryPopout";
+import QuinnPopout from "./pages/QuinnPopout";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
 import Glossary from "./pages/Glossary";
 import WindowSticker from "./pages/WindowSticker";
@@ -43,7 +43,7 @@ const App = () => (
             <Route path="/compare" element={<DealComparison />} />
             <Route path="/score" element={<DuoDriveScore />} />
             <Route path="/deal-room" element={<DealRoom />} />
-            <Route path="/henry/popout" element={<HenryPopout />} />
+            <Route path="/quinn/popout" element={<QuinnPopout />} />
             <Route path="/why-duodrive" element={<WhyDuoDrive />} />
             <Route path="/glossary" element={<Glossary />} />
             <Route path="/learn/window-sticker" element={<WindowSticker />} />

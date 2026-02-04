@@ -14,8 +14,11 @@ export interface ChatMessage {
   isNew?: boolean; // Flag for newly created messages that should animate
 }
 
-// 20 casual opening greetings - Henry picks one randomly
-const HENRY_GREETINGS = [
+// 20+ casual opening greetings - Quinn picks one randomly
+const QUINN_GREETINGS = [
+  "Hey — I'm Quinn. I'm here to help you think through this car deal and make sure it actually makes sense.",
+  "I'm Quinn. What car are you looking at?",
+  "Hey, I'm Quinn. I help people slow car deals down and make smarter decisions. What are you looking at today?",
   "What can I help you with today?",
   "What kind of car are you looking at?",
   "Tell me what you're shopping for.",
@@ -34,24 +37,22 @@ const HENRY_GREETINGS = [
   "What do you want to run by me?",
   "What are you considering buying?",
   "What kind of car are you in the market for?",
-  "What do you want help figuring out?",
-  "What's the car you want to talk through?",
 ];
 
 // Get a random greeting - uses session storage to persist during session
-const GREETING_STORAGE_KEY = "duodrive_henry_greeting_v3";
+const GREETING_STORAGE_KEY = "duodrive_quinn_greeting_v3";
 
 const getRandomGreeting = (): string => {
   try {
     const stored = sessionStorage.getItem(GREETING_STORAGE_KEY);
     if (stored) return stored;
     
-    const randomIndex = Math.floor(Math.random() * HENRY_GREETINGS.length);
-    const greeting = HENRY_GREETINGS[randomIndex];
+    const randomIndex = Math.floor(Math.random() * QUINN_GREETINGS.length);
+    const greeting = QUINN_GREETINGS[randomIndex];
     sessionStorage.setItem(GREETING_STORAGE_KEY, greeting);
     return greeting;
   } catch {
-    return HENRY_GREETINGS[0];
+    return QUINN_GREETINGS[0];
   }
 };
 

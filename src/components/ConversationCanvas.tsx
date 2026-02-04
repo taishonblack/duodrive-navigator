@@ -27,7 +27,9 @@ import ReactMarkdown from "react-markdown";
 import { DealershipModeToggle } from "@/components/DealershipModeToggle";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { ChatHelperTips } from "@/components/ChatHelperTips";
-import { DealershipQuickReplies } from "@/components/QuickReplyButtons";
+import { DealershipQuickReplies as DealershipCheck } from "@/components/QuickReplyButtons";
+import { DealershipQuickReplies } from "@/components/DealershipQuickReplies";
+import { DealContext } from "@/config/dealershipQuickReplies";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TypewriterText } from "./TypewriterText";
 
@@ -46,6 +48,9 @@ interface ConversationCanvasProps {
   onDealershipModeChange?: (enabled: boolean) => void;
   showDealershipCheck?: boolean;
   onDealershipCheckResponse?: (isAtDealership: boolean) => void;
+  // Deal context for quick replies
+  dealContext?: DealContext;
+  targets?: { targetOTD?: string; targetTermMonths?: string };
 }
 
 export function ConversationCanvas({
@@ -62,6 +67,8 @@ export function ConversationCanvas({
   onDealershipModeChange,
   showDealershipCheck = false,
   onDealershipCheckResponse,
+  dealContext,
+  targets,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -236,12 +243,24 @@ export function ConversationCanvas({
             </div>
           )}
 
-          {/* Dealership check quick replies */}
+          {/* Dealership check quick replies (initial check) */}
           {showDealershipCheck && onDealershipCheckResponse && !isLoading && (
-            <DealershipQuickReplies
+            <DealershipCheck
               onSelect={onDealershipCheckResponse}
               disabled={isLoading}
             />
+          )}
+
+          {/* Dealership Mode Quick Replies (tactical scripts) */}
+          {isDealershipMode && !showDealershipCheck && dealContext && (
+            <div className="pt-2">
+              <DealershipQuickReplies
+                dealContext={dealContext}
+                isDealershipMode={isDealershipMode}
+                onSendMessage={onSendMessage}
+                targets={targets}
+              />
+            </div>
           )}
 
           <div ref={messagesEndRef} />

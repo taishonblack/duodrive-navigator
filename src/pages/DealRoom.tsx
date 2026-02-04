@@ -2026,6 +2026,27 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   onDealershipModeChange={handleDealershipModeToggle}
                   showDealershipCheck={showDealershipCheck}
                   onDealershipCheckResponse={handleDealershipCheckResponse}
+                  dealContext={{
+                    askingPrice: dealData.askingPrice,
+                    negotiatedPrice: dealData.negotiatedPrice,
+                    monthlyPayment: scoreResult?.monthlyPayment?.toString(),
+                    apr: dealData.apr,
+                    term: dealData.term,
+                    downPayment: dealData.downPayment,
+                    tradeIn: dealData.tradeIn,
+                    dealerFee: dealData.dealerFee,
+                    docFee: dealData.docFee,
+                    addOns: dealData.addOns,
+                    taxes: dealData.taxes,
+                    zipCode: dealData.buyerZip,
+                    affordabilityRisk: scoreResult?.affordabilityStatus === "blocked" || scoreResult?.affordabilityStatus === "outside_budget" ? "high" 
+                      : scoreResult?.affordabilityStatus === "stretch_warning" ? "medium" 
+                      : "low",
+                  }}
+                  targets={{
+                    targetOTD: scoreResult?.trueMarketPrice?.toString(),
+                    targetTermMonths: dealData.term || "60",
+                  }}
                 />
               </div>
               

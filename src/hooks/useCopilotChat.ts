@@ -65,12 +65,27 @@ const clearStoredGreeting = () => {
   }
 };
 
-// Henry's opening message - casual, human, no immediate name demand
+// Quinn's opening message - casual, human, no immediate name demand
 const getWelcomeMessage = (isNew: boolean = false): ChatMessage => ({
   role: "assistant",
   content: getRandomGreeting(),
   isNew, // Mark as new for typewriter animation
 });
+
+// Sanitize legacy "Henry" messages when loading from DB
+const sanitizeLegacyMessages = (messages: ChatMessage[]): ChatMessage[] => {
+  return messages.map((msg) => {
+    if (msg.role === "assistant" && msg.content.includes("Henry")) {
+      // If first message contains "I'm Henry" greeting, replace with fresh Quinn greeting
+      if (msg.content.match(/I'm Henry|I am Henry|name is Henry/i)) {
+        return { ...msg, content: getRandomGreeting() };
+      }
+      // Otherwise just replace Henry → Quinn throughout
+      return { ...msg, content: msg.content.replace(/Henry/g, "Quinn") };
+    }
+    return msg;
+  });
+};
 
 // Check if chat has expired (24 hours)
 const isChatExpired = (): boolean => {
@@ -157,7 +172,8 @@ export function useCopilotChat() {
             const parsed = JSON.parse(resumeData);
             if (parsed.id && parsed.messages) {
               setConversationId(parsed.id);
-              setMessages(parsed.messages);
+              // Sanitize legacy messages before setting
+              setMessages(sanitizeLegacyMessages(parsed.messages));
               // Clear the resume flag
               localStorage.removeItem(RESUME_CONVERSATION_KEY);
               return;
@@ -180,10 +196,21 @@ export function useCopilotChat() {
 
         if (existing) {
           setConversationId(existing.id);
-          // Load messages from database
+          // Load messages from database and sanitize legacy "Henry" references
           const dbMessages = existing.messages as unknown as ChatMessage[];
           if (dbMessages && Array.isArray(dbMessages) && dbMessages.length > 0) {
-            setMessages(dbMessages);
+            const sanitized = sanitizeLegacyMessages(dbMessages);
+            setMessages(sanitized);
+            
+            // If messages were sanitized (changed), update DB to persist the fix
+            const wasChanged = JSON.stringify(sanitized) !== JSON.stringify(dbMessages);
+            if (wasChanged) {
+              supabase
+                .from("chat_conversations")
+                .update({ messages: JSON.parse(JSON.stringify(sanitized)) })
+                .eq("id", existing.id)
+                .then(() => console.log("Legacy messages sanitized and saved"));
+            }
           }
         } else {
           // Create new conversation

@@ -57,8 +57,8 @@ export interface ExtractedDealData {
 }
 
 /**
- * Maps Henry extraction keys → Deal Room state keys
- * This normalizes synonyms so Henry can use flexible wording without breaking state
+ * Maps Quinn extraction keys → Deal Room state keys
+ * This normalizes synonyms so Quinn can use flexible wording without breaking state
  */
 const KEY_MAP: Record<string, string> = {
   // Name variations
@@ -244,7 +244,7 @@ export function getExtractedFieldNames(data: ExtractedDealData): string[] {
 
 /**
  * Normalizes extracted data keys using KEY_MAP
- * This ensures Henry can use flexible wording without breaking state
+ * This ensures Quinn can use flexible wording without breaking state
  */
 function normalizeExtractedData(extractedData: ExtractedDealData): Record<string, string> {
   const normalized: Record<string, string> = {};

@@ -10,7 +10,7 @@ export function ChatHelperTips({ isDealershipMode = false }: ChatHelperTipsProps
       <p className="text-xs text-muted-foreground flex items-center gap-1.5">
         <HelpCircle className="h-3 w-3" />
         <span>
-          Tip: Ask "What does APR mean?" Henry can explain any term.
+          Tip: Ask "What does APR mean?" Quinn can explain any term.
         </span>
       </p>
       {isDealershipMode && (

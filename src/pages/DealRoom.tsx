@@ -1239,7 +1239,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     await sendChatMessage(message);
   };
 
-  // Handle file upload in conversation - runs OCR and sends text to Henry
+  // Handle file upload in conversation - runs OCR and sends text to Quinn
   const handleConversationUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1368,16 +1368,16 @@ Be conservative and realistic. Only suggest values that make sense for a typical
 
       setIsExtracting(false);
 
-      // Step 3: Send OCR text to Henry so he can read and respond
+      // Step 3: Send OCR text to Quinn so AI can read and respond
       // Build message with OCR text wrapper
-      const messageForHenry = ocrText 
+      const messageForQuinn = ocrText 
         ? `[IMAGE_TEXT]\n${ocrText}\n[/IMAGE_TEXT]`
         : `Uploaded image: ${file.name}`;
 
       // Create a synthetic user message with the OCR text (hidden from UI)
-      const hiddenUserMessage: ChatMessage = { role: 'user', content: messageForHenry };
+      const hiddenUserMessage: ChatMessage = { role: 'user', content: messageForQuinn };
       
-      // Build deal context for Henry
+      // Build deal context for Quinn
       const dealContext = {
         year: dealData.year,
         make: dealData.make,
@@ -1398,7 +1398,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
         scoreResult: scoreResult || undefined,
       };
 
-      // Send to Henry with OCR content
+      // Send to Quinn with OCR content
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
         method: "POST",
         headers: {
@@ -1416,7 +1416,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
         throw new Error(errorData.error || "Failed to get response");
       }
 
-      // Stream Henry's response
+      // Stream Quinn's response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -1493,9 +1493,9 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     <Layout>
       <SEO 
         title="Deal Room"
-        description="Chat with Henry, your AI copilot for car buying. Get your DuoDrive Score, identify hidden fees, and learn what to say to the dealer."
+        description="Chat with Quinn, your AI copilot for car buying. Get your DuoDrive Score, identify hidden fees, and learn what to say to the dealer."
         canonical="/deal-room"
-        keywords="car deal analyzer, car deal review, car buying AI, DuoDrive Score, car price analysis, Henry AI"
+        keywords="car deal analyzer, car deal review, car buying AI, DuoDrive Score, car price analysis, Quinn AI"
       />
       {/* First-visit tutorial overlay */}
       <DealRoomTutorial />
@@ -1506,7 +1506,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             Deal Room <span className="text-muted-foreground font-normal text-lg md:text-xl">— Send me your deal, I'll break it down for you.</span>
           </h1>
           <div className="flex items-center gap-2">
-            {/* Pop-out Henry button - desktop only, icon-only */}
+            {/* Pop-out Quinn button - desktop only, icon-only */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -1519,7 +1519,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Pop out Henry — keep him open while you browse</p>
+                <p>Pop out Quinn — keep open while you browse</p>
               </TooltipContent>
             </Tooltip>
 
@@ -2029,7 +2029,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                 />
               </div>
               
-              {/* How to use Henry - Side Panel */}
+              {/* How to use Quinn - Side Panel */}
               <div className="hidden lg:block">
                 <div className="sticky top-24 space-y-4">
                   <div className="p-6 rounded-2xl bg-card border border-border shadow-card">

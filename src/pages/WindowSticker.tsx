@@ -68,7 +68,7 @@ const GLOSSARY_ITEMS = [
   { term: "Term", definition: "number of months you repay" },
   { term: "Doc fee", definition: "dealer paperwork fee (varies; sometimes negotiable)" },
   { term: "Residual (lease)", definition: "estimated value at lease end" },
-  { term: "Money factor (lease)", definition: "lease interest charge (Henry can translate it)" },
+  { term: "Money factor (lease)", definition: "lease interest charge (Quinn can translate it)" },
 ];
 
 export default function WindowSticker() {
@@ -111,7 +111,7 @@ export default function WindowSticker() {
                 </Button>
               </Link>
               <p className="text-sm text-muted-foreground">
-                Upload a window sticker or buyer's order in the Deal Room — Henry will extract the key numbers.
+                Upload a window sticker or buyer's order in the Deal Room — Quinn will extract the key numbers.
               </p>
             </div>
           </div>
@@ -341,7 +341,7 @@ export default function WindowSticker() {
               </div>
               <p className="text-sm text-muted-foreground mt-4 pt-4 border-t flex items-center gap-2">
                 <Shield className="h-4 w-4" />
-                If any term is confusing, ask Henry — he'll explain it in plain English.
+                If any term is confusing, ask Quinn — he'll explain it in plain English.
               </p>
             </Card>
           </section>

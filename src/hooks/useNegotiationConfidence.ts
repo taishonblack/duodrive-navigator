@@ -15,6 +15,8 @@ interface DealData {
   model?: string;
   trim?: string;
   mileage?: string;
+  isNew?: boolean;
+  vin?: string;
   askingPrice?: string;
   negotiatedPrice?: string;
   downPayment?: string;
@@ -27,81 +29,138 @@ interface DealData {
   docFee?: string;
   dealerFee?: string;
   taxes?: string;
-  [key: string]: string | undefined;
+  paymentType?: string; // cash / finance / lease
+  [key: string]: string | boolean | undefined;
 }
 
-// Field definitions with labels for display
-const REQUIRED_FIELDS: { key: string; label: string; priority: "core" | "important" | "helpful" }[] = [
-  // Core fields - must have for basic evaluation
-  { key: "askingPrice", label: "Asking price", priority: "core" },
-  { key: "make", label: "Make", priority: "core" },
-  { key: "model", label: "Model", priority: "core" },
-  
-  // Important fields - significantly improve analysis
-  { key: "year", label: "Year", priority: "important" },
-  { key: "monthlyIncome", label: "Monthly income", priority: "important" },
-  { key: "apr", label: "APR", priority: "important" },
-  { key: "term", label: "Loan term", priority: "important" },
-  
-  // Helpful fields - nice to have
-  { key: "downPayment", label: "Down payment", priority: "helpful" },
-  { key: "creditScore", label: "Credit score", priority: "helpful" },
-  { key: "buyerZip", label: "ZIP code", priority: "helpful" },
+// ═══════════════════════════════════════════════════════════════
+// DEAL CREATION PROGRESS — FIELD WEIGHTING
+// ═══════════════════════════════════════════════════════════════
+// 
+// Tier 1 — Core Deal Clarity (60%)
+// These move the needle the most.
+// 
+// Tier 2 — Negotiation Power (25%)
+// This is where DuoDrive differentiates.
+// 
+// Tier 3 — Personal Fit (15%)
+// These refine risk and affordability.
+// ═══════════════════════════════════════════════════════════════
+
+interface FieldDefinition {
+  key: string;
+  label: string;
+  weight: number; // Percentage weight (all should sum to 100)
+  tier: 1 | 2 | 3;
+}
+
+const WEIGHTED_FIELDS: FieldDefinition[] = [
+  // Tier 1 — Core Deal Clarity (60%)
+  { key: "year", label: "Year", weight: 3.33, tier: 1 },
+  { key: "make", label: "Make", weight: 3.33, tier: 1 },
+  { key: "model", label: "Model", weight: 3.34, tier: 1 },
+  { key: "askingPrice", label: "Asking price", weight: 15, tier: 1 },
+  { key: "isNew", label: "New or used", weight: 5, tier: 1 },
+  { key: "mileage", label: "Mileage", weight: 5, tier: 1 },
+  { key: "buyerZip", label: "ZIP code", weight: 10, tier: 1 },
+  { key: "paymentType", label: "Payment type", weight: 5, tier: 1 },
+  { key: "tradeIn", label: "Trade-in", weight: 10, tier: 1 },
+
+  // Tier 2 — Negotiation Power (25%)
+  { key: "negotiatedPrice", label: "Counter price", weight: 10, tier: 2 },
+  { key: "docFee", label: "Dealer fees", weight: 5, tier: 2 },
+  { key: "taxes", label: "Taxes", weight: 5, tier: 2 },
+  { key: "tradeInValue", label: "Trade-in value", weight: 5, tier: 2 },
+
+  // Tier 3 — Personal Fit (15%)
+  { key: "monthlyIncome", label: "Income", weight: 7, tier: 3 },
+  { key: "creditScore", label: "Credit tier", weight: 4, tier: 3 },
+  { key: "downPayment", label: "Down payment", weight: 4, tier: 3 },
 ];
 
-// Weights for progress calculation
-const PRIORITY_WEIGHTS = {
-  core: 3,
-  important: 2,
-  helpful: 1,
-};
-
-function hasValue(value: string | undefined): boolean {
+function hasValue(value: string | boolean | undefined): boolean {
+  if (typeof value === "boolean") return true;
   return Boolean(value && value.trim() !== "" && value !== "0");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROGRESS MICROCOPY — Dynamic, Gentle, Encouraging
+// ═══════════════════════════════════════════════════════════════
+
+export function getProgressMicrocopy(progress: number): string {
+  if (progress <= 25) return "We're just getting started.";
+  if (progress <= 50) return "Good start — a few details will sharpen this.";
+  if (progress <= 75) return "Nice progress. Almost ready for a full breakdown.";
+  if (progress <= 90) return "Just a couple of details away from full analysis.";
+  return "Your deal is ready for complete analysis.";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NEGOTIATION CONFIDENCE FRAMING
+// ═══════════════════════════════════════════════════════════════
+
+export function getNegotiationConfidenceLabel(progress: number): string {
+  if (progress <= 30) return "Early look — big picture only";
+  if (progress <= 60) return "You have leverage starting to form";
+  if (progress <= 80) return "You can negotiate intelligently here";
+  return "You're walking in informed and prepared";
 }
 
 export function useNegotiationConfidence(dealData: DealData): ConfidenceResult {
   return useMemo(() => {
     const missing: string[] = [];
     const completed: string[] = [];
-    let weightedTotal = 0;
     let weightedCompleted = 0;
 
-    for (const field of REQUIRED_FIELDS) {
-      const weight = PRIORITY_WEIGHTS[field.priority];
-      weightedTotal += weight;
+    // Special handling: trade-in value only matters if tradeIn is yes
+    const hasTradeIn = hasValue(dealData.tradeIn) && 
+      (dealData.tradeIn?.toLowerCase() === "yes" || 
+       (typeof dealData.tradeIn === "string" && parseFloat(dealData.tradeIn) > 0));
 
-      if (hasValue(dealData[field.key])) {
+    for (const field of WEIGHTED_FIELDS) {
+      // Skip trade-in value if no trade-in
+      if (field.key === "tradeInValue" && !hasTradeIn) {
+        weightedCompleted += field.weight; // Auto-complete if not applicable
+        continue;
+      }
+
+      // Skip mileage for new cars
+      if (field.key === "mileage" && dealData.isNew === true) {
+        weightedCompleted += field.weight;
+        continue;
+      }
+
+      // Check for value - support both tradeIn as yes/no and as actual value
+      let value: string | boolean | undefined;
+      if (field.key === "tradeInValue") {
+        value = hasTradeIn ? dealData.tradeIn : undefined;
+      } else if (field.key === "tradeIn") {
+        // For trade-in, we just need to know if they've answered yes/no
+        value = dealData.tradeIn;
+      } else {
+        value = dealData[field.key];
+      }
+
+      if (hasValue(value)) {
         completed.push(field.label);
-        weightedCompleted += weight;
+        weightedCompleted += field.weight;
       } else {
         missing.push(field.label);
       }
     }
 
-    // Calculate progress percentage
-    const progress = Math.round((weightedCompleted / weightedTotal) * 100);
+    // Calculate progress percentage (capped at 100)
+    const progress = Math.min(100, Math.round(weightedCompleted));
 
-    // Determine state based on what's missing
-    const coreFields = REQUIRED_FIELDS.filter((f) => f.priority === "core");
-    const missingCore = coreFields.filter((f) => !hasValue(dealData[f.key]));
-    const importantFields = REQUIRED_FIELDS.filter((f) => f.priority === "important");
-    const missingImportant = importantFields.filter((f) => !hasValue(dealData[f.key]));
-
+    // Determine state based on progress thresholds
     let state: ConfidenceState;
 
-    if (missingCore.length > 0) {
-      // Missing core fields = not ready
-      state = "not_ready";
-    } else if (missingImportant.length > 2) {
-      // Missing more than 2 important fields = not ready
-      state = "not_ready";
-    } else if (missing.length <= 2) {
-      // Only 1-2 fields missing total = ready
+    if (progress >= 75) {
       state = "ready";
-    } else {
-      // Some important/helpful fields missing = almost ready
+    } else if (progress >= 50) {
       state = "almost";
+    } else {
+      state = "not_ready";
     }
 
     return {
@@ -123,29 +182,39 @@ export function canSuggestPremium(state: ConfidenceState): boolean {
 
 /**
  * Returns the display text for each confidence state
+ * Now uses Deal Creation Progress language
  */
-export function getConfidenceDisplay(state: ConfidenceState): {
+export function getConfidenceDisplay(state: ConfidenceState, progress: number): {
   headline: string;
   subtext: string;
+  statusLine: string;
   variant: "success" | "warning" | "destructive";
 } {
+  const statusLine = `${progress}% complete`;
+  const subtext = getProgressMicrocopy(progress);
+
   switch (state) {
     case "ready":
       return {
-        headline: "This deal is ready to evaluate.",
-        subtext: "You've provided enough information to assess fairness and negotiation options.",
+        headline: "Deal-ready — full DuoDrive analysis",
+        subtext,
+        statusLine,
         variant: "success",
       };
     case "almost":
       return {
-        headline: "You're missing 1–2 details.",
-        subtext: "These details strengthen negotiation leverage.",
+        headline: "Strong foundation — negotiation guidance unlocked",
+        subtext,
+        statusLine,
         variant: "warning",
       };
     case "not_ready":
       return {
-        headline: "Too many unknowns to judge this deal.",
-        subtext: "To give you a confident answer, we need a few more basics.",
+        headline: progress <= 25 
+          ? "Early look — big picture guidance"
+          : "Taking shape — directional advice available",
+        subtext,
+        statusLine,
         variant: "destructive",
       };
   }

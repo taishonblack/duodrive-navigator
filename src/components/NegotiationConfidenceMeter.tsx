@@ -1,9 +1,10 @@
-import { CheckCircle2, AlertCircle, XCircle, ChevronDown } from "lucide-react";
+import { CheckCircle2, AlertCircle, Circle, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   ConfidenceResult,
   getConfidenceDisplay,
+  getNegotiationConfidenceLabel,
 } from "@/hooks/useNegotiationConfidence";
 import {
   Collapsible,
@@ -23,31 +24,33 @@ export function NegotiationConfidenceMeter({
 }: NegotiationConfidenceMeterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { state, missingFields, progress } = confidence;
-  const display = getConfidenceDisplay(state);
+  const display = getConfidenceDisplay(state, progress);
+  const negotiationLabel = getNegotiationConfidenceLabel(progress);
 
-  const Icon = state === "ready" 
+  // Icon based on progress, not harsh judgment
+  const Icon = progress >= 75 
     ? CheckCircle2 
-    : state === "almost" 
+    : progress >= 50 
       ? AlertCircle 
-      : XCircle;
+      : Circle;
 
-  const iconColor = state === "ready"
+  const iconColor = progress >= 75
     ? "text-green-600 dark:text-green-400"
-    : state === "almost"
+    : progress >= 50
       ? "text-amber-600 dark:text-amber-400"
-      : "text-red-600 dark:text-red-400";
+      : "text-muted-foreground";
 
-  const progressColor = state === "ready"
+  const progressColor = progress >= 75
     ? "bg-green-500"
-    : state === "almost"
+    : progress >= 50
       ? "bg-amber-500"
-      : "bg-red-500";
+      : "bg-primary/60";
 
-  const bgColor = state === "ready"
+  const bgColor = progress >= 75
     ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
-    : state === "almost"
+    : progress >= 50
       ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
-      : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
+      : "bg-muted/50 border-border";
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -63,9 +66,14 @@ export function NegotiationConfidenceMeter({
             <div className="flex items-center gap-3">
               <Icon className={cn("h-4 w-4 shrink-0", iconColor)} />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm leading-tight">
-                  {display.headline}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-foreground text-sm leading-tight">
+                    Deal Creation Progress
+                  </p>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {display.statusLine}
+                  </span>
+                </div>
               </div>
               <ChevronDown 
                 className={cn(
@@ -83,17 +91,30 @@ export function NegotiationConfidenceMeter({
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="px-3 pb-3 pt-0">
-            <p className="text-xs text-muted-foreground mb-2">
+          <div className="px-3 pb-3 pt-0 space-y-3">
+            {/* Dynamic microcopy - encouraging, not corrective */}
+            <p className="text-xs text-muted-foreground">
               {display.subtext}
             </p>
 
-            {/* Missing fields (only show if not ready) */}
-            {state !== "ready" && missingFields.length > 0 && (
+            {/* Negotiation confidence framing */}
+            <div className="pt-2 border-t border-current/10">
+              <p className="text-xs font-medium text-foreground mb-1">
+                Negotiation Confidence
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {negotiationLabel}
+              </p>
+            </div>
+
+            {/* What would help - only show top 3, never harsh */}
+            {progress < 100 && missingFields.length > 0 && (
               <div className="pt-2 border-t border-current/10">
-                <p className="text-xs text-muted-foreground mb-1.5">Missing:</p>
+                <p className="text-xs text-muted-foreground mb-1.5">
+                  {progress < 50 ? "Would help next:" : "To sharpen further:"}
+                </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {missingFields.map((field) => (
+                  {missingFields.slice(0, 3).map((field) => (
                     <span
                       key={field}
                       className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground"
@@ -101,13 +122,18 @@ export function NegotiationConfidenceMeter({
                       {field}
                     </span>
                   ))}
+                  {missingFields.length > 3 && (
+                    <span className="text-xs text-muted-foreground">
+                      +{missingFields.length - 3} more
+                    </span>
+                  )}
                 </div>
               </div>
             )}
 
-            {state === "ready" && (
-              <p className="text-xs text-green-700 dark:text-green-300">
-                All key details captured — ready for full analysis.
+            {progress >= 100 && (
+              <p className="text-xs text-primary font-medium">
+                Your deal is ready for complete analysis.
               </p>
             )}
           </div>

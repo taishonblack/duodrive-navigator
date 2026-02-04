@@ -101,3 +101,6 @@ verify_jwt = true
 
 [functions.send-deal-unlock-email]
 verify_jwt = false
+
+[functions.create-admin-user]
+verify_jwt = false

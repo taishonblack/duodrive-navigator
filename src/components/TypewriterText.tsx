@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface TypewriterTextProps {
   text: string;
@@ -9,17 +9,25 @@ interface TypewriterTextProps {
 export function TypewriterText({ text, speed = 80, onComplete }: TypewriterTextProps) {
   const [displayedWords, setDisplayedWords] = useState<string[]>([]);
   const words = text.split(" ");
+  const hasCompletedRef = useRef(false);
 
   useEffect(() => {
     if (displayedWords.length < words.length) {
       const timeout = setTimeout(() => {
-        setDisplayedWords(words.slice(0, displayedWords.length + 1));
+        setDisplayedWords(prev => [...prev, words[prev.length]]);
       }, speed);
       return () => clearTimeout(timeout);
-    } else if (displayedWords.length === words.length && onComplete) {
-      onComplete();
+    } else if (displayedWords.length === words.length && !hasCompletedRef.current) {
+      hasCompletedRef.current = true;
+      onComplete?.();
     }
-  }, [displayedWords, words, speed, onComplete]);
+  }, [displayedWords.length, words, speed, onComplete]);
+
+  // Reset if text changes
+  useEffect(() => {
+    setDisplayedWords([]);
+    hasCompletedRef.current = false;
+  }, [text]);
 
   return <>{displayedWords.join(" ")}</>;
 }

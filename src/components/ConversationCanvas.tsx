@@ -29,12 +29,14 @@ import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { ChatHelperTips } from "@/components/ChatHelperTips";
 import { DealershipQuickReplies } from "@/components/QuickReplyButtons";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { TypewriterText } from "./TypewriterText";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
   onClearMessages: () => void;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFirstMessageAnimated?: () => void;
   isLoading: boolean;
   isExtracting: boolean;
   scoreResult?: { overall: number } | null;
@@ -51,6 +53,7 @@ export function ConversationCanvas({
   onSendMessage,
   onClearMessages,
   onFileUpload,
+  onFirstMessageAnimated,
   isLoading,
   isExtracting,
   scoreResult,
@@ -62,6 +65,8 @@ export function ConversationCanvas({
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [hasAnimatedWelcome, setHasAnimatedWelcome] = useState(false);
+  const lastWelcomeContentRef = useRef<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +113,31 @@ export function ConversationCanvas({
 
   // Check if there are any user messages (conversation has started)
   const hasUserMessages = messages.some(m => m.role === "user");
+  
+  // Track welcome message content to detect when a new welcome arrives
+  const currentWelcomeContent = messages.length === 1 && messages[0].role === "assistant" 
+    ? messages[0].content 
+    : null;
+  
+  // Determine if we should animate the welcome message
+  // Animate when: we have a welcome message AND we haven't animated THIS specific welcome yet
+  const shouldAnimateWelcome = currentWelcomeContent !== null && 
+    !hasAnimatedWelcome &&
+    currentWelcomeContent !== lastWelcomeContentRef.current;
+    
+  const handleWelcomeAnimationComplete = () => {
+    setHasAnimatedWelcome(true);
+    lastWelcomeContentRef.current = currentWelcomeContent;
+    onFirstMessageAnimated?.();
+  };
+  
+  // Reset animation flag when a new welcome message appears (different content)
+  useEffect(() => {
+    if (currentWelcomeContent !== null && currentWelcomeContent !== lastWelcomeContentRef.current) {
+      // New welcome message detected, allow animation
+      setHasAnimatedWelcome(false);
+    }
+  }, [currentWelcomeContent]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-280px)] min-h-[500px] max-h-[700px] bg-card rounded-2xl border border-border shadow-card overflow-hidden">
@@ -153,7 +183,12 @@ export function ConversationCanvas({
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           {messages.map((message, index) => (
-            <MessageBubble key={index} message={message} />
+            <MessageBubble 
+              key={index} 
+              message={message} 
+              shouldAnimate={index === 0 && shouldAnimateWelcome}
+              onAnimationComplete={handleWelcomeAnimationComplete}
+            />
           ))}
           
           {/* Loading indicator */}
@@ -323,7 +358,15 @@ export function ConversationCanvas({
 }
 
 // Message Bubble Component
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ 
+  message, 
+  shouldAnimate = false,
+  onAnimationComplete
+}: { 
+  message: ChatMessage;
+  shouldAnimate?: boolean;
+  onAnimationComplete?: () => void;
+}) {
   const isUser = message.role === "user";
 
   return (
@@ -347,17 +390,27 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         )}
       >
         <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown
-            components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-              ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-              li: ({ children }) => <li className="mb-1">{children}</li>,
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
+          {shouldAnimate && !isUser ? (
+            <p className="mb-0">
+              <TypewriterText 
+                text={message.content} 
+                speed={80}
+                onComplete={onAnimationComplete}
+              />
+            </p>
+          ) : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          )}
         </div>
       </div>
     </div>

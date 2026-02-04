@@ -8,12 +8,14 @@ import { TypewriterText } from "./TypewriterText";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  isNew?: boolean;
 }
 
 interface DealRoomCopilotProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   onClearMessages?: () => void;
+  onFirstMessageAnimated?: () => void;
   isLoading: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -29,6 +31,7 @@ export function DealRoomCopilot({
   messages,
   onSendMessage,
   onClearMessages,
+  onFirstMessageAnimated,
   isLoading,
   isOpen,
   onToggle,
@@ -36,12 +39,6 @@ export function DealRoomCopilot({
 }: DealRoomCopilotProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [hasAnimatedFirstMessage, setHasAnimatedFirstMessage] = useState(false);
-
-  // Check if this is a fresh session (only welcome message)
-  const isFirstMessageAnimatable = messages.length === 1 && 
-    messages[0].role === "assistant" && 
-    !hasAnimatedFirstMessage;
 
   // Auto-scroll to bottom when messages change or during loading
   useEffect(() => {
@@ -128,7 +125,7 @@ export function DealRoomCopilot({
             </div>
           ) : (
             messages.map((message, index) => {
-              const isFirstWelcome = index === 0 && message.role === "assistant" && isFirstMessageAnimatable;
+              const shouldAnimate = index === 0 && message.role === "assistant" && message.isNew;
               
               return (
                 <div
@@ -161,11 +158,11 @@ export function DealRoomCopilot({
                     )}
                   >
                     <p className="text-sm whitespace-pre-wrap">
-                      {isFirstWelcome ? (
+                      {shouldAnimate ? (
                         <TypewriterText 
                           text={message.content} 
                           speed={100}
-                          onComplete={() => setHasAnimatedFirstMessage(true)}
+                          onComplete={onFirstMessageAnimated}
                         />
                       ) : (
                         message.content

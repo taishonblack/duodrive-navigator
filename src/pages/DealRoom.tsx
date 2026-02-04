@@ -78,7 +78,8 @@ export default function DealRoom() {
     setMessages: setChatMessages, 
     addMessage, 
     clearMessages,
-    refreshWelcome 
+    refreshWelcome,
+    markFirstMessageAnimated
   } = useCopilotChat();
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -2016,6 +2017,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   onSendMessage={handleConversationMessage}
                   onClearMessages={handleNewDeal}
                   onFileUpload={handleConversationUpload}
+                  onFirstMessageAnimated={markFirstMessageAnimated}
                   isLoading={isChatLoading || isExtractingText}
                   isExtracting={isExtracting}
                   scoreResult={scoreResult}

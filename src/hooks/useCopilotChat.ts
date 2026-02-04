@@ -11,6 +11,7 @@ const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  isNew?: boolean; // Flag for newly created messages that should animate
 }
 
 // 20 casual opening greetings - Henry picks one randomly
@@ -64,9 +65,10 @@ const clearStoredGreeting = () => {
 };
 
 // Henry's opening message - casual, human, no immediate name demand
-const getWelcomeMessage = (): ChatMessage => ({
+const getWelcomeMessage = (isNew: boolean = false): ChatMessage => ({
   role: "assistant",
   content: getRandomGreeting(),
+  isNew, // Mark as new for typewriter animation
 });
 
 // Check if chat has expired (24 hours)
@@ -88,20 +90,21 @@ const getStoredMessages = (): ChatMessage[] => {
     if (isChatExpired()) {
       localStorage.removeItem(CHAT_STORAGE_KEY);
       localStorage.removeItem(CHAT_TIMESTAMP_KEY);
-      return [getWelcomeMessage()];
+      return [getWelcomeMessage(true)]; // New session = animate
     }
     
     const stored = localStorage.getItem(CHAT_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        // Loaded from storage = don't animate
+        return parsed.map((msg: ChatMessage) => ({ ...msg, isNew: false }));
       }
     }
   } catch (e) {
     console.error("Failed to load chat messages:", e);
   }
-  return [getWelcomeMessage()];
+  return [getWelcomeMessage(true)]; // Fresh start = animate
 };
 
 // Save messages to localStorage with timestamp
@@ -252,7 +255,7 @@ export function useCopilotChat() {
   const clearMessages = useCallback(async () => {
     // Clear stored greeting to get a fresh one
     clearStoredGreeting();
-    const welcome = getWelcomeMessage();
+    const welcome = getWelcomeMessage(true); // New message = animate
     setMessages([welcome]);
     
     // Reset timestamp for new 24-hour window
@@ -284,7 +287,19 @@ export function useCopilotChat() {
     setMessages(prev => {
       if (prev.length === 1 && prev[0].role === "assistant") {
         clearStoredGreeting();
-        return [getWelcomeMessage()];
+        return [getWelcomeMessage(true)]; // New message = animate
+      }
+      return prev;
+    });
+  }, []);
+
+  // Mark first message as animated after it's been shown
+  const markFirstMessageAnimated = useCallback(() => {
+    setMessages(prev => {
+      if (prev.length > 0 && prev[0].isNew) {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], isNew: false };
+        return updated;
       }
       return prev;
     });
@@ -297,6 +312,7 @@ export function useCopilotChat() {
     updateLastMessage,
     clearMessages,
     refreshWelcome,
+    markFirstMessageAnimated,
     isLoading,
     setIsLoading,
   };

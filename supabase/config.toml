@@ -24,52 +24,10 @@ verify_jwt = true
 [functions.delete-account]
 verify_jwt = true
 
-[functions.google-oauth-callback]
-verify_jwt = false
-
-[functions.generate-oauth-state]
-verify_jwt = true
-
-[functions.create-google-meet]
-verify_jwt = true
-
-[functions.create-masked-phone]
-verify_jwt = true
-
-[functions.send-session-reminder]
-verify_jwt = true
-
-[functions.notify-coaches]
-verify_jwt = true
-
 [functions.send-contact-email]
 verify_jwt = false
 
-[functions.notify-customer-chat-ready]
-verify_jwt = true
-
-[functions.notify-coach-customer-joined]
-verify_jwt = true
-
-[functions.send-customer-update]
-verify_jwt = true
-
-[functions.generate-meeting-link]
-verify_jwt = true
-
 [functions.send-push-notification]
-verify_jwt = true
-
-[functions.cleanup-orphaned-sessions]
-verify_jwt = true
-
-[functions.notify-coach-assigned]
-verify_jwt = true
-
-[functions.create-coaching-checkout]
-verify_jwt = true
-
-[functions.charge-concierge-remaining]
 verify_jwt = true
 
 [functions.stripe-webhook]
@@ -83,9 +41,6 @@ verify_jwt = false
 
 [functions.list-stripe-transactions]
 verify_jwt = true
-
-[functions.check-session-reminders]
-verify_jwt = false
 
 [functions.generate-negotiation-script]
 verify_jwt = false
@@ -102,3 +57,5 @@ verify_jwt = true
 [functions.send-deal-unlock-email]
 verify_jwt = false
 
+[functions.save-escalation]
+verify_jwt = false

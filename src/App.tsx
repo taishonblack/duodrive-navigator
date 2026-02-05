@@ -13,13 +13,9 @@ import QuinnPopout from "./pages/QuinnPopout";
 import WhyDuoDrive from "./pages/WhyDuoDrive";
 import Glossary from "./pages/Glossary";
 import WindowSticker from "./pages/WindowSticker";
-import Coaching from "./pages/Coaching";
-import CoachingChat from "./pages/CoachingChat";
 import ChatHistory from "./pages/ChatHistory";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
-import CoachAuth from "./pages/CoachAuth";
-import CoachDashboard from "./pages/CoachDashboard";
 import AdminAuth from "./pages/AdminAuth";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminEscalations from "./pages/AdminEscalations";
@@ -49,15 +45,7 @@ const App = () => (
             <Route path="/learn/window-sticker" element={<WindowSticker />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
-            {/* Legacy coaching routes - hidden from UI but preserved for potential future $49 escalation feature
-                These routes are functional but not linked from navigation, footer, or dashboard.
-                Related components: Coaching.tsx, CoachingChat.tsx, ChatHistory.tsx, CoachAuth.tsx, CoachDashboard.tsx
-                See memory: legacy/coaching-infrastructure for full context */}
-            <Route path="/coaching" element={<Coaching />} />
-            <Route path="/coaching-chat/:sessionId" element={<CoachingChat />} />
             <Route path="/chat-history" element={<ChatHistory />} />
-            <Route path="/coach" element={<CoachAuth />} />
-            <Route path="/coach/dashboard" element={<CoachDashboard />} />
             <Route path="/admin" element={<AdminAuth />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/escalations" element={<AdminEscalations />} />

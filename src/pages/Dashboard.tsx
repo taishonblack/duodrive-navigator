@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScoreRing } from "@/components/ScoreRing";
-import { CustomerCoachUpdates } from "@/components/CustomerCoachUpdates";
 import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";

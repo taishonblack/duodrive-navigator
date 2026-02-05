@@ -1,4 +1,5 @@
 import { CheckCircle2, AlertCircle, Circle, ChevronDown } from "lucide-react";
+import { Cloud, CloudOff, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
@@ -16,11 +17,17 @@ import { useState } from "react";
 interface NegotiationConfidenceMeterProps {
   confidence: ConfidenceResult;
   className?: string;
+  isLoggedIn?: boolean;
+  isSaving?: boolean;
+  lastSavedAt?: Date | null;
 }
 
 export function NegotiationConfidenceMeter({
   confidence,
   className,
+  isLoggedIn = false,
+  isSaving = false,
+  lastSavedAt = null,
 }: NegotiationConfidenceMeterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { state, missingFields, progress } = confidence;
@@ -75,6 +82,27 @@ export function NegotiationConfidenceMeter({
                   </span>
                 </div>
               </div>
+            {/* Autosave indicator for logged in users */}
+            {isLoggedIn && progress >= 30 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : lastSavedAt ? (
+                  <>
+                    <Cloud className="h-3 w-3 text-score-excellent" />
+                    <span className="hidden sm:inline">Saved</span>
+                  </>
+                ) : (
+                  <>
+                    <CloudOff className="h-3 w-3" />
+                    <span className="hidden sm:inline">Not saved</span>
+                  </>
+                )}
+              </div>
+            )}
               <ChevronDown 
                 className={cn(
                   "h-4 w-4 text-muted-foreground transition-transform duration-200",

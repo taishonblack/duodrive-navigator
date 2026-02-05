@@ -1,7 +1,7 @@
  import { useEffect, useRef, useCallback } from "react";
  
- const IDLE_MS = 3 * 60 * 1000; // 3 minutes
- const ANTI_SPAM_MS = 6 * 60 * 1000; // Don't ping more than once every 6 minutes
+const IDLE_MS = 60 * 1000; // 1 minute
+const ANTI_SPAM_MS = 2 * 60 * 1000; // Don't ping more than once every 2 minutes
  
  const IDLE_PROMPTS = [
    "Hey — are you still there?",

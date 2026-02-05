@@ -3,6 +3,9 @@
  import { useToast } from "@/hooks/use-toast";
  
  export type DealStatus = "draft" | "evaluated" | "archived";
+
+// Progress thresholds that trigger immediate saves
+const SAVE_THRESHOLDS = [25, 50, 75];
  
  interface DealData {
    year?: string;
@@ -76,6 +79,7 @@
    const [dealStatus, setDealStatus] = useState<DealStatus>("draft");
    const lastSavedDataRef = useRef<string>("");
    const debounceTimerRef = useRef<number | null>(null);
+  const lastSavedThresholdRef = useRef<number>(0);
  
    // Check if data has changed since last save
    const hasDataChanged = useCallback(() => {
@@ -296,13 +300,24 @@
      }
    }, [isLoggedIn, isSaving, dealData, scoreResult, currentDealId, setCurrentDealId, toast]);
  
-   // Auto-save as draft when progress >= 50% or minimum fields met
+  // Auto-save as draft when progress crosses thresholds or minimum fields met
    useEffect(() => {
      if (!isLoggedIn) return;
  
-     const shouldAutosave = progress >= 50 || hasMinimumFields(dealData);
+    const shouldAutosave = progress >= 25 || hasMinimumFields(dealData);
      if (!shouldAutosave) return;
  
+    // Check if we crossed a threshold - trigger immediate save
+    const crossedThreshold = SAVE_THRESHOLDS.find(
+      (threshold) => progress >= threshold && lastSavedThresholdRef.current < threshold
+    );
+
+    if (crossedThreshold) {
+      lastSavedThresholdRef.current = crossedThreshold;
+      saveDraft(true); // Immediate save on threshold crossing
+      return;
+    }
+
      // Debounce autosave to avoid too many writes
      if (debounceTimerRef.current) {
        window.clearTimeout(debounceTimerRef.current);

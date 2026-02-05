@@ -1736,10 +1736,14 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     }
   };
 
-  // Mobile full-screen chat view (copilot tab only)
-  if (isMobile && activeTab === "copilot") {
+  // Mobile full-screen view - all tabs use MobileDealRoomLayout with persistent bottom tabs
+  if (isMobile) {
     return (
-      <MobileDealRoomLayout>
+      <MobileDealRoomLayout 
+        activeTab={activeTab as "copilot" | "deal" | "calculator" | "scripts" | "overview"} 
+        onTabChange={setActiveTab}
+        isLocked={dealEntitlementStatus === "locked"}
+      >
         <SEO 
           title="Deal Room"
           description="Chat with Quinn, your AI copilot for car buying. Get your DuoDrive Score, identify hidden fees, and learn what to say to the dealer."
@@ -1748,10 +1752,10 @@ Be conservative and realistic. Only suggest values that make sense for a typical
         />
         <DealRoomTutorial />
         
-        {/* Full-height mobile chat container */}
-        <div className="h-full flex flex-col min-h-0 px-2 pt-2 pb-[env(safe-area-inset-bottom)]">
+        {/* Mobile content - full height container */}
+        <div className="h-full flex flex-col min-h-0 overflow-hidden">
           {/* Compact header with progress + new deal */}
-          <div className="flex items-center justify-between gap-2 mb-2 shrink-0">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 shrink-0 border-b border-border bg-background">
             <NegotiationConfidenceMeter 
               confidence={negotiationConfidence}
               className="flex-1"
@@ -1782,94 +1786,217 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             </AlertDialog>
           </div>
           
-          {/* Chat takes remaining space */}
-          <div className="flex-1 min-h-0">
-            <ConversationCanvas
-              messages={chatMessages}
-              onSendMessage={handleConversationMessage}
-              onClearMessages={handleNewDeal}
-              onFileUpload={handleConversationUpload}
-              onFirstMessageAnimated={markFirstMessageAnimated}
-              isLoading={isChatLoading || isExtractingText}
-              isExtracting={isExtracting}
-              scoreResult={scoreResult}
-              onViewAnalysis={() => setActiveTab("overview")}
-              isDealershipMode={isDealershipMode}
-              onDealershipModeChange={handleDealershipModeToggle}
-              showDealershipCheck={showDealershipCheck}
-              onDealershipCheckResponse={handleDealershipCheckResponse}
-              dealContext={{
-                askingPrice: dealData.askingPrice,
-                negotiatedPrice: dealData.negotiatedPrice,
-                monthlyPayment: scoreResult?.monthlyPayment?.toString(),
-                apr: dealData.apr,
-                term: dealData.term,
-                downPayment: dealData.downPayment,
-                tradeIn: dealData.tradeIn,
-                dealerFee: dealData.dealerFee,
-                docFee: dealData.docFee,
-                addOns: dealData.addOns,
-                taxes: dealData.taxes,
-                zipCode: dealData.buyerZip,
-                affordabilityRisk: scoreResult?.affordabilityStatus === "blocked" || scoreResult?.affordabilityStatus === "outside_budget" ? "high" 
-                  : scoreResult?.affordabilityStatus === "stretch_warning" ? "medium" 
-                  : "low",
-              }}
-              targets={{
-                targetOTD: scoreResult?.trueMarketPrice?.toString(),
-                targetTermMonths: dealData.term || "60",
-              }}
-              onGoToWhatToSay={() => setActiveTab("scripts")}
-              onCompareAnother={handleNewDeal}
-              pendingMakeSuggestion={pendingMakeSuggestion}
-            />
-          </div>
-          
-          {/* Mobile tab bar at bottom - navigate to other views */}
-          <div className="shrink-0 pt-2 pb-1 border-t border-border bg-background">
-            <div className="grid grid-cols-4 gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab("deal")}
-                className="flex-col h-auto py-2 gap-1"
-              >
-                <Upload className="h-4 w-4" />
-                <span className="text-[10px]">Deal</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab("calculator")}
-                className="flex-col h-auto py-2 gap-1"
-              >
-                <Calculator className="h-4 w-4" />
-                <span className="text-[10px]">Calc</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab("scripts")}
-                className="flex-col h-auto py-2 gap-1 relative"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span className="text-[10px]">Say</span>
-                {dealEntitlementStatus === "locked" && (
-                  <span className="absolute top-1 right-2 flex items-center justify-center h-3 w-3 rounded-full bg-amber-500 text-white">
-                    <Lock className="h-2 w-2" />
-                  </span>
+          {/* Tab content - scrollable area */}
+          <div className="flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {/* Copilot tab - chat interface */}
+            {activeTab === "copilot" && (
+              <div className="h-full px-2 pt-2">
+                <ConversationCanvas
+                  messages={chatMessages}
+                  onSendMessage={handleConversationMessage}
+                  onClearMessages={handleNewDeal}
+                  onFileUpload={handleConversationUpload}
+                  onFirstMessageAnimated={markFirstMessageAnimated}
+                  isLoading={isChatLoading || isExtractingText}
+                  isExtracting={isExtracting}
+                  scoreResult={scoreResult}
+                  onViewAnalysis={() => setActiveTab("overview")}
+                  isDealershipMode={isDealershipMode}
+                  onDealershipModeChange={handleDealershipModeToggle}
+                  showDealershipCheck={showDealershipCheck}
+                  onDealershipCheckResponse={handleDealershipCheckResponse}
+                  dealContext={{
+                    askingPrice: dealData.askingPrice,
+                    negotiatedPrice: dealData.negotiatedPrice,
+                    monthlyPayment: scoreResult?.monthlyPayment?.toString(),
+                    apr: dealData.apr,
+                    term: dealData.term,
+                    downPayment: dealData.downPayment,
+                    tradeIn: dealData.tradeIn,
+                    dealerFee: dealData.dealerFee,
+                    docFee: dealData.docFee,
+                    addOns: dealData.addOns,
+                    taxes: dealData.taxes,
+                    zipCode: dealData.buyerZip,
+                    affordabilityRisk: scoreResult?.affordabilityStatus === "blocked" || scoreResult?.affordabilityStatus === "outside_budget" ? "high" 
+                      : scoreResult?.affordabilityStatus === "stretch_warning" ? "medium" 
+                      : "low",
+                  }}
+                  targets={{
+                    targetOTD: scoreResult?.trueMarketPrice?.toString(),
+                    targetTermMonths: dealData.term || "60",
+                  }}
+                  onGoToWhatToSay={() => setActiveTab("scripts")}
+                  onCompareAnother={handleNewDeal}
+                  pendingMakeSuggestion={pendingMakeSuggestion}
+                />
+              </div>
+            )}
+            
+            {/* Other tabs - render directly without wrapping Tabs component */}
+            {activeTab === "deal" && (
+              <div className="px-4 py-4 space-y-6">
+                {/* Car Details */}
+                <div className="p-4 rounded-2xl bg-card border border-border shadow-card">
+                  <h2 className="text-lg font-semibold text-foreground mb-4">Car Details</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-year" className="text-xs">Year</Label>
+                      <Input id="m-year" placeholder="2024" value={dealData.year} onChange={(e) => handleInputChange("year", e.target.value)} className={getInputClass("year")} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-make" className="text-xs">Make</Label>
+                      <Input id="m-make" placeholder="Honda" value={dealData.make} onChange={(e) => handleInputChange("make", e.target.value)} className={getInputClass("make")} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-model" className="text-xs">Model</Label>
+                      <Input id="m-model" placeholder="Accord" value={dealData.model} onChange={(e) => handleInputChange("model", e.target.value)} className={getInputClass("model")} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-askingPrice" className="text-xs">Asking Price</Label>
+                      <Input id="m-askingPrice" placeholder="$32,000" value={dealData.askingPrice} onChange={(e) => handleInputChange("askingPrice", e.target.value)} className={getInputClass("askingPrice")} />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Pricing & Financing */}
+                <div className="p-4 rounded-2xl bg-card border border-border shadow-card">
+                  <h2 className="text-lg font-semibold text-foreground mb-4">Financing</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-downPayment" className="text-xs">Down Payment</Label>
+                      <Input id="m-downPayment" placeholder="$5,000" value={dealData.downPayment} onChange={(e) => handleInputChange("downPayment", e.target.value)} className={getInputClass("downPayment")} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-apr" className="text-xs">APR (%)</Label>
+                      <Input id="m-apr" placeholder="6.5" value={dealData.apr} onChange={(e) => handleInputChange("apr", e.target.value)} className={getInputClass("apr")} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-term" className="text-xs">Term (months)</Label>
+                      <Select value={dealData.term} onValueChange={(value) => handleInputChange("term", value)}>
+                        <SelectTrigger className={getInputClass("term")}><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="36">36 months</SelectItem>
+                          <SelectItem value="48">48 months</SelectItem>
+                          <SelectItem value="60">60 months</SelectItem>
+                          <SelectItem value="72">72 months</SelectItem>
+                          <SelectItem value="84">84 months</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-tradeIn" className="text-xs">Trade-In</Label>
+                      <Input id="m-tradeIn" placeholder="$8,000" value={dealData.tradeIn} onChange={(e) => handleInputChange("tradeIn", e.target.value)} className={getInputClass("tradeIn")} />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Sign in prompt */}
+                {isLoggedIn === false && <SignInPrompt />}
+              </div>
+            )}
+            
+            {activeTab === "calculator" && (
+              <div className="px-4 py-4 space-y-6">
+                {/* Monthly Payment Calculator */}
+                <div className="p-4 rounded-2xl bg-card border border-border shadow-card">
+                  <h2 className="text-lg font-semibold text-foreground mb-4">Payment Calculator</h2>
+                  {scoreResult ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-3 rounded-xl bg-muted">
+                          <p className="text-2xl font-bold text-foreground">${scoreResult.monthlyPayment.toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">Monthly</p>
+                        </div>
+                        <div className="text-center p-3 rounded-xl bg-muted">
+                          <p className="text-2xl font-bold text-foreground">${(scoreResult.totalCost / 1000).toFixed(0)}K</p>
+                          <p className="text-xs text-muted-foreground">Total Cost</p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-muted/50">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-muted-foreground">Comfortable Max</span>
+                          <span className="font-medium">${scoreResult.customerMaxSafePrice.toLocaleString()}</span>
+                        </div>
+                        <Progress value={Math.min((parseFloat(dealData.askingPrice) || 0) / scoreResult.customerMaxSafePrice * 100, 100)} className="h-2" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Calculator className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Chat with Quinn to get your payment breakdown</p>
+                    </div>
+                  )}
+                </div>
+                
+                {isLoggedIn === false && <SignInPrompt />}
+              </div>
+            )}
+            
+            {activeTab === "scripts" && (
+              <div className="px-4 py-4 space-y-4">
+                {dealEntitlementStatus === "locked" ? (
+                  <DealAnalysisPaywall
+                    dealId={currentDealId}
+                    dealName={dealData.name || `${dealData.year} ${dealData.make} ${dealData.model}`.trim() || undefined}
+                    onUnlocked={() => {}}
+                  />
+                ) : (
+                  <WhatToSayNext
+                    dealData={dealData}
+                    scoreResult={scoreResult}
+                    feeContext={feeContext}
+                  />
                 )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab("overview")}
-                className="flex-col h-auto py-2 gap-1"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span className="text-[10px]">Score</span>
-              </Button>
-            </div>
+              </div>
+            )}
+            
+            {activeTab === "overview" && (
+              <div className="px-4 py-4 space-y-6">
+                {scoreResult ? (
+                  <>
+                    {/* Score Ring */}
+                    <div className="p-4 rounded-2xl bg-card border border-border shadow-card text-center">
+                      <ScoreRing score={scoreResult.overall} size="lg" />
+                      <p className="text-lg font-semibold mt-2">{getDealHealthLabel(scoreResult.overall)}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{scoreResult.recommendation}</p>
+                    </div>
+                    
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-xl bg-muted text-center">
+                        <p className="text-xl font-bold">${scoreResult.monthlyPayment.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Monthly</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-muted text-center">
+                        <p className="text-xl font-bold">{dealData.apr || "7.0"}%</p>
+                        <p className="text-xs text-muted-foreground">APR</p>
+                      </div>
+                    </div>
+                    
+                    {/* CTA */}
+                    <Button onClick={() => setActiveTab("scripts")} className="w-full">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      What To Say Next
+                    </Button>
+                  </>
+                ) : (
+                  <div className="p-6 rounded-2xl bg-card border border-border shadow-card text-center">
+                    <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+                    <h3 className="font-medium text-foreground mb-2">No Score Yet</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Chat with Quinn to analyze your deal and get a DuoDrive Score.
+                    </p>
+                    <Button onClick={() => setActiveTab("copilot")} variant="outline">
+                      <Bot className="h-4 w-4 mr-2" />
+                      Talk to Quinn
+                    </Button>
+                  </div>
+                )}
+                
+                {isLoggedIn === false && <SignInPrompt />}
+              </div>
+            )}
           </div>
         </div>
         
@@ -1899,45 +2026,8 @@ Be conservative and realistic. Only suggest values that make sense for a typical
       <DealRoomTutorial />
       
       <div className="container mx-auto px-4 py-4 md:py-8">
-        {/* Mobile: Compact header with back to chat */}
-        {isMobile && activeTab !== "copilot" && (
-          <div className="flex items-center gap-3 mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setActiveTab("copilot")}
-              className="gap-2"
-            >
-              <Bot className="h-4 w-4" />
-              Back to Chat
-            </Button>
-            <div className="flex-1" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!hasFormData}>
-                  <FilePlus2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will clear all current deal data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleNewDeal}>
-                    Start New Deal
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
-        
-        {/* Desktop: Full header */}
-        <div className="hidden md:flex mb-8 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Desktop header - mobile now uses early return */}
+        <div className="flex mb-8 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Deal Room <span className="text-muted-foreground font-normal text-lg md:text-xl">— Send me your deal, I'll break it down for you.</span>
           </h1>

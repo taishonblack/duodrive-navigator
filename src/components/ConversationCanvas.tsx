@@ -225,7 +225,6 @@ export function ConversationCanvas({
                 {showActionButtons && (
                   <ChatActionButtons
                     onGoToWhatToSay={onGoToWhatToSay}
-                    onCompareAnother={onCompareAnother}
                   />
                 )}
               </div>

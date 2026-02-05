@@ -54,6 +54,7 @@ import { estimateInsurance } from "@/lib/insuranceEstimator";
  import { extractVehicleInfo } from "@/lib/vehicle/normalizeMake";
  import { resolveMakeFromUserText, formatMakeOptions, MakeResolution } from "@/lib/vehicle/makeResolver";
 import { FEATURES } from "@/config/features";
+import { useIdlePing } from "@/hooks/useIdlePing";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -892,6 +893,26 @@ export default function DealRoom() {
     }
   };
 
+  // Idle ping: send a gentle check-in after 3 minutes of inactivity
+  const handleIdlePing = useCallback((message: string) => {
+    // Only ping if we're on the copilot tab and have started a conversation
+    if (activeTab === "copilot" && chatMessages.length > 1) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: message }]);
+    }
+  }, [activeTab, chatMessages.length, setChatMessages]);
+
+  const { resetIdleTimer } = useIdlePing({
+    onIdlePing: handleIdlePing,
+    isLoading: isChatLoading,
+    isActive: activeTab === "copilot" && chatMessages.length > 1,
+  });
+
+  // Reset idle timer when user sends a message
+  const sendChatMessageWithIdleReset = useCallback(async (directMessage?: string) => {
+    resetIdleTimer();
+    await sendChatMessage(directMessage);
+  }, [resetIdleTimer, sendChatMessage]);
+
   const extractDealFromText = async () => {
     if (!dealTextInput.trim() || isExtractingText) return;
 
@@ -1396,8 +1417,8 @@ Be conservative and realistic. Only suggest values that make sense for a typical
   const handleConversationMessage = async (message: string) => {
     // Send all messages through the AI copilot which handles extraction automatically
     // The AI will extract deal data via [DEAL_EXTRACTED] markers in its response
-    // Note: sendChatMessage handles adding the user message and loading state
-    await sendChatMessage(message);
+    // Note: sendChatMessageWithIdleReset handles adding the user message, loading state, and resets the idle timer
+    await sendChatMessageWithIdleReset(message);
   };
 
   // Handle file upload in conversation - runs OCR and sends text to Quinn

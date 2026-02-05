@@ -52,6 +52,7 @@ import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } fro
 import { useQuinnBroadcastMain, openQuinnPopout } from "@/hooks/useQuinnBroadcast";
 import { estimateInsurance } from "@/lib/insuranceEstimator";
  import { extractVehicleInfo } from "@/lib/vehicle/normalizeMake";
+ import { resolveMakeFromUserText, formatMakeOptions, MakeResolution } from "@/lib/vehicle/makeResolver";
 import { FEATURES } from "@/config/features";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
@@ -94,7 +95,7 @@ export default function DealRoom() {
   const [affordabilityAcknowledged, setAffordabilityAcknowledged] = useState(false);
   const [showAprModal, setShowAprModal] = useState(false);
   const [vinDecodedFields, setVinDecodedFields] = useState<Set<string>>(new Set());
-   const [pendingMakeSuggestion, setPendingMakeSuggestion] = useState<string | null>(null);
+   const [pendingMakeSuggestion, setPendingMakeSuggestion] = useState<MakeResolution | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(() => {
     try {
       const saved = localStorage.getItem(SIDE_PANEL_KEY);
@@ -602,74 +603,125 @@ export default function DealRoom() {
     const messageToSend = directMessage || chatInput;
     if (!messageToSend.trim() || isChatLoading) return;
 
-     // Client-side vehicle extraction BEFORE sending to LLM
-     const vehicleInfo = extractVehicleInfo(messageToSend);
-     
-     // If we detected a fuzzy make suggestion (typo like "telsa" → "Tesla")
-     if (vehicleInfo.makeSuggestion && !vehicleInfo.make && !dealData.make) {
-       // Store the suggestion and ask user to confirm
-       setPendingMakeSuggestion(vehicleInfo.makeSuggestion);
+     // --- ENHANCED MAKE RESOLUTION (Jaro-Winkler) ---
+     // Only run if we don't already have a make
+     if (!dealData.make) {
+       const resolution = resolveMakeFromUserText({ userText: messageToSend });
        
-       // Add user message
-       const userMessage: ChatMessage = { role: 'user', content: messageToSend };
-       setChatMessages(prev => [...prev, userMessage]);
+       // Handle confirmed make (exact match or alias)
+       if (resolution.type === "confirmed") {
+         setDealData(prev => ({ ...prev, make: resolution.make }));
+         setExtractedFields(prev => new Set([...prev, 'make']));
+         setPendingMakeSuggestion(null);
+         // Continue to extract other info below
+       }
        
-       // Add confirmation question from Quinn
-       const confirmMessage: ChatMessage = { 
-         role: 'assistant', 
-         content: `Did you mean **${vehicleInfo.makeSuggestion}**?` 
-       };
-       setChatMessages(prev => [...prev, confirmMessage]);
-       setChatInput("");
-       return; // Don't call LLM yet
+       // Handle single suggestion (typo like "telsa" → "Tesla")
+       if (resolution.type === "suggest_one") {
+         setPendingMakeSuggestion(resolution);
+         
+         const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+         setChatMessages(prev => [...prev, userMessage]);
+         
+         const confirmMessage: ChatMessage = { 
+           role: 'assistant', 
+           content: `Did you mean **${resolution.suggestion}**?` 
+         };
+         setChatMessages(prev => [...prev, confirmMessage]);
+         setChatInput("");
+         return;
+       }
+       
+       // Handle multiple suggestions (ambiguous like "hondai" → "Honda or Hyundai?")
+       if (resolution.type === "suggest_many") {
+         setPendingMakeSuggestion(resolution);
+         
+         const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+         setChatMessages(prev => [...prev, userMessage]);
+         
+         const optionsText = formatMakeOptions(resolution.options);
+         const confirmMessage: ChatMessage = { 
+           role: 'assistant', 
+           content: `Did you mean **${optionsText}**?` 
+         };
+         setChatMessages(prev => [...prev, confirmMessage]);
+         setChatInput("");
+         return;
+       }
      }
      
-     // Handle "yes" response to make suggestion
+     // Handle response to pending suggestion
      const lowerMessage = messageToSend.toLowerCase().trim();
-     if (pendingMakeSuggestion && (lowerMessage === 'yes' || lowerMessage === 'yeah' || lowerMessage === 'yep' || lowerMessage === 'y')) {
-       // User confirmed the suggestion - apply it to deal data
-       setDealData(prev => ({ ...prev, make: pendingMakeSuggestion }));
-       setExtractedFields(prev => new Set([...prev, 'make']));
-       
-       const confirmedMake = pendingMakeSuggestion;
-       setPendingMakeSuggestion(null);
-       
-       // Add user confirmation
-       const userMessage: ChatMessage = { role: 'user', content: messageToSend };
-       setChatMessages(prev => [...prev, userMessage]);
-       
-       // Ask for model now
-       const followUp: ChatMessage = { 
-         role: 'assistant', 
-         content: `Got it — ${confirmedMake}. Which model?` 
-       };
-       setChatMessages(prev => [...prev, followUp]);
-       setChatInput("");
-       return;
-     }
-     
-     // Handle "no" response to make suggestion
-     if (pendingMakeSuggestion && (lowerMessage === 'no' || lowerMessage === 'nope' || lowerMessage === 'n')) {
-       setPendingMakeSuggestion(null);
-       
-       const userMessage: ChatMessage = { role: 'user', content: messageToSend };
-       setChatMessages(prev => [...prev, userMessage]);
-       
-       const followUp: ChatMessage = { 
-         role: 'assistant', 
-         content: "No problem — which brand are you looking at?" 
-       };
-       setChatMessages(prev => [...prev, followUp]);
-       setChatInput("");
-       return;
-     }
-     
-     // Clear any pending suggestion if user types something else
      if (pendingMakeSuggestion) {
+       // Check if user typed one of the suggested makes directly
+       if (pendingMakeSuggestion.type === "suggest_many") {
+         const matchedOption = pendingMakeSuggestion.options.find(
+           opt => opt.make.toLowerCase() === lowerMessage || 
+                  opt.make.toLowerCase().startsWith(lowerMessage)
+         );
+         if (matchedOption) {
+           setDealData(prev => ({ ...prev, make: matchedOption.make }));
+           setExtractedFields(prev => new Set([...prev, 'make']));
+           
+           const confirmedMake = matchedOption.make;
+           setPendingMakeSuggestion(null);
+           
+           const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+           setChatMessages(prev => [...prev, userMessage]);
+           
+           const followUp: ChatMessage = { 
+             role: 'assistant', 
+             content: `Got it — ${confirmedMake}. Which model?` 
+           };
+           setChatMessages(prev => [...prev, followUp]);
+           setChatInput("");
+           return;
+         }
+       }
+       
+       // Handle "yes" for single suggestion
+       if (pendingMakeSuggestion.type === "suggest_one" && 
+           (lowerMessage === 'yes' || lowerMessage === 'yeah' || lowerMessage === 'yep' || lowerMessage === 'y')) {
+         setDealData(prev => ({ ...prev, make: pendingMakeSuggestion.suggestion }));
+         setExtractedFields(prev => new Set([...prev, 'make']));
+         
+         const confirmedMake = pendingMakeSuggestion.suggestion;
+         setPendingMakeSuggestion(null);
+         
+         const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+         setChatMessages(prev => [...prev, userMessage]);
+         
+         const followUp: ChatMessage = { 
+           role: 'assistant', 
+           content: `Got it — ${confirmedMake}. Which model?` 
+         };
+         setChatMessages(prev => [...prev, followUp]);
+         setChatInput("");
+         return;
+       }
+       
+       // Handle "no" response
+       if (lowerMessage === 'no' || lowerMessage === 'nope' || lowerMessage === 'n' || lowerMessage === 'neither') {
+         setPendingMakeSuggestion(null);
+         
+         const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+         setChatMessages(prev => [...prev, userMessage]);
+         
+         const followUp: ChatMessage = { 
+           role: 'assistant', 
+           content: "No problem — which brand are you looking at?" 
+         };
+         setChatMessages(prev => [...prev, followUp]);
+         setChatInput("");
+         return;
+       }
+       
+       // User typed something else - clear pending and continue
        setPendingMakeSuggestion(null);
      }
      
-     // Apply any extracted vehicle info to deal state immediately (before LLM call)
+     // --- Standard vehicle info extraction for other fields ---
+     const vehicleInfo = extractVehicleInfo(messageToSend);
      if (vehicleInfo.make || vehicleInfo.model || vehicleInfo.year || vehicleInfo.condition || vehicleInfo.price || vehicleInfo.mileage) {
        const newFields = new Set<string>();
        setDealData(prev => {

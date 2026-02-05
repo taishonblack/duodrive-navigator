@@ -51,6 +51,7 @@ import { parseExtractedDealData, getExtractedFieldNames, ExtractedDealData } fro
 import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } from "@/lib/vinUtils";
 import { useQuinnBroadcastMain, openQuinnPopout } from "@/hooks/useQuinnBroadcast";
 import { estimateInsurance } from "@/lib/insuranceEstimator";
+ import { extractVehicleInfo } from "@/lib/vehicle/normalizeMake";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -92,6 +93,7 @@ export default function DealRoom() {
   const [affordabilityAcknowledged, setAffordabilityAcknowledged] = useState(false);
   const [showAprModal, setShowAprModal] = useState(false);
   const [vinDecodedFields, setVinDecodedFields] = useState<Set<string>>(new Set());
+   const [pendingMakeSuggestion, setPendingMakeSuggestion] = useState<string | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(() => {
     try {
       const saved = localStorage.getItem(SIDE_PANEL_KEY);
@@ -599,6 +601,105 @@ export default function DealRoom() {
     const messageToSend = directMessage || chatInput;
     if (!messageToSend.trim() || isChatLoading) return;
 
+     // Client-side vehicle extraction BEFORE sending to LLM
+     const vehicleInfo = extractVehicleInfo(messageToSend);
+     
+     // If we detected a fuzzy make suggestion (typo like "telsa" → "Tesla")
+     if (vehicleInfo.makeSuggestion && !vehicleInfo.make && !dealData.make) {
+       // Store the suggestion and ask user to confirm
+       setPendingMakeSuggestion(vehicleInfo.makeSuggestion);
+       
+       // Add user message
+       const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+       setChatMessages(prev => [...prev, userMessage]);
+       
+       // Add confirmation question from Quinn
+       const confirmMessage: ChatMessage = { 
+         role: 'assistant', 
+         content: `Did you mean **${vehicleInfo.makeSuggestion}**?` 
+       };
+       setChatMessages(prev => [...prev, confirmMessage]);
+       setChatInput("");
+       return; // Don't call LLM yet
+     }
+     
+     // Handle "yes" response to make suggestion
+     const lowerMessage = messageToSend.toLowerCase().trim();
+     if (pendingMakeSuggestion && (lowerMessage === 'yes' || lowerMessage === 'yeah' || lowerMessage === 'yep' || lowerMessage === 'y')) {
+       // User confirmed the suggestion - apply it to deal data
+       setDealData(prev => ({ ...prev, make: pendingMakeSuggestion }));
+       setExtractedFields(prev => new Set([...prev, 'make']));
+       
+       const confirmedMake = pendingMakeSuggestion;
+       setPendingMakeSuggestion(null);
+       
+       // Add user confirmation
+       const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+       setChatMessages(prev => [...prev, userMessage]);
+       
+       // Ask for model now
+       const followUp: ChatMessage = { 
+         role: 'assistant', 
+         content: `Got it — ${confirmedMake}. Which model?` 
+       };
+       setChatMessages(prev => [...prev, followUp]);
+       setChatInput("");
+       return;
+     }
+     
+     // Handle "no" response to make suggestion
+     if (pendingMakeSuggestion && (lowerMessage === 'no' || lowerMessage === 'nope' || lowerMessage === 'n')) {
+       setPendingMakeSuggestion(null);
+       
+       const userMessage: ChatMessage = { role: 'user', content: messageToSend };
+       setChatMessages(prev => [...prev, userMessage]);
+       
+       const followUp: ChatMessage = { 
+         role: 'assistant', 
+         content: "No problem — which brand are you looking at?" 
+       };
+       setChatMessages(prev => [...prev, followUp]);
+       setChatInput("");
+       return;
+     }
+     
+     // Clear any pending suggestion if user types something else
+     if (pendingMakeSuggestion) {
+       setPendingMakeSuggestion(null);
+     }
+     
+     // Apply any extracted vehicle info to deal state immediately (before LLM call)
+     if (vehicleInfo.make || vehicleInfo.model || vehicleInfo.year || vehicleInfo.condition || vehicleInfo.price || vehicleInfo.mileage) {
+       const newFields = new Set<string>();
+       setDealData(prev => {
+         const updated = { ...prev };
+         if (vehicleInfo.make && !prev.make) {
+           updated.make = vehicleInfo.make;
+           newFields.add('make');
+         }
+         if (vehicleInfo.model && !prev.model) {
+           updated.model = vehicleInfo.model;
+           newFields.add('model');
+         }
+         if (vehicleInfo.year && !prev.year) {
+           updated.year = vehicleInfo.year;
+           newFields.add('year');
+         }
+         if (vehicleInfo.price && !prev.askingPrice) {
+           updated.askingPrice = vehicleInfo.price;
+           newFields.add('askingPrice');
+         }
+         if (vehicleInfo.mileage && !prev.mileage) {
+           updated.mileage = vehicleInfo.mileage;
+           newFields.add('mileage');
+         }
+         return updated;
+       });
+       if (newFields.size > 0) {
+         setExtractedFields(prev => new Set([...prev, ...newFields]));
+       }
+     }
+ 
     const userMessage: ChatMessage = { role: 'user', content: messageToSend };
     setChatMessages(prev => [...prev, userMessage]);
     setChatInput("");
@@ -1196,6 +1297,13 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     setActiveTab("copilot");
     localStorage.removeItem(DEAL_CACHE_KEY);
     toast({ title: "New Deal", description: "Started a fresh deal" });
+     // Reset any pending state
+     setPendingMakeSuggestion(null);
+     setVinDecodedFields(new Set());
+     setDealEntitlementStatus("locked");
+     setAtDealership(null);
+     setIsDealershipMode(false);
+     setShowDealershipCheck(false);
   };
 
   // Check if there's any data in the form
@@ -2049,6 +2157,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   }}
                   onGoToWhatToSay={() => setActiveTab("what-to-say")}
                   onCompareAnother={handleNewDeal}
+                   pendingMakeSuggestion={pendingMakeSuggestion}
                 />
               </div>
               

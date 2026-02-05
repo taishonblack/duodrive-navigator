@@ -1,23 +1,34 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, PlusCircle } from "lucide-react";
+ import { FEATURES } from "@/config/features";
 
 interface ChatActionButtonsProps {
   onGoToWhatToSay: () => void;
   onCompareAnother: () => void;
+   showWhatToSay?: boolean; // Only show if premium-relevant content exists
 }
 
-export function ChatActionButtons({ onGoToWhatToSay, onCompareAnother }: ChatActionButtonsProps) {
+ export function ChatActionButtons({ 
+   onGoToWhatToSay, 
+   onCompareAnother,
+   showWhatToSay = true 
+ }: ChatActionButtonsProps) {
+   // Only show "What to Say" if premium is enabled
+   const canShowWhatToSay = showWhatToSay && FEATURES.premiumEnabled;
+ 
   return (
     <div className="flex flex-wrap gap-2 mt-2 ml-11">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onGoToWhatToSay}
-        className="text-xs h-8 gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
-      >
-        <ArrowRight className="h-3.5 w-3.5" />
-        Go to What to Say
-      </Button>
+       {canShowWhatToSay && (
+         <Button
+           variant="outline"
+           size="sm"
+           onClick={onGoToWhatToSay}
+           className="text-xs h-8 gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+         >
+           <ArrowRight className="h-3.5 w-3.5" />
+           Go to What to Say
+         </Button>
+       )}
       <Button
         variant="outline"
         size="sm"

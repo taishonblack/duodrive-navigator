@@ -681,6 +681,7 @@ serve(async (req) => {
     
     if (mergedDealContext) {
       contextMessage += "\n\n--- USER'S CURRENT DEAL CONTEXT ---\n";
+       contextMessage += "IMPORTANT: The following data has already been collected. DO NOT ask for any of this information again.\n\n";
       
       // Device and dealership context
       if (mergedDealContext.deviceHint) {
@@ -744,6 +745,37 @@ serve(async (req) => {
       if (mergedDealContext.maintenance) {
         contextMessage += `Monthly Maintenance: $${mergedDealContext.maintenance}\n`;
       }
+       
+       // Summary of what's known vs what to ask next
+       const knownFields: string[] = [];
+       const missingFields: string[] = [];
+       
+       if (mergedDealContext.make) knownFields.push("make");
+       else missingFields.push("make");
+       
+       if (mergedDealContext.model) knownFields.push("model");
+       else missingFields.push("model");
+       
+       if (mergedDealContext.year) knownFields.push("year");
+       else if (knownFields.includes("make")) missingFields.push("year");
+       
+       if (mergedDealContext.askingPrice) knownFields.push("asking price");
+       else if (knownFields.includes("model")) missingFields.push("asking price");
+       
+       if (mergedDealContext.mileage) knownFields.push("mileage");
+       
+       if (mergedDealContext.tradeIn) knownFields.push("trade-in value");
+       else if (knownFields.includes("asking price")) missingFields.push("trade-in (yes/no, and value if yes)");
+       
+       if (mergedDealContext.negotiatedPrice) knownFields.push("negotiated price");
+       else if (knownFields.includes("asking price")) missingFields.push("negotiated price (if they've countered)");
+       
+       if (knownFields.length > 0) {
+         contextMessage += `\n✓ ALREADY KNOWN: ${knownFields.join(", ")}\n`;
+       }
+       if (missingFields.length > 0) {
+         contextMessage += `→ ASK NEXT: ${missingFields[0]} (only ask ONE thing at a time)\n`;
+       }
       
       // V3 Score Results
       if (mergedDealContext.scoreResult) {

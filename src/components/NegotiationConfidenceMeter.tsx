@@ -120,6 +120,11 @@ export function NegotiationConfidenceMeter({
                 Saved automatically as you go
               </p>
             )}
+            {!isLoggedIn && progress >= 25 && (
+              <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
+                <a href="/auth" className="text-primary hover:underline">Sign in</a> to save this deal
+              </p>
+            )}
           </button>
         </CollapsibleTrigger>
 

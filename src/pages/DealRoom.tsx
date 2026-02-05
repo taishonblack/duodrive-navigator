@@ -52,6 +52,7 @@ import { extractVin, decodeVinWithNhtsa, mapNhtsaToDealContext, isValidVin } fro
 import { useQuinnBroadcastMain, openQuinnPopout } from "@/hooks/useQuinnBroadcast";
 import { estimateInsurance } from "@/lib/insuranceEstimator";
  import { extractVehicleInfo } from "@/lib/vehicle/normalizeMake";
+import { FEATURES } from "@/config/features";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -2208,7 +2209,15 @@ Be conservative and realistic. Only suggest values that make sense for a typical
           {/* WHAT TO SAY NEXT TAB */}
           <TabsContent value="scripts" className="animate-fade-in">
             <div className="max-w-4xl mx-auto py-4 space-y-6">
-              {dealEntitlementStatus === "loading" ? (
+              {/* When Premium is disabled, show Coming Soon directly */}
+              {!FEATURES.premiumEnabled ? (
+                <WhatToSayNext 
+                  dealData={dealData} 
+                  scoreResult={scoreResult}
+                  feeContext={feeContext || undefined}
+                  onBackToChat={() => setActiveTab("copilot")}
+                />
+              ) : dealEntitlementStatus === "loading" ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>

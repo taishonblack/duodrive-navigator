@@ -185,8 +185,8 @@ export function ConversationCanvas({
     <div className={cn(
       "flex flex-col bg-card rounded-2xl border border-border shadow-card overflow-hidden",
       isCompact 
-        ? "h-[400px] min-h-[350px] max-h-[450px]" 
-        : "h-[calc(100vh-280px)] min-h-[500px] max-h-[700px]"
+        ? "h-auto min-h-[300px]" 
+        : "h-[calc(100vh-280px)] min-h-[500px]"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
@@ -230,7 +230,7 @@ export function ConversationCanvas({
               size="icon"
               onClick={toggleChatHeight}
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title={isCompact ? "Expand chat" : "Compact chat"}
+              title={isCompact ? "Full height" : "Match panel height"}
             >
               {isCompact ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </Button>

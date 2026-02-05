@@ -34,6 +34,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { TypewriterText } from "./TypewriterText";
 import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons";
  import { Check, X } from "lucide-react";
+ import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -56,8 +57,8 @@ interface ConversationCanvasProps {
   // Navigation callbacks for action buttons
   onGoToWhatToSay?: () => void;
   onCompareAnother?: () => void;
-   // Make suggestion confirmation
-   pendingMakeSuggestion?: string | null;
+   // Make suggestion confirmation (enhanced with multi-option support)
+   pendingMakeSuggestion?: MakeResolution | null;
 }
 
 export function ConversationCanvas({
@@ -299,24 +300,53 @@ export function ConversationCanvas({
            {/* Yes/No quick replies for make suggestion confirmation */}
            {pendingMakeSuggestion && !isLoading && (
              <div className="flex gap-2 ml-11 mt-2">
-               <Button
-                 variant="outline"
-                 size="sm"
-                 onClick={() => onSendMessage("Yes")}
-                 className="h-8 gap-1.5 border-green-500/50 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
-               >
-                 <Check className="h-3.5 w-3.5" />
-                 Yes, {pendingMakeSuggestion}
-               </Button>
-               <Button
-                 variant="outline"
-                 size="sm"
-                 onClick={() => onSendMessage("No")}
-                 className="h-8 gap-1.5"
-               >
-                 <X className="h-3.5 w-3.5" />
-                 No
-               </Button>
+               {/* Single suggestion: Yes/No buttons */}
+               {pendingMakeSuggestion.type === "suggest_one" && (
+                 <>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => onSendMessage("Yes")}
+                     className="h-8 gap-1.5 border-green-500/50 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+                   >
+                     <Check className="h-3.5 w-3.5" />
+                     Yes, {pendingMakeSuggestion.suggestion}
+                   </Button>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => onSendMessage("No")}
+                     className="h-8 gap-1.5"
+                   >
+                     <X className="h-3.5 w-3.5" />
+                     No
+                   </Button>
+                 </>
+               )}
+               {/* Multiple suggestions: Show each as a button */}
+               {pendingMakeSuggestion.type === "suggest_many" && (
+                 <>
+                   {pendingMakeSuggestion.options.map((opt) => (
+                     <Button
+                       key={opt.make}
+                       variant="outline"
+                       size="sm"
+                       onClick={() => onSendMessage(opt.make)}
+                       className="h-8 gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+                     >
+                       {opt.make}
+                     </Button>
+                   ))}
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => onSendMessage("Neither")}
+                     className="h-8 gap-1.5"
+                   >
+                     Neither
+                   </Button>
+                 </>
+               )}
              </div>
            )}
  

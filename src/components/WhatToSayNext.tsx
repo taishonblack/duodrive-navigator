@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, DollarSign, XCircle, Percent, LogOut, Copy, Check, Sparkles, AlertTriangle, Printer, List, LayoutGrid } from "lucide-react";
+import { Loader2, DollarSign, XCircle, Percent, LogOut, Copy, Check, Sparkles, AlertTriangle, Printer, List, LayoutGrid, Shield, DoorOpen, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import jsPDF from "jspdf";
+import { FEATURES } from "@/config/features";
 
 interface DealData {
   year?: string;
@@ -43,6 +44,7 @@ interface WhatToSayNextProps {
   dealData: DealData;
   scoreResult: ScoreResult | null;
   feeContext?: FeeContext;
+  onBackToChat?: () => void;
 }
 
 type ScriptType = "counter" | "fees" | "buyrate" | "walkaway";
@@ -94,7 +96,7 @@ const scriptOptions = [
   },
 ];
 
-export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNextProps) {
+export function WhatToSayNext({ dealData, scoreResult, feeContext, onBackToChat }: WhatToSayNextProps) {
   const [loadingType, setLoadingType] = useState<ScriptType | null>(null);
   const [loadingAll, setLoadingAll] = useState(false);
   const [generatedScript, setGeneratedScript] = useState<GeneratedScript | null>(null);
@@ -110,6 +112,100 @@ export function WhatToSayNext({ dealData, scoreResult, feeContext }: WhatToSayNe
 
   const hasMinimumData = dealData.year && dealData.make && dealData.askingPrice;
   
+  // Show Coming Soon placeholder when Premium is disabled
+  if (!FEATURES.premiumEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
+        <Card className="max-w-2xl w-full border-dashed border-2 border-muted-foreground/20 bg-muted/30">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl md:text-3xl font-bold text-foreground">
+              Dealer-Ready Scripts — Coming Soon
+            </CardTitle>
+            <CardDescription className="text-base text-muted-foreground mt-2">
+              Real, calm phrases you can actually use at the dealership — tailored to your deal.
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            {/* Why this exists */}
+            <div className="space-y-3 text-muted-foreground">
+              <p>
+                Buying a car gets stressful fast — especially when numbers start changing or pressure ramps up.
+              </p>
+              <p>
+                This section will give you word-for-word scripts you can confidently say at the dealership — no sales jargon, no confrontation.
+              </p>
+            </div>
+
+            {/* What's coming */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">
+                We're building this to work with your deal data, not against it. When it's ready, Quinn will generate:
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <DollarSign className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+                  <span>Negotiation responses based on your exact numbers</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <XCircle className="h-4 w-4 mt-0.5 text-red-500 shrink-0" />
+                  <span>How to challenge fees without sounding aggressive</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Shield className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                  <span>What to say when the dealer says "this deal ends today"</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <DoorOpen className="h-4 w-4 mt-0.5 text-orange-500 shrink-0" />
+                  <span>Clear walk-away lines when the deal stops making sense</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Status callout */}
+            <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                Currently under construction
+              </div>
+              <p className="text-sm text-muted-foreground">
+                We're finishing this feature now and rolling it out soon.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                For now, Quinn can still help you:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• Understand pricing and fees</li>
+                <li>• Spot red flags in real time</li>
+                <li>• Decide whether a deal is worth continuing</li>
+              </ul>
+            </div>
+
+            {/* CTA */}
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="default"
+                size="lg"
+                onClick={onBackToChat}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Quinn
+              </Button>
+            </div>
+
+            {/* Footer note */}
+            <p className="text-xs text-center text-muted-foreground pt-2">
+              You don't need scripts yet — focus on understanding the deal first.
+              <br />
+              Quinn will let you know when it's time to act.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Check if we have junk/negotiable fees from FeeBreakdown
   const hasFeeIssues = feeContext && (feeContext.junkTotal > 0 || feeContext.negotiableTotal > 0);
 

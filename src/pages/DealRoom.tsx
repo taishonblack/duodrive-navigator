@@ -61,6 +61,7 @@ import { useMilestoneNudges } from "@/hooks/useMilestoneNudges";
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
 const EXTRACTED_DEAL_KEY = "duodrive_extracted_deal";
+const CURRENT_DEAL_ID_KEY = "duodrive_current_deal_id";
 
 
 
@@ -69,9 +70,28 @@ export default function DealRoom() {
   const [activeTab, setActiveTab] = useState("copilot");
   const [isLoading, setIsLoading] = useState(false);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
-  const [currentDealId, setCurrentDealId] = useState<string | null>(null);
+  const [currentDealId, setCurrentDealId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(CURRENT_DEAL_ID_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [dealEntitlementStatus, setDealEntitlementStatus] = useState<"locked" | "unlocked" | "loading">("loading");
   
+  // Persist currentDealId to localStorage
+  useEffect(() => {
+    try {
+      if (currentDealId) {
+        localStorage.setItem(CURRENT_DEAL_ID_KEY, currentDealId);
+      } else {
+        localStorage.removeItem(CURRENT_DEAL_ID_KEY);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, [currentDealId]);
+
   // Dealership mode state
   const isMobile = useIsMobile();
   const [isDealershipMode, setIsDealershipMode] = useState(false);
@@ -1412,6 +1432,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     setExtractedFields(new Set());
     setActiveTab("copilot");
     localStorage.removeItem(DEAL_CACHE_KEY);
+    localStorage.removeItem(CURRENT_DEAL_ID_KEY);
     toast({ title: "New Deal", description: "Started a fresh deal" });
      // Reset any pending state
      setPendingMakeSuggestion(null);

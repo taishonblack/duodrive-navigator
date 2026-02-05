@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Save, FolderOpen, Trash2, Loader2, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { ScoreRing } from "./ScoreRing";
 
 interface Deal {
@@ -22,6 +24,8 @@ interface Deal {
   asking_price: string | null;
   score_result: any;
   created_at: string;
+  status?: string;
+  progress?: number;
 }
 
 interface SavedDealsProps {
@@ -244,15 +248,27 @@ export function SavedDeals({ dealData, scoreResult, onLoadDeal, onNewDeal }: Sav
                 className="p-4 rounded-xl bg-card border border-border flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  {deal.score_result?.overall && (
-                    <ScoreRing score={deal.score_result.overall} size="sm" />
+                  {(deal.score_result?.overall || deal.score_result?.overallScore) && (
+                    <ScoreRing score={deal.score_result?.overall || deal.score_result?.overallScore} size="sm" />
                   )}
                   <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate">{deal.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground truncate">{deal.name}</p>
+                      {deal.status === "draft" && (
+                        <Badge variant="secondary" className="text-xs shrink-0">Draft</Badge>
+                      )}
+                    </div>
+                    {deal.status === "draft" && deal.progress ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Progress value={deal.progress} className="h-1.5 w-16" />
+                        <span className="text-xs text-muted-foreground">{deal.progress}%</span>
+                      </div>
+                    ) : (
                     <p className="text-sm text-muted-foreground">
                       {[deal.year, deal.make, deal.model].filter(Boolean).join(" ") || "No vehicle details"}
                       {deal.asking_price && ` • $${Number(deal.asking_price).toLocaleString()}`}
                     </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {new Date(deal.created_at).toLocaleDateString()}
                     </p>

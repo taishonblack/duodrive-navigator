@@ -585,6 +585,47 @@ export type Database = {
           },
         ]
       }
+      deal_scores: {
+        Row: {
+          created_at: string
+          deal_id: string
+          flags_json: Json | null
+          id: string
+          score: number
+          score_breakdown: Json | null
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          flags_json?: Json | null
+          id?: string
+          score: number
+          score_breakdown?: Json | null
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          flags_json?: Json | null
+          id?: string
+          score?: number
+          score_breakdown?: Json | null
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_scores_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           add_ons: string | null
@@ -607,8 +648,10 @@ export type Database = {
           monthly_income: string | null
           name: string
           negotiated_price: string | null
+          progress: number
           registration: string | null
           score_result: Json | null
+          status: string
           taxes: string | null
           term: string | null
           trade_in: string | null
@@ -639,8 +682,10 @@ export type Database = {
           monthly_income?: string | null
           name?: string
           negotiated_price?: string | null
+          progress?: number
           registration?: string | null
           score_result?: Json | null
+          status?: string
           taxes?: string | null
           term?: string | null
           trade_in?: string | null
@@ -671,8 +716,10 @@ export type Database = {
           monthly_income?: string | null
           name?: string
           negotiated_price?: string | null
+          progress?: number
           registration?: string | null
           score_result?: Json | null
+          status?: string
           taxes?: string | null
           term?: string | null
           trade_in?: string | null

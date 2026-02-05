@@ -55,6 +55,7 @@ import { estimateInsurance } from "@/lib/insuranceEstimator";
  import { resolveMakeFromUserText, formatMakeOptions, MakeResolution } from "@/lib/vehicle/makeResolver";
 import { FEATURES } from "@/config/features";
 import { useIdlePing } from "@/hooks/useIdlePing";
+import { useDealAutosave } from "@/hooks/useDealAutosave";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -269,6 +270,21 @@ export default function DealRoom() {
 
   // Negotiation confidence meter - tracks deal readiness
   const negotiationConfidence = useNegotiationConfidence(dealData);
+
+  // Autosave hook - saves drafts automatically, handles evaluated saves
+  const {
+    isSaving: isAutosaving,
+    lastSavedAt,
+    dealStatus,
+    saveAsEvaluated,
+  } = useDealAutosave({
+    dealData,
+    progress: negotiationConfidence.progress,
+    scoreResult,
+    isLoggedIn,
+    currentDealId,
+    setCurrentDealId,
+  });
 
   useEffect(() => {
     try {
@@ -554,10 +570,19 @@ export default function DealRoom() {
       const result = calculateDuoDriveScore(input);
       
       setScoreResult(result);
+      
+      // Save as evaluated deal if logged in
+      if (isLoggedIn) {
+        // Use a small timeout to ensure scoreResult state is set
+        setTimeout(() => {
+          saveAsEvaluated();
+        }, 100);
+      }
+      
       setActiveTab("calculator");
       toast({
         title: "Score Calculated!",
-        description: `Your DuoDrive Score is ${result.overall}`,
+        description: `Your DuoDrive Score is ${result.overall}${isLoggedIn ? " — Saved to your account!" : ""}`,
       });
     } catch (error) {
       console.error('Error calculating score:', error);
@@ -2189,6 +2214,9 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             <NegotiationConfidenceMeter 
               confidence={negotiationConfidence}
               className="mb-6"
+              isLoggedIn={isLoggedIn ?? false}
+              isSaving={isAutosaving}
+              lastSavedAt={lastSavedAt}
             />
             
             <div className="grid lg:grid-cols-3 gap-6">

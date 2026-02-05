@@ -29,6 +29,7 @@ import {
 import { format, parse, addMinutes } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { User } from "@supabase/supabase-js";
+import { Progress } from "@/components/ui/progress";
 
 interface Deal {
   id: string;
@@ -39,6 +40,7 @@ interface Deal {
   asking_price: string | null;
   score_result: {
     overallScore?: number;
+    overall?: number;
     pillarScores?: {
       depreciation?: number;
       reliability?: number;
@@ -49,6 +51,8 @@ interface Deal {
   } | null;
   created_at: string;
   updated_at: string;
+  status?: "draft" | "evaluated" | "archived";
+  progress?: number;
 }
 
 interface CoachingRequest {
@@ -115,7 +119,7 @@ export default function Dashboard() {
       const [dealsResponse, coachingResponse] = await Promise.all([
         supabase
           .from("deals")
-          .select("id, name, year, make, model, asking_price, score_result, created_at, updated_at")
+          .select("id, name, year, make, model, asking_price, score_result, created_at, updated_at, status, progress")
           .eq("user_id", userId)
           .order("created_at", { ascending: false }),
         supabase
@@ -144,14 +148,18 @@ export default function Dashboard() {
 
   // Prepare chart data from deals with scores
   const scoreChartData = deals
-    .filter(deal => deal.score_result?.overallScore)
+    .filter(deal => deal.status === "evaluated" || deal.score_result?.overallScore || deal.score_result?.overall)
     .map(deal => ({
       date: format(new Date(deal.created_at), "MMM d"),
-      score: deal.score_result?.overallScore || 0,
+      score: deal.score_result?.overallScore || deal.score_result?.overall || 0,
       name: deal.name,
     }))
     .reverse()
     .slice(-10); // Last 10 deals
+
+  // Count drafts and evaluated deals separately
+  const draftDeals = deals.filter(d => d.status === "draft" || (!d.status && !d.score_result));
+  const evaluatedDeals = deals.filter(d => d.status === "evaluated" || (d.score_result && d.status !== "draft"));
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-score-excellent";
@@ -200,8 +208,10 @@ export default function Dashboard() {
                   <Car className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{deals.length}</p>
-                  <p className="text-sm text-muted-foreground">Saved Deals</p>
+                  <p className="text-2xl font-bold text-foreground">{evaluatedDeals.length}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Evaluated {draftDeals.length > 0 && <span className="text-muted-foreground/60">+ {draftDeals.length} draft{draftDeals.length !== 1 ? 's' : ''}</span>}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -338,19 +348,31 @@ export default function Dashboard() {
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{deal.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground truncate">{deal.name}</p>
+                          {deal.status === "draft" && (
+                            <Badge variant="secondary" className="text-xs shrink-0">Draft</Badge>
+                          )}
+                        </div>
+                        {deal.status === "draft" && deal.progress ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Progress value={deal.progress} className="h-1.5 w-20" />
+                            <span className="text-xs text-muted-foreground">{deal.progress}%</span>
+                          </div>
+                        ) : (
                         <p className="text-sm text-muted-foreground">
                           {[deal.year, deal.make, deal.model].filter(Boolean).join(" ") || "No vehicle info"}
                         </p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-1">
                           {format(new Date(deal.created_at), "MMM d, yyyy")}
                         </p>
                       </div>
-                      {deal.score_result?.overallScore ? (
+                      {(deal.score_result?.overallScore || deal.score_result?.overall) ? (
                         <div className="ml-4">
-                          <ScoreRing score={deal.score_result.overallScore} size="sm" />
+                          <ScoreRing score={deal.score_result.overallScore || deal.score_result.overall || 0} size="sm" />
                         </div>
-                      ) : (
+                      ) : deal.status === "draft" ? null : (
                         <Badge variant="outline" className="ml-4">Not Scored</Badge>
                       )}
                     </div>

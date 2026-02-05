@@ -33,6 +33,7 @@ import { DealContext } from "@/config/dealershipQuickReplies";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TypewriterText } from "./TypewriterText";
 import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons";
+ import { Check, X } from "lucide-react";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -55,6 +56,8 @@ interface ConversationCanvasProps {
   // Navigation callbacks for action buttons
   onGoToWhatToSay?: () => void;
   onCompareAnother?: () => void;
+   // Make suggestion confirmation
+   pendingMakeSuggestion?: string | null;
 }
 
 export function ConversationCanvas({
@@ -75,6 +78,7 @@ export function ConversationCanvas({
   targets,
   onGoToWhatToSay,
   onCompareAnother,
+   pendingMakeSuggestion,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -292,6 +296,30 @@ export function ConversationCanvas({
             </div>
           )}
 
+           {/* Yes/No quick replies for make suggestion confirmation */}
+           {pendingMakeSuggestion && !isLoading && (
+             <div className="flex gap-2 ml-11 mt-2">
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => onSendMessage("Yes")}
+                 className="h-8 gap-1.5 border-green-500/50 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+               >
+                 <Check className="h-3.5 w-3.5" />
+                 Yes, {pendingMakeSuggestion}
+               </Button>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => onSendMessage("No")}
+                 className="h-8 gap-1.5"
+               >
+                 <X className="h-3.5 w-3.5" />
+                 No
+               </Button>
+             </div>
+           )}
+ 
           <div ref={messagesEndRef} />
         </div>
       </div>

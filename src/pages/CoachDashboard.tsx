@@ -192,10 +192,12 @@ export default function CoachDashboard() {
 
   const fetchRequests = async (coachId: string) => {
     try {
-      // Fetch pending requests from secure view (masks contact info)
+      // Coaches can only see their assigned requests (RLS enforced)
+      // Fetch pending requests assigned to this coach
       const { data: pending, error: pendingError } = await supabase
-        .from("coaching_requests_coach_view")
+        .from("coaching_requests")
         .select("*")
+        .eq("coach_id", coachId)
         .eq("status", "pending")
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
@@ -213,9 +215,9 @@ export default function CoachDashboard() {
         });
       }
 
-      // Fetch my claimed requests (use secure view for consistent data)
+      // Fetch my claimed requests (non-pending)
       const { data: mine, error: mineError } = await supabase
-        .from("coaching_requests_coach_view")
+        .from("coaching_requests")
         .select("*")
         .eq("coach_id", coachId)
         .neq("status", "pending")
@@ -225,7 +227,7 @@ export default function CoachDashboard() {
       setMyRequests(mine || []);
 
       // Fetch active sessions for my requests
-      const requestIds = (mine || []).map((r: CoachingRequest) => r.id);
+      const requestIds = (mine || []).map((r) => r.id);
       if (requestIds.length > 0) {
         const { data: sessions, error: sessionsError } = await supabase
           .from("coaching_sessions")

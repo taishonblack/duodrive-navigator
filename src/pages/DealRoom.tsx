@@ -56,6 +56,7 @@ import { estimateInsurance } from "@/lib/insuranceEstimator";
 import { FEATURES } from "@/config/features";
 import { useIdlePing } from "@/hooks/useIdlePing";
 import { useDealAutosave } from "@/hooks/useDealAutosave";
+import { useMilestoneNudges } from "@/hooks/useMilestoneNudges";
 
 const DEAL_CACHE_KEY = "duodrive_deal_cache";
 const SIDE_PANEL_KEY = "duodrive_side_panel_open";
@@ -809,6 +810,8 @@ export default function DealRoom() {
         deviceHint: isMobile ? "mobile" : "desktop",
         atDealership: atDealership ?? undefined,
         dealershipMode: isDealershipMode,
+        // Progress tracking (UI source of truth)
+        deal_progress_percent: negotiationConfidence.progress,
       };
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-copilot`, {
@@ -931,6 +934,20 @@ export default function DealRoom() {
     isLoading: isChatLoading,
     isActive: activeTab === "copilot" && chatMessages.length > 1,
   });
+
+  // Milestone nudges at 25/50/75% progress
+  const { checkMilestone, resetMilestones } = useMilestoneNudges();
+
+  // Check for milestone nudges when progress changes
+  useEffect(() => {
+    if (chatMessages.length <= 1) return; // Don't nudge before conversation starts
+    if (isChatLoading) return; // Don't nudge while loading
+    
+    const nudge = checkMilestone(negotiationConfidence.progress, isDealershipMode);
+    if (nudge) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: nudge }]);
+    }
+  }, [negotiationConfidence.progress, isDealershipMode, chatMessages.length, isChatLoading, checkMilestone, setChatMessages]);
 
   // Reset idle timer when user sends a message
   const sendChatMessageWithIdleReset = useCallback(async (directMessage?: string) => {

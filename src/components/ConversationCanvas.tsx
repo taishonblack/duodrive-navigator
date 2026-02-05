@@ -14,7 +14,9 @@ import {
   ImagePlus, 
   FileText,
   RotateCcw,
-  LogIn
+  LogIn,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,6 +37,8 @@ import { TypewriterText } from "./TypewriterText";
 import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons";
  import { Check, X } from "lucide-react";
  import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
+
+const CHAT_HEIGHT_KEY = "duodrive_chat_height_preference";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -91,6 +95,26 @@ export function ConversationCanvas({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  
+  // Chat height preference (compact vs comfortable)
+  const [isCompact, setIsCompact] = useState(() => {
+    try {
+      return localStorage.getItem(CHAT_HEIGHT_KEY) === "compact";
+    } catch {
+      return false;
+    }
+  });
+
+  // Persist chat height preference
+  const toggleChatHeight = () => {
+    const newValue = !isCompact;
+    setIsCompact(newValue);
+    try {
+      localStorage.setItem(CHAT_HEIGHT_KEY, newValue ? "compact" : "comfortable");
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   // Check auth state
   useEffect(() => {
@@ -158,7 +182,12 @@ export function ConversationCanvas({
   }, [currentWelcomeContent]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-280px)] min-h-[500px] max-h-[700px] bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+    <div className={cn(
+      "flex flex-col bg-card rounded-2xl border border-border shadow-card overflow-hidden",
+      isCompact 
+        ? "h-[400px] min-h-[350px] max-h-[450px]" 
+        : "h-[calc(100vh-280px)] min-h-[500px] max-h-[700px]"
+    )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-3">
@@ -192,6 +221,18 @@ export function ConversationCanvas({
               title="Start new chat"
             >
               <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+          {/* Chat height toggle (desktop only) */}
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleChatHeight}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title={isCompact ? "Expand chat" : "Compact chat"}
+            >
+              {isCompact ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </Button>
           )}
         </div>

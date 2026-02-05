@@ -497,7 +497,7 @@ export default function Account() {
         canonical="/account"
         noIndex
       />
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Account Settings</h1>
           <p className="text-muted-foreground mt-2">
@@ -505,7 +505,9 @@ export default function Account() {
           </p>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Profile & Security */}
+          <div className="space-y-6">
           {/* Profile Section */}
           <Card>
             <CardHeader>
@@ -570,69 +572,6 @@ export default function Account() {
                 <Label>Email</Label>
                 <Input value={user?.email || ""} disabled className="bg-muted" />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Notification Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Email Notifications
-              </CardTitle>
-              <CardDescription>
-                Choose which emails you'd like to receive
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isNotifLoading ? (
-                <div className="flex items-center gap-2 text-muted-foreground py-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading preferences...
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {notificationOptions.map((option) => (
-                    <div
-                      key={option.key}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <option.icon className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{option.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {option.description}
-                          </p>
-                        </div>
-                      </div>
-                      <Switch
-                        checked={notifPrefs[option.key]}
-                        onCheckedChange={(checked) => updateNotificationPreference(option.key, checked)}
-                        disabled={isSavingNotif}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Unlocked Deals / Purchases */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Unlock className="h-5 w-5" />
-                My Deal Analyses
-              </CardTitle>
-              <CardDescription>
-                View your unlocked deals and payment history
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <UnlockedDeals />
             </CardContent>
           </Card>
 
@@ -765,113 +704,168 @@ export default function Account() {
             </CardContent>
           </Card>
 
-          {/* Sign Out */}
+          {/* Sign Out & Delete Account */}
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 space-y-4">
               <Button variant="destructive" onClick={handleSignOut} className="w-full">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </Button>
+              
+              <div className="pt-4 border-t border-destructive/30">
+                <div className="flex items-center gap-2 text-destructive mb-3">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Danger Zone</span>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                        Delete Account Permanently?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-3">
+                        <p>
+                          This action cannot be undone. This will permanently delete:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          <li>Your profile and account information</li>
+                          <li>All saved deals and score results</li>
+                          <li>Notification preferences</li>
+                          <li>Profile photos and uploads</li>
+                        </ul>
+                        <div className="pt-2 space-y-3">
+                          <div>
+                            <Label htmlFor="deletePassword" className="text-foreground font-medium">
+                              Enter your password to confirm:
+                            </Label>
+                            <Input
+                              id="deletePassword"
+                              type="password"
+                              value={deletePassword}
+                              onChange={(e) => {
+                                setDeletePassword(e.target.value);
+                                setDeleteError("");
+                              }}
+                              placeholder="Your password"
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-foreground font-medium">
+                              Type <span className="font-mono bg-muted px-1.5 py-0.5 rounded">DELETE</span> to confirm:
+                            </Label>
+                            <Input
+                              value={deleteConfirmText}
+                              onChange={(e) => setDeleteConfirmText(e.target.value)}
+                              placeholder="Type DELETE to confirm"
+                              className="mt-2"
+                            />
+                          </div>
+                          {deleteError && (
+                            <p className="text-sm text-destructive">{deleteError}</p>
+                          )}
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => {
+                        setDeleteConfirmText("");
+                        setDeletePassword("");
+                        setDeleteError("");
+                      }}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirmText !== "DELETE" || !deletePassword || isDeletingAccount}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeletingAccount ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          "Delete Account"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardContent>
           </Card>
+          </div>
 
-          {/* Delete Account */}
-          <Card className="border-destructive/50">
+          {/* Right Column - Notifications, Deals, History */}
+          <div className="space-y-6">
+          {/* Notification Preferences */}
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Danger Zone
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Email Notifications
               </CardTitle>
               <CardDescription>
-                Permanently delete your account and all associated data
+                Choose which emails you'd like to receive
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Account
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                      Delete Account Permanently?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-3">
-                      <p>
-                        This action cannot be undone. This will permanently delete:
-                      </p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>Your profile and account information</li>
-                        <li>All saved deals and score results</li>
-                        <li>Notification preferences</li>
-                        <li>Profile photos and uploads</li>
-                      </ul>
-                      <div className="pt-2 space-y-3">
-                        <div>
-                          <Label htmlFor="deletePassword" className="text-foreground font-medium">
-                            Enter your password to confirm:
-                          </Label>
-                          <Input
-                            id="deletePassword"
-                            type="password"
-                            value={deletePassword}
-                            onChange={(e) => {
-                              setDeletePassword(e.target.value);
-                              setDeleteError("");
-                            }}
-                            placeholder="Your password"
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-foreground font-medium">
-                            Type <span className="font-mono bg-muted px-1.5 py-0.5 rounded">DELETE</span> to confirm:
-                          </Label>
-                          <Input
-                            value={deleteConfirmText}
-                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                            placeholder="Type DELETE to confirm"
-                            className="mt-2"
-                          />
-                        </div>
-                        {deleteError && (
-                          <p className="text-sm text-destructive">{deleteError}</p>
-                        )}
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => {
-                      setDeleteConfirmText("");
-                      setDeletePassword("");
-                      setDeleteError("");
-                    }}>
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteAccount}
-                      disabled={deleteConfirmText !== "DELETE" || !deletePassword || isDeletingAccount}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              {isNotifLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading preferences...
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notificationOptions.map((option) => (
+                    <div
+                      key={option.key}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                     >
-                      {isDeletingAccount ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        "Delete Account"
-                      )}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <p className="text-xs text-muted-foreground mt-3">
-                Once deleted, your data cannot be recovered.
-              </p>
+                      <div className="flex items-start gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <option.icon className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{option.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {option.description}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={notifPrefs[option.key]}
+                        onCheckedChange={(checked) => updateNotificationPreference(option.key, checked)}
+                        disabled={isSavingNotif}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Unlocked Deals / Purchases */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Unlock className="h-5 w-5" />
+                My Deal Analyses
+              </CardTitle>
+              <CardDescription>
+                View your unlocked deals and payment history
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UnlockedDeals />
             </CardContent>
           </Card>
 
@@ -887,9 +881,13 @@ export default function Account() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ChatTranscripts />
+              {/* Scrollable chat history with max height */}
+              <div className="max-h-[400px] overflow-y-auto">
+                <ChatTranscripts />
+              </div>
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* 2FA Setup Dialog */}

@@ -69,6 +69,8 @@ interface RequestBody {
     deviceHint?: 'mobile' | 'desktop';
     atDealership?: boolean;
     dealershipMode?: boolean;
+    // Progress tracking
+    deal_progress_percent?: number;
     // Border proximity fields
     nearStateBorder?: boolean;
     openToOutOfState?: boolean;
@@ -725,6 +727,12 @@ serve(async (req) => {
       }
       if (mergedDealContext.dealershipMode) {
         contextMessage += `Dealership Mode: ACTIVE - Keep responses short and tactical\n`;
+      }
+      
+      // Deal progress (UI source of truth)
+      if (mergedDealContext.deal_progress_percent !== undefined) {
+        contextMessage += `\nDeal Creation Progress: ${mergedDealContext.deal_progress_percent}%\n`;
+        contextMessage += `IMPORTANT: When user asks about progress, use EXACTLY this number (${mergedDealContext.deal_progress_percent}%). Never estimate or guess.\n`;
       }
       
       // VIN info

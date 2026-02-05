@@ -6,26 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScoreRing } from "@/components/ScoreRing";
-import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, 
   Car, 
   TrendingUp, 
-  MessageSquare, 
-  Calendar, 
   ArrowRight,
   FileText,
-  Phone,
-  Video,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
   Scale
 } from "lucide-react";
-import { format, parse, addMinutes } from "date-fns";
+import { format } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { User } from "@supabase/supabase-js";
 import { Progress } from "@/components/ui/progress";
@@ -54,41 +45,13 @@ interface Deal {
   progress?: number;
 }
 
-interface CoachingRequest {
-  id: string;
-  session_type: "text" | "phone" | "video";
-  status: "pending" | "claimed" | "in_progress" | "completed" | "cancelled";
-  scheduled_date: string;
-  scheduled_time: string;
-  created_at: string;
-  notes: string | null;
-}
-
-const sessionTypeIcons = {
-  text: MessageSquare,
-  phone: Phone,
-  video: Video,
-};
-
-const sessionTypeLabels = {
-  text: "Quick Text Help",
-  phone: "Live Phone Session",
-  video: "Video Consultation",
-};
-
-const statusConfig = {
-  pending: { icon: Clock, label: "Pending", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },
-  claimed: { icon: AlertCircle, label: "Assigned", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  in_progress: { icon: AlertCircle, label: "In Progress", color: "bg-primary/10 text-primary border-primary/20" },
-  completed: { icon: CheckCircle2, label: "Completed", color: "bg-score-excellent/10 text-score-excellent border-score-excellent/20" },
-  cancelled: { icon: XCircle, label: "Cancelled", color: "bg-destructive/10 text-destructive border-destructive/20" },
-};
+// Coaching feature removed - tables dropped
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [coachingRequests, setCoachingRequests] = useState<CoachingRequest[]>([]);
+  
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -115,24 +78,15 @@ export default function Dashboard() {
   const loadData = async (userId: string) => {
     setIsLoading(true);
     try {
-      const [dealsResponse, coachingResponse] = await Promise.all([
-        supabase
-          .from("deals")
-          .select("id, name, year, make, model, asking_price, score_result, created_at, updated_at, status, progress")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("coaching_requests")
-          .select("id, session_type, status, scheduled_date, scheduled_time, created_at, notes")
-          .eq("customer_id", userId)
-          .order("created_at", { ascending: false }),
-      ]);
+      const dealsResponse = await supabase
+        .from("deals")
+        .select("id, name, year, make, model, asking_price, score_result, created_at, updated_at, status, progress")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
       if (dealsResponse.error) throw dealsResponse.error;
-      if (coachingResponse.error) throw coachingResponse.error;
 
       setDeals(dealsResponse.data as Deal[] || []);
-      setCoachingRequests(coachingResponse.data as CoachingRequest[] || []);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       toast({

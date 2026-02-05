@@ -15,8 +15,6 @@ import {
   FileText,
   RotateCcw,
   LogIn,
-  Maximize2,
-  Minimize2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,8 +35,6 @@ import { TypewriterText } from "./TypewriterText";
 import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons";
  import { Check, X } from "lucide-react";
  import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
-
-const CHAT_COMPACT_KEY = "duodrive_chat_compact_preference";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -95,26 +91,6 @@ export function ConversationCanvas({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
-  
-  // Chat height preference (compact vs comfortable)
-  const [isCompact, setIsCompact] = useState(() => {
-    try {
-      return localStorage.getItem(CHAT_COMPACT_KEY) === "compact";
-    } catch {
-      return false;
-    }
-  });
-
-  // Persist chat height preference
-  const toggleChatHeight = () => {
-    const newValue = !isCompact;
-    setIsCompact(newValue);
-    try {
-      localStorage.setItem(CHAT_COMPACT_KEY, newValue ? "compact" : "comfortable");
-    } catch {
-      // Ignore storage errors
-    }
-  };
 
   // Check auth state
   useEffect(() => {
@@ -218,27 +194,11 @@ export function ConversationCanvas({
               <RotateCcw className="h-4 w-4" />
             </Button>
           )}
-          {/* Chat height toggle (desktop only) */}
-          {!isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleChatHeight}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title={isCompact ? "Full height" : "Match panel height"}
-              aria-label={isCompact ? "Use comfortable spacing" : "Use compact spacing"}
-            >
-              {isCompact ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-            </Button>
-          )}
         </div>
       </div>
 
       {/* Messages Area */}
-      <div ref={chatScrollRef} className={cn(
-        "flex-1 min-h-0 overflow-y-auto",
-        isCompact ? "p-3" : "p-4"
-      )}>
+      <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4">
         <div className="space-y-4">
           {messages.map((message, index) => {
             const isLastAssistantMessage = 
@@ -394,10 +354,7 @@ export function ConversationCanvas({
       </div>
 
       {/* Input Area */}
-      <div className={cn(
-        "shrink-0 border-t border-border bg-background space-y-3",
-        isCompact ? "p-3" : "p-4"
-      )}>
+      <div className="shrink-0 border-t border-border bg-background space-y-3 p-4">
         <div className="flex items-center gap-2">
           {/* Upload Menu */}
           <DropdownMenu>

@@ -190,13 +190,6 @@ export type Database = {
             referencedRelation: "coaching_requests"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "coach_chat_sessions_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "coaching_requests_coach_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       coach_customer_updates: {
@@ -255,13 +248,6 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "coaching_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "coach_customer_updates_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "coaching_requests_coach_view"
             referencedColumns: ["id"]
           },
         ]
@@ -533,13 +519,6 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "coaching_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "coaching_sessions_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "coaching_requests_coach_view"
             referencedColumns: ["id"]
           },
         ]
@@ -968,75 +947,7 @@ export type Database = {
       }
     }
     Views: {
-      coaching_requests_coach_view: {
-        Row: {
-          claimed_at: string | null
-          coach_id: string | null
-          completed_at: string | null
-          created_at: string | null
-          customer_id: string | null
-          deal_id: string | null
-          email: string | null
-          id: string | null
-          notes: string | null
-          phone_number: string | null
-          scheduled_date: string | null
-          scheduled_time: string | null
-          session_type: Database["public"]["Enums"]["session_type"] | null
-          status: Database["public"]["Enums"]["request_status"] | null
-          updated_at: string | null
-        }
-        Insert: {
-          claimed_at?: string | null
-          coach_id?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          deal_id?: string | null
-          email?: never
-          id?: string | null
-          notes?: never
-          phone_number?: never
-          scheduled_date?: string | null
-          scheduled_time?: string | null
-          session_type?: Database["public"]["Enums"]["session_type"] | null
-          status?: Database["public"]["Enums"]["request_status"] | null
-          updated_at?: string | null
-        }
-        Update: {
-          claimed_at?: string | null
-          coach_id?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          deal_id?: string | null
-          email?: never
-          id?: string | null
-          notes?: never
-          phone_number?: never
-          scheduled_date?: string | null
-          scheduled_time?: string | null
-          session_type?: Database["public"]["Enums"]["session_type"] | null
-          status?: Database["public"]["Enums"]["request_status"] | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coaching_requests_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "coaching_requests_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       admin_assign_coach_to_request: {

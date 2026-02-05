@@ -2283,6 +2283,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                               dealData={dealData} 
                               scoreResult={scoreResult}
                               feeContext={feeContext || undefined}
+                              onBackToChat={() => setActiveTab("copilot")}
                             />
                           </>
                         );
@@ -2308,6 +2309,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                           dealData={dealData} 
                           scoreResult={scoreResult}
                           feeContext={feeContext || undefined}
+                          onBackToChat={() => setActiveTab("copilot")}
                         />
                       </>
                     );

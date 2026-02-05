@@ -115,6 +115,11 @@ export function NegotiationConfidenceMeter({
               className="h-1.5 mt-2 bg-muted/50"
               indicatorClassName={progressColor}
             />
+            {isLoggedIn && (
+              <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
+                Saved automatically as you go
+              </p>
+            )}
           </button>
         </CollapsibleTrigger>
 

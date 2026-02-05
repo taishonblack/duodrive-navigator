@@ -2236,9 +2236,11 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               lastSavedAt={lastSavedAt}
             />
             
-            <div className="grid lg:grid-cols-3 gap-6">
+            {/* COPILOT LAYOUT: lock viewport height on desktop so chat + tips match */}
+            <div className="lg:h-[calc(100vh-260px)] lg:overflow-hidden">
+              <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
               {/* Main conversation area */}
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 h-full min-h-0">
                 <ConversationCanvas
                   messages={chatMessages}
                   onSendMessage={handleConversationMessage}
@@ -2281,12 +2283,13 @@ Be conservative and realistic. Only suggest values that make sense for a typical
               </div>
               
               {/* How to use Quinn - Side Panel */}
-              <div className="hidden lg:block">
-                <div className="sticky top-24 space-y-4">
-                  <div className="p-6 rounded-2xl bg-card border border-border shadow-card">
+              <div className="hidden lg:block lg:col-span-1 h-full min-h-0">
+                <div className="h-full min-h-0 rounded-2xl bg-card border border-border shadow-card overflow-y-auto">
+                  <div className="p-6">
                     <HowToUseQuinn />
                   </div>
                 </div>
+              </div>
               </div>
             </div>
             

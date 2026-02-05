@@ -38,7 +38,7 @@ import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons"
  import { Check, X } from "lucide-react";
  import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
 
-const CHAT_HEIGHT_KEY = "duodrive_chat_height_preference";
+const CHAT_COMPACT_KEY = "duodrive_chat_compact_preference";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -99,7 +99,7 @@ export function ConversationCanvas({
   // Chat height preference (compact vs comfortable)
   const [isCompact, setIsCompact] = useState(() => {
     try {
-      return localStorage.getItem(CHAT_HEIGHT_KEY) === "compact";
+      return localStorage.getItem(CHAT_COMPACT_KEY) === "compact";
     } catch {
       return false;
     }
@@ -110,7 +110,7 @@ export function ConversationCanvas({
     const newValue = !isCompact;
     setIsCompact(newValue);
     try {
-      localStorage.setItem(CHAT_HEIGHT_KEY, newValue ? "compact" : "comfortable");
+      localStorage.setItem(CHAT_COMPACT_KEY, newValue ? "compact" : "comfortable");
     } catch {
       // Ignore storage errors
     }
@@ -182,12 +182,7 @@ export function ConversationCanvas({
   }, [currentWelcomeContent]);
 
   return (
-    <div className={cn(
-      "flex flex-col bg-card rounded-2xl border border-border shadow-card overflow-hidden",
-      isCompact 
-        ? "h-auto min-h-[300px]" 
-        : "h-[calc(100vh-280px)] min-h-[500px]"
-    )}>
+    <div className="h-full min-h-0 flex flex-col bg-card rounded-2xl border border-border shadow-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-3">
@@ -231,6 +226,7 @@ export function ConversationCanvas({
               onClick={toggleChatHeight}
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
               title={isCompact ? "Full height" : "Match panel height"}
+              aria-label={isCompact ? "Use comfortable spacing" : "Use compact spacing"}
             >
               {isCompact ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </Button>
@@ -239,7 +235,10 @@ export function ConversationCanvas({
       </div>
 
       {/* Messages Area */}
-      <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={chatScrollRef} className={cn(
+        "flex-1 min-h-0 overflow-y-auto",
+        isCompact ? "p-3" : "p-4"
+      )}>
         <div className="space-y-4">
           {messages.map((message, index) => {
             const isLastAssistantMessage = 
@@ -395,7 +394,10 @@ export function ConversationCanvas({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border bg-background space-y-3">
+      <div className={cn(
+        "shrink-0 border-t border-border bg-background space-y-3",
+        isCompact ? "p-3" : "p-4"
+      )}>
         <div className="flex items-center gap-2">
           {/* Upload Menu */}
           <DropdownMenu>

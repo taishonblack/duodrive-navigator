@@ -158,7 +158,7 @@ export function ConversationCanvas({
   }, [currentWelcomeContent]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+    <div className="h-full min-h-0 flex flex-col bg-card md:rounded-2xl md:border md:border-border md:shadow-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-3">
@@ -197,8 +197,8 @@ export function ConversationCanvas({
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4">
+      {/* Messages Area - iOS touch scrolling enabled */}
+      <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="space-y-4">
           {messages.map((message, index) => {
             const isLastAssistantMessage = 

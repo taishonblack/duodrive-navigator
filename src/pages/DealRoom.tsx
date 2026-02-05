@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
+import { MobileDealRoomLayout } from "@/components/MobileDealRoomLayout";
+import { MobileHelpButton } from "@/components/MobileHelpButton";
 import { SEO } from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -1734,6 +1736,157 @@ Be conservative and realistic. Only suggest values that make sense for a typical
     }
   };
 
+  // Mobile full-screen chat view (copilot tab only)
+  if (isMobile && activeTab === "copilot") {
+    return (
+      <MobileDealRoomLayout>
+        <SEO 
+          title="Deal Room"
+          description="Chat with Quinn, your AI copilot for car buying. Get your DuoDrive Score, identify hidden fees, and learn what to say to the dealer."
+          canonical="/deal-room"
+          keywords="car deal analyzer, car deal review, car buying AI, DuoDrive Score, car price analysis, Quinn AI"
+        />
+        <DealRoomTutorial />
+        
+        {/* Full-height mobile chat container */}
+        <div className="h-full flex flex-col min-h-0 px-2 pt-2 pb-[env(safe-area-inset-bottom)]">
+          {/* Compact header with progress + new deal */}
+          <div className="flex items-center justify-between gap-2 mb-2 shrink-0">
+            <NegotiationConfidenceMeter 
+              confidence={negotiationConfidence}
+              className="flex-1"
+              isLoggedIn={isLoggedIn ?? false}
+              isSaving={isAutosaving}
+              lastSavedAt={lastSavedAt}
+            />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!hasFormData}>
+                  <FilePlus2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will clear all current deal data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewDeal}>
+                    Start New Deal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          
+          {/* Chat takes remaining space */}
+          <div className="flex-1 min-h-0">
+            <ConversationCanvas
+              messages={chatMessages}
+              onSendMessage={handleConversationMessage}
+              onClearMessages={handleNewDeal}
+              onFileUpload={handleConversationUpload}
+              onFirstMessageAnimated={markFirstMessageAnimated}
+              isLoading={isChatLoading || isExtractingText}
+              isExtracting={isExtracting}
+              scoreResult={scoreResult}
+              onViewAnalysis={() => setActiveTab("overview")}
+              isDealershipMode={isDealershipMode}
+              onDealershipModeChange={handleDealershipModeToggle}
+              showDealershipCheck={showDealershipCheck}
+              onDealershipCheckResponse={handleDealershipCheckResponse}
+              dealContext={{
+                askingPrice: dealData.askingPrice,
+                negotiatedPrice: dealData.negotiatedPrice,
+                monthlyPayment: scoreResult?.monthlyPayment?.toString(),
+                apr: dealData.apr,
+                term: dealData.term,
+                downPayment: dealData.downPayment,
+                tradeIn: dealData.tradeIn,
+                dealerFee: dealData.dealerFee,
+                docFee: dealData.docFee,
+                addOns: dealData.addOns,
+                taxes: dealData.taxes,
+                zipCode: dealData.buyerZip,
+                affordabilityRisk: scoreResult?.affordabilityStatus === "blocked" || scoreResult?.affordabilityStatus === "outside_budget" ? "high" 
+                  : scoreResult?.affordabilityStatus === "stretch_warning" ? "medium" 
+                  : "low",
+              }}
+              targets={{
+                targetOTD: scoreResult?.trueMarketPrice?.toString(),
+                targetTermMonths: dealData.term || "60",
+              }}
+              onGoToWhatToSay={() => setActiveTab("scripts")}
+              onCompareAnother={handleNewDeal}
+              pendingMakeSuggestion={pendingMakeSuggestion}
+            />
+          </div>
+          
+          {/* Mobile tab bar at bottom - navigate to other views */}
+          <div className="shrink-0 pt-2 pb-1 border-t border-border bg-background">
+            <div className="grid grid-cols-4 gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab("deal")}
+                className="flex-col h-auto py-2 gap-1"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="text-[10px]">Deal</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab("calculator")}
+                className="flex-col h-auto py-2 gap-1"
+              >
+                <Calculator className="h-4 w-4" />
+                <span className="text-[10px]">Calc</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab("scripts")}
+                className="flex-col h-auto py-2 gap-1 relative"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-[10px]">Say</span>
+                {dealEntitlementStatus === "locked" && (
+                  <span className="absolute top-1 right-2 flex items-center justify-center h-3 w-3 rounded-full bg-amber-500 text-white">
+                    <Lock className="h-2 w-2" />
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab("overview")}
+                className="flex-col h-auto py-2 gap-1"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-[10px]">Score</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Floating help button */}
+        <MobileHelpButton />
+        
+        {/* Premium Decision Modal */}
+        <PremiumDecisionModal
+          open={showPremiumModal}
+          onOpenChange={setShowPremiumModal}
+          dealId={currentDealId}
+          dealName={dealData.name || `${dealData.year} ${dealData.make} ${dealData.model}`.trim() || undefined}
+        />
+      </MobileDealRoomLayout>
+    );
+  }
+
   return (
     <Layout>
       <SEO 
@@ -1745,8 +1898,46 @@ Be conservative and realistic. Only suggest values that make sense for a typical
       {/* First-visit tutorial overlay */}
       <DealRoomTutorial />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        {/* Mobile: Compact header with back to chat */}
+        {isMobile && activeTab !== "copilot" && (
+          <div className="flex items-center gap-3 mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("copilot")}
+              className="gap-2"
+            >
+              <Bot className="h-4 w-4" />
+              Back to Chat
+            </Button>
+            <div className="flex-1" />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!hasFormData}>
+                  <FilePlus2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will clear all current deal data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewDeal}>
+                    Start New Deal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+        
+        {/* Desktop: Full header */}
+        <div className="hidden md:flex mb-8 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Deal Room <span className="text-muted-foreground font-normal text-lg md:text-xl">— Send me your deal, I'll break it down for you.</span>
           </h1>
@@ -1758,7 +1949,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   variant="ghost"
                   size="icon"
                   onClick={handleOpenPopout}
-                  className="hidden md:flex h-8 w-8"
+                  className="h-8 w-8"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -1794,22 +1985,23 @@ Be conservative and realistic. Only suggest values that make sense for a typical
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-muted rounded-xl">
+          {/* Desktop tabs - hidden on mobile since we use bottom tab bar or back button */}
+          <TabsList className="hidden md:grid w-full grid-cols-5 h-auto p-1 bg-muted rounded-xl">
             <TabsTrigger value="copilot" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline">AI Copilot</span>
+              <span>AI Copilot</span>
             </TabsTrigger>
             <TabsTrigger value="deal" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <Upload className="h-4 w-4" />
-              <span className="hidden sm:inline">The Deal</span>
+              <span>The Deal</span>
             </TabsTrigger>
             <TabsTrigger value="calculator" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <Calculator className="h-4 w-4" />
-              <span className="hidden sm:inline">Calculator</span>
+              <span>Calculator</span>
             </TabsTrigger>
             <TabsTrigger value="scripts" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg relative">
               <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">What To Say</span>
+              <span>What To Say</span>
               {dealEntitlementStatus === "locked" && (
                 <span className="flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white ml-1">
                   <Lock className="h-2.5 w-2.5" />
@@ -1818,7 +2010,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             </TabsTrigger>
             <TabsTrigger value="overview" className="flex items-center gap-2 py-3 data-[state=active]:bg-card data-[state=active]:shadow-soft rounded-lg">
               <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Overview</span>
+              <span>Overview</span>
             </TabsTrigger>
           </TabsList>
 

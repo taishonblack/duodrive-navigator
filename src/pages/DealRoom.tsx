@@ -1754,38 +1754,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
         
         {/* Mobile content - full height container */}
         <div className="h-full flex flex-col min-h-0 overflow-hidden">
-          {/* Compact header with progress + new deal */}
-          <div className="flex items-center justify-between gap-2 px-3 py-2 shrink-0 border-b border-border bg-background">
-            <NegotiationConfidenceMeter 
-              confidence={negotiationConfidence}
-              className="flex-1"
-              isLoggedIn={isLoggedIn ?? false}
-              isSaving={isAutosaving}
-              lastSavedAt={lastSavedAt}
-            />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!hasFormData}>
-                  <FilePlus2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Start a New Deal?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will clear all current deal data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleNewDeal}>
-                    Start New Deal
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          
           {/* Tab content - scrollable area */}
           <div className="flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             {/* Copilot tab - chat interface */}
@@ -1829,6 +1797,10 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   onGoToWhatToSay={() => setActiveTab("scripts")}
                   onCompareAnother={handleNewDeal}
                   pendingMakeSuggestion={pendingMakeSuggestion}
+                  negotiationConfidence={negotiationConfidence}
+                  isLoggedIn={isLoggedIn}
+                  isSaving={isAutosaving}
+                  lastSavedAt={lastSavedAt}
                 />
               </div>
             )}

@@ -4,11 +4,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatHelperTipsProps {
   isDealershipMode?: boolean;
+  hasUserMessages?: boolean;
 }
 
-export function ChatHelperTips({ isDealershipMode = false }: ChatHelperTipsProps) {
+export function ChatHelperTips({ isDealershipMode = false, hasUserMessages = false }: ChatHelperTipsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useIsMobile();
+
+  // On mobile, hide after user has sent messages (conversation started)
+  if (isMobile && hasUserMessages) {
+    return null;
+  }
 
   // On desktop, always show expanded
   if (!isMobile) {
@@ -32,7 +38,7 @@ export function ChatHelperTips({ isDealershipMode = false }: ChatHelperTipsProps
     );
   }
 
-  // Mobile: collapsible
+  // Mobile: collapsible (only shown before first message)
   return (
     <div>
       <button

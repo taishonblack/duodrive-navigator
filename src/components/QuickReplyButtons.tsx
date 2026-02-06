@@ -47,12 +47,12 @@ export function DealershipQuickReplies({
     <QuickReplyButtons
       options={[
         {
-          label: "Yes, I'm here now",
+          label: "Yes — at the dealership",
           value: "yes",
           icon: <MapPin className="h-4 w-4" />,
         },
         {
-          label: "No, not right now",
+          label: "No — shopping from home",
           value: "no",
           icon: <Home className="h-4 w-4" />,
         },

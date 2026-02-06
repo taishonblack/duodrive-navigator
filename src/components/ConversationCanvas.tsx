@@ -16,11 +16,14 @@ import {
   RotateCcw,
   LogIn,
   MoreHorizontal,
+  Mail,
+  Zap,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChatMessage } from "@/hooks/useCopilotChat";
@@ -34,8 +37,10 @@ import { DealContext } from "@/config/dealershipQuickReplies";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TypewriterText } from "./TypewriterText";
 import { ChatActionButtons, shouldShowActionButtons } from "./ChatActionButtons";
- import { Check, X } from "lucide-react";
- import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
+import { Check, X } from "lucide-react";
+import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
+import { NegotiationConfidenceMeter } from "@/components/NegotiationConfidenceMeter";
+import { ConfidenceResult } from "@/hooks/useNegotiationConfidence";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -58,8 +63,13 @@ interface ConversationCanvasProps {
   // Navigation callbacks for action buttons
   onGoToWhatToSay?: () => void;
   onCompareAnother?: () => void;
-   // Make suggestion confirmation (enhanced with multi-option support)
-   pendingMakeSuggestion?: MakeResolution | null;
+  // Make suggestion confirmation (enhanced with multi-option support)
+  pendingMakeSuggestion?: MakeResolution | null;
+  // Mobile header: progress meter integration
+  negotiationConfidence?: ConfidenceResult;
+  isLoggedIn?: boolean | null;
+  isSaving?: boolean;
+  lastSavedAt?: Date | null;
 }
 
 export function ConversationCanvas({
@@ -80,10 +90,13 @@ export function ConversationCanvas({
   targets,
   onGoToWhatToSay,
   onCompareAnother,
-   pendingMakeSuggestion,
+  pendingMakeSuggestion,
+  negotiationConfidence,
+  isLoggedIn: externalIsLoggedIn,
+  isSaving = false,
+  lastSavedAt = null,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [hasAnimatedWelcome, setHasAnimatedWelcome] = useState(false);
   const lastWelcomeContentRef = useRef<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -92,19 +105,25 @@ export function ConversationCanvas({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  
+  // Use external login state if provided, otherwise check ourselves
+  const [internalIsLoggedIn, setInternalIsLoggedIn] = useState<boolean | null>(null);
+  const isLoggedIn = externalIsLoggedIn ?? internalIsLoggedIn;
 
-  // Check auth state
+  // Check auth state only if not provided externally
   useEffect(() => {
+    if (externalIsLoggedIn !== undefined) return;
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session?.user);
+      setInternalIsLoggedIn(!!session?.user);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsLoggedIn(!!session?.user);
+      setInternalIsLoggedIn(!!session?.user);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [externalIsLoggedIn]);
 
   // Auto-scroll chat container only (not the page)
   useEffect(() => {
@@ -160,35 +179,52 @@ export function ConversationCanvas({
 
   return (
     <div className="h-full min-h-0 flex flex-col bg-card md:rounded-2xl md:border md:border-border md:shadow-card overflow-hidden">
-      {/* Header - Minimal on mobile, full on desktop */}
+      {/* Header - Mobile uses progress meter as header, desktop shows full header */}
       {isMobile ? (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Bot className="h-3.5 w-3.5" />
+        <div className="flex items-center justify-between gap-2 px-3 py-2 shrink-0 border-b border-border bg-background">
+          {/* Progress meter as the main header element */}
+          {negotiationConfidence ? (
+            <NegotiationConfidenceMeter 
+              confidence={negotiationConfidence}
+              className="flex-1"
+              isLoggedIn={isLoggedIn ?? false}
+              isSaving={isSaving}
+              lastSavedAt={lastSavedAt}
+            />
+          ) : (
+            <div className="flex items-center gap-2 flex-1">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Bot className="h-3.5 w-3.5" />
+              </div>
+              {isDealershipMode && (
+                <span className="text-xs font-medium text-warning flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Dealership
+                </span>
+              )}
             </div>
-            {isDealershipMode && (
-              <DealershipModeToggle
-                isEnabled={isDealershipMode}
-                onToggle={onDealershipModeChange || (() => {})}
-                isMobile={true}
-              />
-            )}
-          </div>
-          {/* Overflow menu on mobile */}
+          )}
+          
+          {/* Kebab menu with all actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-48">
               {hasUserMessages && (
                 <DropdownMenuItem onClick={onClearMessages}>
                   <RotateCcw className="h-4 w-4 mr-2" />
                   New chat
                 </DropdownMenuItem>
               )}
+              {onDealershipModeChange && (
+                <DropdownMenuItem onClick={() => onDealershipModeChange(!isDealershipMode)}>
+                  <Zap className="h-4 w-4 mr-2" />
+                  {isDealershipMode ? "Disable" : "Enable"} Dealership Mode
+                </DropdownMenuItem>
+              )}
+              {(hasUserMessages || onDealershipModeChange) && <DropdownMenuSeparator />}
               {isLoggedIn === false && (
                 <DropdownMenuItem asChild>
                   <Link to="/auth">
@@ -197,6 +233,12 @@ export function ConversationCanvas({
                   </Link>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem asChild>
+                <Link to="/contact">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Contact / Report issue
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -475,8 +517,8 @@ export function ConversationCanvas({
           </Button>
         </div>
 
-        {/* Helper tips */}
-        <ChatHelperTips isDealershipMode={isDealershipMode} />
+        {/* Helper tips - hide on mobile after first message */}
+        <ChatHelperTips isDealershipMode={isDealershipMode} hasUserMessages={hasUserMessages} />
 
         {/* Sign in to save prompt */}
         {isLoggedIn === false && (

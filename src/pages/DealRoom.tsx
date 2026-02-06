@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
 import { MobileDealRoomLayout } from "@/components/MobileDealRoomLayout";
-import { MobileHelpButton } from "@/components/MobileHelpButton";
+
 import { SEO } from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -1971,10 +1971,6 @@ Be conservative and realistic. Only suggest values that make sense for a typical
             )}
           </div>
         </div>
-        
-        {/* Floating help button */}
-        <MobileHelpButton />
-        
         {/* Premium Decision Modal */}
         <PremiumDecisionModal
           open={showPremiumModal}

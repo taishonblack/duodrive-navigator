@@ -41,6 +41,7 @@ import { Check, X } from "lucide-react";
 import { MakeResolution, formatMakeOptions } from "@/lib/vehicle/makeResolver";
 import { NegotiationConfidenceMeter } from "@/components/NegotiationConfidenceMeter";
 import { ConfidenceResult } from "@/hooks/useNegotiationConfidence";
+import { MobileHelpButton } from "@/components/MobileHelpButton";
 
 interface ConversationCanvasProps {
   messages: ChatMessage[];
@@ -204,43 +205,49 @@ export function ConversationCanvas({
             </div>
           )}
           
-          {/* Kebab menu with all actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {hasUserMessages && (
-                <DropdownMenuItem onClick={onClearMessages}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  New chat
-                </DropdownMenuItem>
-              )}
-              {onDealershipModeChange && (
-                <DropdownMenuItem onClick={() => onDealershipModeChange(!isDealershipMode)}>
-                  <Zap className="h-4 w-4 mr-2" />
-                  {isDealershipMode ? "Disable" : "Enable"} Dealership Mode
-                </DropdownMenuItem>
-              )}
-              {(hasUserMessages || onDealershipModeChange) && <DropdownMenuSeparator />}
-              {isLoggedIn === false && (
+          {/* Header utility buttons: Help + Kebab menu */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Help button - opens tips drawer */}
+            <MobileHelpButton inline className="h-8 w-8 text-muted-foreground" />
+            
+            {/* Kebab menu with all actions */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {hasUserMessages && (
+                  <DropdownMenuItem onClick={onClearMessages}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    New chat
+                  </DropdownMenuItem>
+                )}
+                {onDealershipModeChange && (
+                  <DropdownMenuItem onClick={() => onDealershipModeChange(!isDealershipMode)}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    {isDealershipMode ? "Disable" : "Enable"} Dealership Mode
+                  </DropdownMenuItem>
+                )}
+                {(hasUserMessages || onDealershipModeChange) && <DropdownMenuSeparator />}
+                {isLoggedIn === false && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/auth">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Sign in to save
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
-                  <Link to="/auth">
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Sign in to save
+                  <Link to="/contact">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Contact / Report issue
                   </Link>
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem asChild>
-                <Link to="/contact">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Contact / Report issue
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       ) : (
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">

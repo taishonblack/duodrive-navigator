@@ -6,29 +6,46 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
   DrawerClose,
 } from "@/components/ui/drawer";
 
+interface MobileHelpButtonProps {
+  /** If true, renders only the trigger button (no floating position) */
+  inline?: boolean;
+  /** Custom class for the trigger button */
+  className?: string;
+}
+
 /**
- * Mobile floating help button that opens the "How to use DuoDrive" tips in a drawer.
- * Replaces the desktop side panel on mobile to save vertical space.
+ * Mobile help button that opens the "How to use DuoDrive" tips in a drawer.
+ * Can be used inline (in header) or floating (legacy).
  */
-export function MobileHelpButton() {
+export function MobileHelpButton({ inline = false, className }: MobileHelpButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
+      {inline ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={className ?? "h-8 w-8"}
+          aria-label="How to use DuoDrive"
+          onClick={() => setOpen(true)}
+        >
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+      ) : (
         <Button
           variant="outline"
           size="icon"
           className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full shadow-elevated bg-card border-border"
           aria-label="How to use DuoDrive"
+          onClick={() => setOpen(true)}
         >
           <HelpCircle className="h-5 w-5" />
         </Button>
-      </DrawerTrigger>
+      )}
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-3">

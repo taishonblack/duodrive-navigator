@@ -71,6 +71,8 @@ interface ConversationCanvasProps {
   isLoggedIn?: boolean | null;
   isSaving?: boolean;
   lastSavedAt?: Date | null;
+  // Idle standby state
+  isStandby?: boolean;
 }
 
 export function ConversationCanvas({
@@ -96,6 +98,7 @@ export function ConversationCanvas({
   isLoggedIn: externalIsLoggedIn,
   isSaving = false,
   lastSavedAt = null,
+  isStandby = false,
 }: ConversationCanvasProps) {
   const [input, setInput] = useState("");
   const [hasAnimatedWelcome, setHasAnimatedWelcome] = useState(false);
@@ -524,11 +527,21 @@ export function ConversationCanvas({
           </Button>
         </div>
 
+        {/* Standby indicator - subtle status when Quinn is waiting */}
+        {isStandby && (
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground animate-in fade-in duration-300">
+            <Bot className="h-3 w-3" />
+            <span>Quinn is standing by</span>
+          </div>
+        )}
+
         {/* Helper tips - hide on mobile after first message */}
-        <ChatHelperTips isDealershipMode={isDealershipMode} hasUserMessages={hasUserMessages} />
+        {!isStandby && (
+          <ChatHelperTips isDealershipMode={isDealershipMode} hasUserMessages={hasUserMessages} />
+        )}
 
         {/* Sign in to save prompt */}
-        {isLoggedIn === false && (
+        {isLoggedIn === false && !isStandby && (
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <LogIn className="h-3.5 w-3.5" />
             <span>

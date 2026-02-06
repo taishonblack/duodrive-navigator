@@ -951,7 +951,7 @@ export default function DealRoom() {
     }
   }, [activeTab, chatMessages.length, setChatMessages]);
 
-  const { resetIdleTimer, isStandby } = useIdlePing({
+  const { resetIdleTimer, isStandby, getWelcomeBackMessage } = useIdlePing({
     onIdlePing: handleIdlePing,
     isLoading: isChatLoading,
     isActive: activeTab === "copilot" && chatMessages.length > 1,
@@ -972,11 +972,21 @@ export default function DealRoom() {
     }
   }, [negotiationConfidence.progress, isDealershipMode, chatMessages.length, isChatLoading, checkMilestone, setChatMessages]);
 
-  // Reset idle timer when user sends a message
+  // Reset idle timer when user sends a message, with welcome back handling
   const sendChatMessageWithIdleReset = useCallback(async (directMessage?: string) => {
-    resetIdleTimer();
+    const wasInStandby = resetIdleTimer();
+    
+    // If we were in standby, send welcome back after user's message is processed
+    if (wasInStandby) {
+      // Add welcome back message after a short delay (after user message appears)
+      setTimeout(() => {
+        const welcomeBack = getWelcomeBackMessage();
+        setChatMessages(prev => [...prev, { role: 'assistant', content: welcomeBack }]);
+      }, 500);
+    }
+    
     await sendChatMessage(directMessage);
-  }, [resetIdleTimer, sendChatMessage]);
+  }, [resetIdleTimer, getWelcomeBackMessage, setChatMessages, sendChatMessage]);
 
   const extractDealFromText = async () => {
     if (!dealTextInput.trim() || isExtractingText) return;
@@ -1802,6 +1812,7 @@ Be conservative and realistic. Only suggest values that make sense for a typical
                   isLoggedIn={isLoggedIn}
                   isSaving={isAutosaving}
                   lastSavedAt={lastSavedAt}
+                  isStandby={isStandby}
                 />
               </div>
             )}

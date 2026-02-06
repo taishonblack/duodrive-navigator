@@ -15,6 +15,7 @@ import {
   FileText,
   RotateCcw,
   LogIn,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -159,43 +160,75 @@ export function ConversationCanvas({
 
   return (
     <div className="h-full min-h-0 flex flex-col bg-card md:rounded-2xl md:border md:border-border md:shadow-card overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Bot className="h-4 w-4" />
+      {/* Header - Minimal on mobile, full on desktop */}
+      {isMobile ? (
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Bot className="h-3.5 w-3.5" />
+            </div>
+            {isDealershipMode && (
+              <DealershipModeToggle
+                isEnabled={isDealershipMode}
+                onToggle={onDealershipModeChange || (() => {})}
+                isMobile={true}
+              />
+            )}
           </div>
-          <span className="font-medium text-foreground">Deal Room</span>
-          {/* Dealership Mode indicator on mobile */}
-          {isMobile && isDealershipMode && (
-            <DealershipModeToggle
-              isEnabled={isDealershipMode}
-              onToggle={onDealershipModeChange || (() => {})}
-              isMobile={true}
-            />
-          )}
+          {/* Overflow menu on mobile */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {hasUserMessages && (
+                <DropdownMenuItem onClick={onClearMessages}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  New chat
+                </DropdownMenuItem>
+              )}
+              {isLoggedIn === false && (
+                <DropdownMenuItem asChild>
+                  <Link to="/auth">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign in to save
+                  </Link>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Desktop dealership mode toggle */}
-          {!isMobile && onDealershipModeChange && (
-            <DealershipModeToggle
-              isEnabled={isDealershipMode}
-              onToggle={onDealershipModeChange}
-            />
-          )}
-          {hasUserMessages && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClearMessages}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title="Start new chat"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          )}
+      ) : (
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Bot className="h-4 w-4" />
+            </div>
+            <span className="font-medium text-foreground">Deal Room</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {onDealershipModeChange && (
+              <DealershipModeToggle
+                isEnabled={isDealershipMode}
+                onToggle={onDealershipModeChange}
+              />
+            )}
+            {hasUserMessages && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClearMessages}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Start new chat"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Messages Area - iOS touch scrolling enabled */}
       <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>

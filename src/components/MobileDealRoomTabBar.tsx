@@ -29,7 +29,7 @@ export function MobileDealRoomTabBar({
 }: MobileDealRoomTabBarProps) {
   return (
     <nav className="shrink-0 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-5 gap-0.5 px-1 pt-1 pb-1">
+      <div className="grid grid-cols-5 gap-0 px-0.5 py-0.5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -41,19 +41,19 @@ export function MobileDealRoomTabBar({
               size="sm"
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "flex-col h-auto py-2 gap-1 relative rounded-lg transition-colors",
+                "flex-col h-auto py-1.5 gap-0.5 relative rounded-md transition-colors min-h-0",
                 isActive && "bg-accent text-accent-foreground"
               )}
             >
-              <Icon className={cn("h-5 w-5", isActive && "text-primary")} />
+              <Icon className={cn("h-4 w-4", isActive && "text-primary")} />
               <span className={cn(
-                "text-[10px] font-medium",
+                "text-[9px] font-medium leading-tight",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}>
                 {tab.label}
               </span>
               {tab.showLock && isLocked && (
-                <span className="absolute top-1 right-2 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-amber-500 text-white">
+                <span className="absolute top-0.5 right-1.5 flex items-center justify-center h-3 w-3 rounded-full bg-amber-500 text-white">
                   <Lock className="h-2 w-2" />
                 </span>
               )}

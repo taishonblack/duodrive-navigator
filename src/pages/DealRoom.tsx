@@ -951,10 +951,11 @@ export default function DealRoom() {
     }
   }, [activeTab, chatMessages.length, setChatMessages]);
 
-  const { resetIdleTimer } = useIdlePing({
+  const { resetIdleTimer, isStandby } = useIdlePing({
     onIdlePing: handleIdlePing,
     isLoading: isChatLoading,
     isActive: activeTab === "copilot" && chatMessages.length > 1,
+    mode: isDealershipMode ? "dealership" : "regular",
   });
 
   // Milestone nudges at 25/50/75% progress

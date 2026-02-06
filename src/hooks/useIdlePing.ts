@@ -24,6 +24,17 @@ const IDLE_MESSAGES: Record<IdleMode, string[]> = {
   ],
 };
 
+// Welcome back messages when user re-engages after standby
+const WELCOME_BACK_MESSAGES = [
+  "Welcome back — want to keep going where we left off, or start fresh?",
+  "Hey, you're back! Ready to continue with this deal?",
+  "Good to see you again. Pick up where we left off?",
+];
+
+const getRandomWelcomeBack = (): string => {
+  return WELCOME_BACK_MESSAGES[Math.floor(Math.random() * WELCOME_BACK_MESSAGES.length)];
+};
+
 interface UseIdlePingOptions {
   /** Called when an idle ping should be sent */
   onIdlePing: (message: string) => void;
@@ -46,6 +57,7 @@ export function useIdlePing({
   const isLoadingRef = useRef(isLoading);
   const lastActivityRef = useRef(Date.now());
   const [isStandby, setIsStandby] = useState(false);
+  const wasStandbyRef = useRef(false); // Track if we were in standby before reset
 
   // Keep ref in sync with isLoading prop
   useEffect(() => {
@@ -77,7 +89,6 @@ export function useIdlePing({
       
       const timer = window.setTimeout(() => {
         // Skip if user became active since we scheduled
-        const idleFor = Date.now() - lastActivityRef.current;
         if (lastActivityRef.current !== startTime) return;
         
         // Skip if still loading a response
@@ -93,6 +104,7 @@ export function useIdlePing({
         // After the 4th message (standby), enter standby mode
         if (nudgeNumber === 4) {
           setIsStandby(true);
+          wasStandbyRef.current = true;
           clearTimers();
         }
       }, delay);
@@ -102,17 +114,28 @@ export function useIdlePing({
   }, [isActive, isStandby, mode, clearTimers, getMessageForNudge, onIdlePing]);
 
   // Reset timer on activity (call this after sending a message or any user interaction)
-  const resetIdleTimer = useCallback(() => {
+  // Returns true if we were in standby (so caller can send welcome back)
+  const resetIdleTimer = useCallback((): boolean => {
+    const wasInStandby = wasStandbyRef.current;
+    
     lastActivityRef.current = Date.now();
     nudgeCountRef.current = 0;
     setIsStandby(false);
+    wasStandbyRef.current = false;
     clearTimers();
     
     // Only reschedule if active
     if (isActive && !isLoadingRef.current) {
       scheduleTimers();
     }
+    
+    return wasInStandby;
   }, [clearTimers, isActive, scheduleTimers]);
+
+  // Get welcome back message (call when re-engaging after standby)
+  const getWelcomeBackMessage = useCallback((): string => {
+    return getRandomWelcomeBack();
+  }, []);
 
   // Setup and cleanup
   useEffect(() => {
@@ -136,6 +159,7 @@ export function useIdlePing({
   return { 
     resetIdleTimer, 
     isStandby,
+    getWelcomeBackMessage,
     nudgeCount: nudgeCountRef.current,
   };
 }

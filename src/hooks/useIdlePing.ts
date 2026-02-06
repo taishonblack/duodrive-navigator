@@ -4,14 +4,14 @@ const IDLE_MS = 60 * 1000; // 1 minute
 const ANTI_SPAM_MS = 2 * 60 * 1000; // Don't ping more than once every 2 minutes
  
  const IDLE_PROMPTS = [
-   "Hey — are you still there?",
-   "Still with me?",
-   "No rush — want to keep evaluating this deal?",
-   "I'm here when you're ready. Want to continue?",
+   "Still working on this one?",
+   "Take your time — I'm here when you're ready.",
+   "Want to keep building out this deal?",
+   "No rush. Drop in numbers whenever you're ready.",
    "Did you want to paste the numbers from the quote?",
-   "Quick check-in: do you want to keep going on this car?",
-   "All good — should we keep building the deal details?",
-   "Just making sure I didn't lose you. Want to continue?",
+   "Ready to continue? Just type or paste your info.",
+   "Whenever you're ready — let me know the next detail.",
+   "Got more details? Price, APR, fees — anything helps.",
    "If you drop in the price/fees/APR, I can analyze it more accurately.",
    "How can I help next — sticker photo, or paste the quote?",
  ];

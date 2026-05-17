@@ -53,7 +53,7 @@ export function PostPurchaseConfirmation({
       return;
     }
 
-    const timers: NodeJS.Timeout[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
     steps.forEach((_, index) => {
       const timer = setTimeout(() => {

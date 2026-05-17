@@ -130,7 +130,7 @@ export default function Account() {
     try {
       const { error } = await supabase
         .from("notification_preferences")
-        .update({ [key]: value })
+        .update({ [key]: value } as never)
         .eq("user_id", user.id);
 
       if (error) {

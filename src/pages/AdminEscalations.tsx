@@ -88,7 +88,12 @@ export default function AdminEscalations() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const updateData: Record<string, unknown> = {
+      const updateData: {
+        status: string;
+        resolution_notes: string | null;
+        resolved_by?: string | null;
+        resolved_at?: string | null;
+      } = {
         status: newStatus,
         resolution_notes: resolutionNotes[id] || null,
       };
